@@ -51,7 +51,7 @@ LIB_FLAGS = -L./lib -L${LD_LIBRARY_PATH}/lib -L${PETSC_DIR}/${PETSC_ARCH}/lib #-
 
 LIBS =  -ldl -lm -lstdc++ -llapack -lblas -lpetsc
 
-SRC  :=	 src/utils.f90 src/main.f90
+SRC  :=	 src/utils.f90 src/dynamics.f90 src/main.f90
 
 #-----------------------------------------------------------------------
 # define the C,C++, Fortran object files 

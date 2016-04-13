@@ -408,6 +408,64 @@ module rigid_body_dynamics
 
   type :: rigid_body
 
+     !----------------------------------------------------------------!
+     ! Position state variables (all in inertial frame)
+     !----------------------------------------------------------------!
+
+     type(vector) :: r              
+     type(vector) :: theta          
+     type(vector) :: v              
+     type(vector) :: omega          
+
+     !----------------------------------------------------------------!
+     ! Velocity state variables (all in inertial frame)
+     !----------------------------------------------------------------!
+
+     type(vector) :: rdot
+     type(vector) :: thetadot
+     type(vector) :: vdot
+     type(vector) :: omegadot
+
+     !----------------------------------------------------------------!
+     ! Inertial Properties (all in inertial frame)
+     !----------------------------------------------------------------!
+     ! First moment of mass
+     ! C = [ cx,  cy,  cz ]
+     !----------------------------------------------------------------!
+     ! Second moment of mass
+     ! J = [ Jxx,  Jxy,  Jxz ] = [ J[0],  J[1],  J[2] ]
+     ! . = [    ,  Jyy,  Jyz ] = [     ,  J[3],  J[4] ]
+     ! . = [    ,     ,  Jzz ] = [     ,      ,  J[5] ]
+     !----------------------------------------------------------------!
+
+     real(dp)     :: mass    ! mass of the body
+     type(vector) :: C       ! first moment of inertia
+     type(matrix) :: J       ! second moment of inertia
+
+     !----------------------------------------------------------------!
+     ! Rotation matrices (rotates from body to inertial frame)
+     !----------------------------------------------------------------!
+
+     type(matrix) :: T       ! rotation transformatmatrix
+     type(matrix) :: S       ! angular rate matrix
+     type(matrix) :: SDOT    ! transformation matrix
+
+     !----------------------------------------------------------------!
+     ! Handy force and torque vectors
+     !----------------------------------------------------------------!
+
+     type(vector) :: rforce   ! external/reaction force
+     type(vector) :: rtorque  ! external/reaction torque
+     type(vector) :: grav     ! gravity vector in local frame
+
+     !----------------------------------------------------------------!
+     ! Used for energy conservation check
+     !----------------------------------------------------------------!
+
+     real(dp) :: KE          ! kinetic energy of the body
+     real(dp) :: PE          ! potential energy of the body
+     real(dp) :: TE          ! total energy of the body
+
    contains
 
      procedure :: get_residual
