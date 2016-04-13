@@ -37,10 +37,10 @@ module rotation
   ! (c) get_rotation_dot_from_cosines -- > input dir cosines and sines
   ! -------------------------------------------------------------------!
 
-!!$  interface get_rotation_dot
-!!$     module procedure get_rotation_dot_from_angles_array, &
-!!$          & get_rotation_dot_from_angles_vec, get_rotation_dot_from_cosines
-!!$  end interface get_rotation_dot
+  interface get_rotation_dot
+     module procedure  get_rotation_dot_array, &
+          & get_rotation_dot_vec, get_rotation_dot_cosines
+  end interface get_rotation_dot
 
   !-------------------------------------------------------------------!
   ! A common interface for different ways of getting ANGULAR RATE matrix
@@ -328,23 +328,116 @@ contains
     real(dp), intent(in) :: dtheta(NUM_SPAT_DIM) 
     real(dp), intent(in) :: c1, c2, c3, s1, s2, s3
     type(matrix) :: SDOT
+    type(matrix) :: TMP(3)
+    
+!!$    SDOT= matrix( (/ 0.0_dp,  0.0_dp,  -c2*dtheta(2), &
+!!$         & 0.0_dp, -s1*dtheta(1), c1*c2*dtheta(1) - s1*s2*dtheta(2), &
+!!$         & 0.0_dp, -c1*dtheta(1), -s1*c2*dtheta(1) - c1*s2*dtheta(2) /))
+    
+    TMP(1) = matrix( (/ 0.0_dp,  0.0_dp,  0.0_dp, &
+         & 0.0_dp, -s1, c1*c2,&
+         & 0.0_dp, -c1, -s1*c2/) )
 
-    SDOT= matrix( (/ 0.0_dp,  0.0_dp,  -c2*dtheta(2), &
-         & 0.0_dp, -s1*dtheta(1), c1*c2*dtheta(1) - s1*s2*dtheta(2), &
-         & 0.0_dp, -c1*dtheta(1), -s1*c2*dtheta(1) - c1*s2*dtheta(2) /))
-
-!!$    SDOT(1) = matrix( (/ 0.0_dp,  0.0_dp,  0.0_dp, &
-!!$         & 0.0_dp, -s1, c1*c2,&
-!!$         & 0.0_dp, -c1, -s1*c2/) )
-!!$
-!!$    SDOT(2) = matrix( (/ 0.0_dp,  0.0_dp,  -c2, &
-!!$         & 0.0_dp, 0.0_dp, -s1*s2,&
-!!$         & 0.0_dp, 0.0_dp, -c1*s2/))
-!!$    
-!!$    SDOT(3) = zeroM()
-
+    TMP(2) = matrix( (/ 0.0_dp,  0.0_dp,  -c2, &
+         & 0.0_dp, 0.0_dp, -s1*s2,&
+         & 0.0_dp, 0.0_dp, -c1*s2/))
+    
+    SDOT = dtheta(1)*TMP(1) + dtheta(2)*TMP(2) + dtheta(3)*TMP(3)
+      
   end function get_angrate_dot_cosines
 
+  !--------------------------------------------------------------------!
+  ! Returns the time derivative of the transformation matrix with
+  ! respect to the euler angles
+  !
+  ! we use the 3-2-1 Euler angles, the S matrix does not depend
+  ! on c3/s3, however we keep these as inputs in case we ever  
+  ! want to change the Euler sequence.
+  !
+  ! Input : The sines and cosines of euler angles
+  ! Output: TDOT
+  !--------------------------------------------------------------------!
+
+  pure function get_rotation_dot_cosines( c1, c2, c3, s1, s2, s3, dtheta) &
+       & result(TDOT)
+    
+    real(dp), intent(in) :: dtheta(NUM_SPAT_DIM) 
+    real(dp), intent(in) :: c1, c2, c3, s1, s2, s3
+    type(matrix) :: TDOT, TMP(3)
+
+    TMP(1) = matrix( (/ 0.0_dp, 0.0_dp, 0.0_dp, &
+         &  c1*s2*c3 + s1*s3, c1*s2*s3 - s1*c3, c1*c2, &
+         & -s1*s2*c3 + c1*s3, -s1*s2*s3 - c1*c3, -s1*c2 /) )
+
+    TMP(2) = matrix( (/ -s2*c3, -s2*s3, -c2, &
+         & s1*c2*c3, s1*c2*s3, -s1*s2, &
+         & c1*c2*c3, c1*c2*s3, -c1*s2 /))
+
+    TMP(3) = matrix( (/ -c2*s3, c2*c3, 0.0_dp, &
+         & -s1*s2*s3 - c1*c3, s1*s2*c3 - c1*s3, 0.0_dp, &
+         & -c1*s2*s3 + s1*c3, c1*s2*c3 + s1*s3, 0.0_dp /) ) 
+
+    TDOT = dtheta(1)*TMP(1) + dtheta(2)*TMP(2) + dtheta(3)*TMP(3)
+    
+  end function get_rotation_dot_cosines
+
+  !--------------------------------------------------------------------!
+  ! Returns the time derivative of transformation matrix
+  !
+  ! we use the 3-2-1 Euler angles, the S matrix does not depend
+  ! on c3/s3, however we keep these as inputs in case we ever  
+  ! want to change the Euler sequence.
+  !
+  ! Input : the euler angles and time derivatives as VECTOR
+  ! Output: TDOT
+  !--------------------------------------------------------------------!
+
+  pure function get_rotation_dot_vec(thetain, dthetain) result(TDOT)
+
+    type(vector), intent(in)  :: thetain, dthetain
+    type(matrix) :: TDOT
+
+    real(dp)     :: theta(NUM_SPAT_DIM), dtheta(NUM_SPAT_DIM)
+
+    ! convert vec to array
+    theta = array(thetain); dtheta=array(dthetain);   
+
+    ! call the function matching array signature
+    TDOT = get_rotation_dot_array(theta,dtheta)
+
+  end function get_rotation_dot_vec
+
+  !--------------------------------------------------------------------!
+  ! Returns the time derivative of transformation matrix
+  !
+  ! we use the 3-2-1 Euler angles, the S matrix does not depend
+  ! on c3/s3, however we keep these as inputs in case we ever  
+  ! want to change the Euler sequence.
+  !
+  ! Input : the euler angles and time derivatives as arrays
+  ! Output: TDOT
+  !--------------------------------------------------------------------!
+
+  pure function get_rotation_dot_array(theta, dtheta) result(TDOT)
+
+    real(dp), intent(in) :: theta(NUM_SPAT_DIM), dtheta(NUM_SPAT_DIM)
+    type(matrix) :: TDOT
+    real(dp)     :: c1, c2, c3, s1, s2, s3
+
+    ! Compute the sin/cos of the Euler angles
+
+    c1 = cos(theta(1))
+    s1 = sin(theta(1))
+
+    c2 = cos(theta(2))
+    s2 = sin(theta(2))
+
+    c3 = cos(theta(3))
+    s3 = sin(theta(3))
+
+    TDOT = get_rotation_dot_cosines( c1, c2, c3, s1, s2, s3, dtheta)
+
+  end function get_rotation_dot_array
 
   !--------------------------------------------------------------------!
   ! Returns the inverse of the angular rate matrix for the supplied
@@ -525,7 +618,7 @@ contains
     ! set inertial properties
     body % mass    = mass
     body % c % x   = 0.0d0      ! Assuming body frame is located at CG
-    body % J % ij  = mass/6.0d0 ! Assuming atleast two planes of symmetry and a cube side = 1
+    body % J % PSI  = mass/6.0d0 ! Assuming atleast two planes of symmetry and a cube side = 1
 
     ! set the state into the body
     body % r        = vector(q(1:3))
