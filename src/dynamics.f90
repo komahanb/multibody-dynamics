@@ -16,7 +16,7 @@ module rotation
   public :: get_angrate_dot, get_angrate_inv
 
   !-------------------------------------------------------------------!
-  ! A common interface for different ways of getting rotation matrix
+  ! A common interface for different ways of getting ROTATION matrix
   !-------------------------------------------------------------------!
   ! (a) get_rotation_from_angles_vec   -- > input theta as VECTOR
   ! (b) get_rotation_from_angles_array -- > input theta(3) as array
@@ -29,7 +29,21 @@ module rotation
   end interface get_rotation
 
   !-------------------------------------------------------------------!
-  ! A common interface for different ways of getting ang rate  matrix
+  ! A common interface for different ways of getting DERIVATIVES of
+  ! ROTATION matrix with respect to the  rotation parameters (thetas)
+  ! -------------------------------------------------------------------!
+  ! (a) get_rotation_dot_from_angles_vec -- > input theta as VECTOR 
+  ! (b) get_rotation_dot_from_angles_array -- > input theta(3) as array 
+  ! (c) get_rotation_dot_from_cosines -- > input dir cosines and sines
+  ! -------------------------------------------------------------------!
+
+!!$  interface get_rotation_dot
+!!$     module procedure get_rotation_dot_from_angles_array, &
+!!$          & get_rotation_dot_from_angles_vec, get_rotation_dot_from_cosines
+!!$  end interface get_rotation_dot
+
+  !-------------------------------------------------------------------!
+  ! A common interface for different ways of getting ANGULAR RATE matrix
   !-------------------------------------------------------------------!
   ! (a) get_angrate_from_angles_vec    -- > input VECTOR theta
   ! (b) get_angrate_from_angles_array  -- > input theta(3)
@@ -43,7 +57,7 @@ module rotation
 
   !-------------------------------------------------------------------!
   ! A common interface for different ways of getting the time 
-  ! derivative of the ang rate matrix
+  ! DERIVATIVE of the ANGULAR RATE matrix
   !-------------------------------------------------------------------!
   ! (a) get_angrate_dot_vec -- > input VECTOR theta, theta_dot
   ! (b) get_angrate_dot_array -- > input theta(3), theta_dot(3)
@@ -73,21 +87,21 @@ module rotation
 contains
 
   !--------------------------------------------------------------------!
-  ! Returns the rotation matrix based on the euler angles
-  ! Compute the 3-2-1 Euler angle rotation
-
+  ! Returns the rotation transformation matrix based on the euler
+  ! angles for 3-2-1 Euler sequence of rotation
+  
   ! C = C1(theta_1)*C2(theta_2)*C3(theta_3)
   !
   ! Input: theta as an array
-  ! Output: CMAT of type MATRIX
+  ! Output: TMAT of type MATRIX
   ! 
   ! Ref: Section 2.2 Eq. 18/19 Hughes
   !--------------------------------------------------------------------!
 
-  pure function get_rotation_from_angles_array(theta) result(CMAT)
+  pure function get_rotation_from_angles_array(theta) result(TMAT)
 
     real(dp), intent(in) :: theta(NUM_SPAT_DIM)    
-    type(matrix)         :: CMAT
+    type(matrix)         :: TMAT
     real(dp)             :: c1, c2, c3, s1, s2, s3
 
     ! Compute the sin/cos of the Euler angles
@@ -100,7 +114,7 @@ contains
     c3 = cos(theta(3))
     s3 = sin(theta(3))
 
-    CMAT = get_rotation_from_cosines(c1, c2, c3, s1, s2, s3)
+    TMAT = get_rotation_from_cosines(c1, c2, c3, s1, s2, s3)
 
   end function get_rotation_from_angles_array
 
@@ -109,25 +123,25 @@ contains
   !
   ! Compute the 3-2-1 Euler angle rotation
   !
-  ! CMAT = C1(theta_1)*C2(theta_2)*C3(theta_3)
+  ! TMAT = C1(theta_1)*C2(theta_2)*C3(theta_3)
   !
   ! Input: theta of type VECTOR
-  ! Output: CMAT of type MATRIX
+  ! Output: TMAT of type MATRIX
   ! 
   ! Ref: Section 2.2 Eq. 18/19 Hughes
   !--------------------------------------------------------------------!
 
-  pure function get_rotation_from_angles_vec(thetain) result(CMAT)
+  pure function get_rotation_from_angles_vec(thetain) result(TMAT)
 
     type(vector), intent(in) :: thetain
     real(dp)                 :: theta(NUM_SPAT_DIM)
-    type(matrix)             :: CMAT
+    type(matrix)             :: TMAT
 
     ! covert to array form
     theta = array(thetain)
 
     ! call the method that takes angles array
-    CMAT  =  get_rotation_from_angles_array(theta)
+    TMAT  =  get_rotation_from_angles_array(theta)
 
   end function get_rotation_from_angles_vec
 
@@ -138,17 +152,17 @@ contains
   ! Compute the 3-2-1 Euler angle rotation
   !
   ! Input: sines and cosines of the euler angles
-  ! Output: CMAT of type MATRIX
+  ! Output: TMAT of type MATRIX
   !
   ! Ref: Section 2.2 Eq. 18/19 Hughes
   !--------------------------------------------------------------------!
 
-  pure function get_rotation_from_cosines(c1,c2,c3,s1,s2,s3) result(CMAT)
+  pure function get_rotation_from_cosines(c1,c2,c3,s1,s2,s3) result(TMAT)
 
     real(dp), intent(in) :: c1, c2, c3, s1, s2, s3
-    type(matrix)         :: CMAT
+    type(matrix)         :: TMAT
 
-    CMAT = matrix((/ c2*c3, c2*s3, -s2,&
+    TMAT = matrix((/ c2*c3, c2*s3, -s2,&
          & s1*s2*c3 - c1*s3, s1*s2*s3 + c1*c3, s1*c2,&
          & c1*s2*c3 + s1*s3, c1*s2*s3 - s1*c3, c1*c2 /))
 
@@ -247,13 +261,13 @@ contains
   ! want to change the Euler sequence.
   !
   ! Input : the euler angles and time derivatives as VECTOR
-  ! Output: SMAT_DOT
+  ! Output: SDOT
   !--------------------------------------------------------------------!
 
-  pure function get_angrate_dot_vec(thetain, dthetain) result(SMAT_DOT)
+  pure function get_angrate_dot_vec(thetain, dthetain) result(SDOT)
 
     type(vector), intent(in)  :: thetain, dthetain
-    type(matrix) :: SMAT_DOT
+    type(matrix) :: SDOT
 
     real(dp)     :: theta(NUM_SPAT_DIM), dtheta(NUM_SPAT_DIM)
 
@@ -261,7 +275,7 @@ contains
     theta = array(thetain); dtheta=array(dthetain);   
 
     ! call the function matching array signature
-    SMAT_DOT = get_angrate_dot_array(theta,dtheta)
+    SDOT = get_angrate_dot_array(theta,dtheta)
 
   end function get_angrate_dot_vec
 
@@ -273,13 +287,13 @@ contains
   ! want to change the Euler sequence.
   !
   ! Input : the euler angles and time derivatives as arrays
-  ! Output: SMAT_DOT
+  ! Output: SDOT
   !--------------------------------------------------------------------!
 
-  pure function get_angrate_dot_array(theta, dtheta) result(SMAT_DOT)
+  pure function get_angrate_dot_array(theta, dtheta) result(SDOT)
 
     real(dp), intent(in) :: theta(NUM_SPAT_DIM), dtheta(NUM_SPAT_DIM)
-    type(matrix) :: SMAT_DOT
+    type(matrix) :: SDOT
     real(dp)     :: c1, c2, c3, s1, s2, s3
 
     ! Compute the sin/cos of the Euler angles
@@ -293,7 +307,7 @@ contains
     c3 = cos(theta(3))
     s3 = sin(theta(3))
 
-    SMAT_DOT = get_angrate_dot_cosines( c1, c2, c3, s1, s2, s3, dtheta)
+    SDOT = get_angrate_dot_cosines( c1, c2, c3, s1, s2, s3, dtheta)
 
   end function get_angrate_dot_array
 
@@ -305,19 +319,29 @@ contains
   ! want to change the Euler sequence.
   !
   ! Input : The sines and cosines of euler angles
-  ! Output: SMAT_DOT
+  ! Output: SDOT
   !--------------------------------------------------------------------!
 
   pure function get_angrate_dot_cosines( c1, c2, c3, s1, s2, s3, dtheta) &
-       & result(SMAT_DOT)
+       & result(SDOT)
 
     real(dp), intent(in) :: dtheta(NUM_SPAT_DIM) 
     real(dp), intent(in) :: c1, c2, c3, s1, s2, s3
-    type(matrix) :: SMAT_DOT
+    type(matrix) :: SDOT
 
-    SMAT_DOT= matrix( (/ 0.0_dp,  0.0_dp,  -c2*dtheta(2), &
-         & 0.0_dp, -s1*dtheta(1), c1*c2*dtheta(1)-s1*s2*dtheta(2),&
-         & 0.0_dp, -c1*dtheta(1), -s1*c2*dtheta(1)-c1*s2*dtheta(2)/))
+    SDOT= matrix( (/ 0.0_dp,  0.0_dp,  -c2*dtheta(2), &
+         & 0.0_dp, -s1*dtheta(1), c1*c2*dtheta(1) - s1*s2*dtheta(2), &
+         & 0.0_dp, -c1*dtheta(1), -s1*c2*dtheta(1) - c1*s2*dtheta(2) /))
+
+!!$    SDOT(1) = matrix( (/ 0.0_dp,  0.0_dp,  0.0_dp, &
+!!$         & 0.0_dp, -s1, c1*c2,&
+!!$         & 0.0_dp, -c1, -s1*c2/) )
+!!$
+!!$    SDOT(2) = matrix( (/ 0.0_dp,  0.0_dp,  -c2, &
+!!$         & 0.0_dp, 0.0_dp, -s1*s2,&
+!!$         & 0.0_dp, 0.0_dp, -c1*s2/))
+!!$    
+!!$    SDOT(3) = zeroM()
 
   end function get_angrate_dot_cosines
 
@@ -327,17 +351,17 @@ contains
   ! theta vector
   !--------------------------------------------------------------------!
 
-  pure function get_angrate_inv_vec(thetain) result(SMAT_INV)
+  pure function get_angrate_inv_vec(thetain) result(SINV)
 
     type(vector), intent(in) :: thetain
-    type(matrix) :: SMAT_INV
+    type(matrix) :: SINV
     real(dp)     :: theta(NUM_SPAT_DIM)
 
     ! decompose the vector into array
     theta = array(thetain)
 
     ! call the method that takes array as input
-    SMAT_INV =  get_angrate_inv_array(theta)
+    SINV =  get_angrate_inv_array(theta)
 
   end function get_angrate_inv_vec
 
@@ -346,11 +370,11 @@ contains
   ! theta array
   !--------------------------------------------------------------------!
 
-  pure function get_angrate_inv_array(theta) result(SMAT_INV)
+  pure function get_angrate_inv_array(theta) result(SINV)
 
     real(dp), intent(in) :: theta(NUM_SPAT_DIM)
     real(dp)     :: c1, c2, c3, s1, s2, s3
-    type(matrix) :: SMAT_INV
+    type(matrix) :: SINV
 
     c1 = cos(theta(1))
     s1 = sin(theta(1))
@@ -361,7 +385,7 @@ contains
     c3 = cos(theta(3))
     s3 = sin(theta(3))
 
-    SMAT_INV =  get_angrate_inv_cosines(  c1, c2, c3, s1, s2, s3)
+    SINV =  get_angrate_inv_cosines(  c1, c2, c3, s1, s2, s3)
 
   end function get_angrate_inv_array
 
@@ -370,13 +394,13 @@ contains
   ! direction cosines
   !--------------------------------------------------------------------!
 
-  pure function get_angrate_inv_cosines( c1, c2, c3, s1, s2, s3) result(SMAT_INV)
+  pure function get_angrate_inv_cosines( c1, c2, c3, s1, s2, s3) result(SINV)
 
     real(dp), intent(in) :: c1, c2, c3, s1, s2, s3
-    type(matrix) :: SMAT_INV
+    type(matrix) :: SINV
 
-    SMAT_INV= matrix( (/  1.0_dp, s1*s2/c2, c1*s2/c2, &
-         &0.0_dp, c1, -s1, 0.0_dp,&
+    SINV = matrix( (/  1.0_dp, s1*s2/c2, c1*s2/c2, &
+         & 0.0_dp, c1, -s1, 0.0_dp,&
          & s1/c2, c1/c2 /))
 
   end function get_angrate_inv_cosines
@@ -408,13 +432,13 @@ module rigid_body_dynamics
   ! Rigid body type that contains pertaining data and routines that
   ! operate over the type variables
   ! 
-  ! Usage: After creating this body, be sure to call initialize on
+  ! Usage: After creating this body, be sure to call set on
   ! this body with mandatory parameters
   ! 
   ! type(rigid_body) :: bodyA
   ! .
   ! .
-  ! bodyA % initialize(...)
+  ! bodyA % set(...)
   ! -------------------------------------------------------------------!
 
   type :: rigid_body
@@ -457,9 +481,8 @@ module rigid_body_dynamics
      ! Rotation matrices (rotates from body to inertial frame)
      !----------------------------------------------------------------!
 
-     type(matrix) :: TBI     ! rotation transformation matrix
-     type(matrix) :: S       ! angular rate matrix
-     type(matrix) :: SDOT    ! transformation matrix
+     type(matrix) :: TIB, TIBdot ! Transformation matrix and its derivatives
+     type(matrix) :: S, SDOT     ! angular velocity matrix and its derivative
 
      !----------------------------------------------------------------!
      ! Handy force and torque vectors
@@ -517,7 +540,7 @@ contains
     body % omegadot = vector(qdot(10:12))
 
     ! get rotation and angular rate matrices based on theta    
-    body % TBI     = get_rotation(body % theta)
+    body % TIB     = get_rotation(body % theta)
     body % S       = get_angrate(body % theta)
     body % SDOT    = get_angrate_dot(body % theta, body % thetadot)
 
@@ -541,7 +564,8 @@ contains
     ! [T] r_dot - v = 0
     !-----------------------------------------------------------------!
 
-    R(1)  = body % TBI * body % rdot - body % v
+    !! May have to transform things into a frame
+    R(1)  = body % TIB * body % rdot - body % v
 
     !-----------------------------------------------------------------!
     ! Kinematics eqn-2 (2 terms)
@@ -549,14 +573,16 @@ contains
     ! [S] theta_dot - omega = 0
     !-----------------------------------------------------------------!
 
+    !! May have to transform things into a frame
     R(2)  = body % S*body % thetadot - body % omega
 
     !-----------------------------------------------------------------!
     ! Dynamics eqn-1 (8 terms) (Force Equation)
     !-----------------------------------------------------------------!
-    ! m (vdot - TBI*g) - c x omegadot + omega x (m v - c x omega) - fr = 0
+    ! m (vdot - TIB*g) - c x omegadot + omega x (m v - c x omega) - fr = 0
     !-----------------------------------------------------------------!
 
+    !! May have to transform things into a frame
     R(3)  =  body % mass*(body % vdot - body % grav) &
          & - skew(body % c)*body % omegadot &
          & + skew(body % omega)*(body % mass * body % v &
@@ -566,9 +592,10 @@ contains
     !-----------------------------------------------------------------!
     ! Dynamics eqn 2 (9-terms) (Moment Equation)
     !-----------------------------------------------------------------!
-    ! c x vdot + J omegadot  + c x omega x v + omega x J - c x TBI*g - gr = 0
+    ! c x vdot + J omegadot  + c x omega x v + omega x J - c x TIB*g - gr = 0
     !-----------------------------------------------------------------!
 
+    !! May have to transform things into a frame
     R(4)  = skew(body % c) * body % vdot &
          & + body % J * body % omegadot &
          & + skew(body % c) * skew(body % omega)*body % v &
