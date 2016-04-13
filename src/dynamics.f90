@@ -439,14 +439,14 @@ module rigid_body_dynamics
      !----------------------------------------------------------------!
 
      real(dp)     :: mass    ! mass of the body
-     type(vector) :: C       ! first moment of inertia
+     type(vector) :: c       ! first moment of inertia
      type(matrix) :: J       ! second moment of inertia
 
      !----------------------------------------------------------------!
      ! Rotation matrices (rotates from body to inertial frame)
      !----------------------------------------------------------------!
 
-     type(matrix) :: T       ! rotation transformatmatrix
+     type(matrix) :: TBI     ! rotation transformation matrix
      type(matrix) :: S       ! angular rate matrix
      type(matrix) :: SDOT    ! transformation matrix
 
@@ -477,12 +477,56 @@ contains
 
   !-------------------------------------------------------------------!
   ! Residual of the kinematic and dynamic equations in state-space
-  ! representation
-  !-------------------------------------------------------------------!
+  ! representation. The vector form of the residual 'R' can be
+  ! converted into scalar form of 12 equations just by using
+  ! 'array(R)'
+  ! -----------------------------------------------------------------!
 
-  subroutine get_residual(this)
+  subroutine get_residual(body)
+    
+    class(rigid_body) :: body
+    type(vector) :: R(4)
+    
+    !-----------------------------------------------------------------!
+    ! Kinematics eqn-1 (2 terms)
+    !-----------------------------------------------------------------!
+    ! [T] r_dot - v = 0
+    !-----------------------------------------------------------------!
 
-    class(rigid_body) :: this
+    R(1)  = body% TBI * body % rdot - body % v
+
+    !-----------------------------------------------------------------!
+    ! Kinematics eqn-2 (2 terms)
+    !-----------------------------------------------------------------!
+    ! [S] theta_dot - omega = 0
+    !-----------------------------------------------------------------!
+    
+    R(2)  = body % S*body % thetadot - body % omega
+
+    !-----------------------------------------------------------------!
+    ! Dynamics eqn-1 (8 terms) (Force Equation)
+    !-----------------------------------------------------------------!
+    ! m (vdot - TBI*g) - c x omegadot + omega x (m v - c x omega) - fr = 0
+    !-----------------------------------------------------------------!
+    
+    R(3)  =  body % mass*(body % vdot - body % grav) &
+         & - skew(body % c)*body % omegadot &
+         & + skew(body % omega)*(body % mass*body % v &
+         & - skew(body % c)*body % omega) &
+         & - body % rforce
+
+    !-----------------------------------------------------------------!
+    ! Dynamics eqn 2 (9-terms) (Moment Equation)
+    !-----------------------------------------------------------------!
+    ! c x vdot + J omegadot  + c x omega x v + omega x J - c x TBI*g - gr = 0
+    !-----------------------------------------------------------------!
+    
+    R(4)  = skew(body % c) * body % vdot &
+         & + body % J * body % omegadot &
+         & + skew(body % c) * skew(body % omega)*body % v &
+         & + skew(body % omega)*body % J*body % omega &
+         & - skew(body % c)*body % grav &
+         & - body % rtorque
 
   end subroutine get_residual
 
