@@ -392,7 +392,10 @@ end module rotation
 
 module rigid_body_dynamics
 
-  use utils
+  use utils, only : vector, matrix, skew, unskew, &
+       & operator(*), operator(+), operator(-), &
+       & norm, array, dp
+
   use rotation
 
   implicit none
@@ -404,7 +407,15 @@ module rigid_body_dynamics
   !-------------------------------------------------------------------!
   ! Rigid body type that contains pertaining data and routines that
   ! operate over the type variables
-  !-------------------------------------------------------------------!
+  ! 
+  ! Usage: After creating this body, be sure to call initialize on
+  ! this body with mandatory parameters
+  ! 
+  ! type(rigid_body) :: bodyA
+  ! .
+  ! .
+  ! bodyA % initialize(...)
+  ! -------------------------------------------------------------------!
 
   type :: rigid_body
 
@@ -468,7 +479,8 @@ module rigid_body_dynamics
 
    contains
 
-     procedure :: get_residual
+     procedure :: set
+     procedure :: get_residual 
      procedure :: get_jacobian
 
   end type rigid_body
@@ -476,31 +488,67 @@ module rigid_body_dynamics
 contains
 
   !-------------------------------------------------------------------!
+  ! Routine to set the states into the body and compute rotation
+  ! matrices for the set state. This function is to be called every
+  ! time the state of the body changes over time
+  !-------------------------------------------------------------------!
+
+  subroutine set(body, mass, q, qdot, qddot)
+
+    class(rigid_body)    :: body
+    real(dp), intent(in) :: mass
+    real(dp), intent(in) :: q(12), qdot(12), qddot(12)
+
+    ! set inertial properties
+    body % mass    = mass
+    body % c % x   = 0.0d0      ! Assuming body frame is located at CG
+    body % J % ij  = mass/6.0d0 ! Assuming atleast two planes of symmetry and a cube side = 1
+
+    ! set the state into the body
+    body % r        = vector(q(1:3))
+    body % theta    = vector(q(4:6))
+    body % v        = vector(q(7:9))
+    body % omega    = vector(q(10:12))
+
+    ! set the time derivatives of state into the body
+    body % rdot     = vector(qdot(1:3))
+    body % thetadot = vector(qdot(4:6))
+    body % vdot     = vector(qdot(7:9))
+    body % omegadot = vector(qdot(10:12))
+
+    ! get rotation and angular rate matrices based on theta    
+    body % TBI     = get_rotation(body % theta)
+    body % S       = get_angrate(body % theta)
+    body % SDOT    = get_angrate_dot(body % theta, body % thetadot)
+
+  end subroutine set
+
+  !-------------------------------------------------------------------!
   ! Residual of the kinematic and dynamic equations in state-space
   ! representation. The vector form of the residual 'R' can be
   ! converted into scalar form of 12 equations just by using
   ! 'array(R)'
-  ! -----------------------------------------------------------------!
+  !-------------------------------------------------------------------!
 
-  subroutine get_residual(body)
-    
+  function get_residual(body) result(R)
+
     class(rigid_body) :: body
     type(vector) :: R(4)
-    
+
     !-----------------------------------------------------------------!
     ! Kinematics eqn-1 (2 terms)
     !-----------------------------------------------------------------!
     ! [T] r_dot - v = 0
     !-----------------------------------------------------------------!
 
-    R(1)  = body% TBI * body % rdot - body % v
+    R(1)  = body % TBI * body % rdot - body % v
 
     !-----------------------------------------------------------------!
     ! Kinematics eqn-2 (2 terms)
     !-----------------------------------------------------------------!
     ! [S] theta_dot - omega = 0
     !-----------------------------------------------------------------!
-    
+
     R(2)  = body % S*body % thetadot - body % omega
 
     !-----------------------------------------------------------------!
@@ -508,10 +556,10 @@ contains
     !-----------------------------------------------------------------!
     ! m (vdot - TBI*g) - c x omegadot + omega x (m v - c x omega) - fr = 0
     !-----------------------------------------------------------------!
-    
+
     R(3)  =  body % mass*(body % vdot - body % grav) &
          & - skew(body % c)*body % omegadot &
-         & + skew(body % omega)*(body % mass*body % v &
+         & + skew(body % omega)*(body % mass * body % v &
          & - skew(body % c)*body % omega) &
          & - body % rforce
 
@@ -520,15 +568,15 @@ contains
     !-----------------------------------------------------------------!
     ! c x vdot + J omegadot  + c x omega x v + omega x J - c x TBI*g - gr = 0
     !-----------------------------------------------------------------!
-    
+
     R(4)  = skew(body % c) * body % vdot &
          & + body % J * body % omegadot &
          & + skew(body % c) * skew(body % omega)*body % v &
-         & + skew(body % omega)*body % J*body % omega &
-         & - skew(body % c)*body % grav &
+         & + skew(body % omega) * body % J * body % omega &
+         & - skew(body % c) * body % grav &
          & - body % rtorque
 
-  end subroutine get_residual
+  end function get_residual
 
   !-------------------------------------------------------------------!
   ! Jacobian of the kinematic and dynamic equations in state-space
