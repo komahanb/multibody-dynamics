@@ -20,9 +20,12 @@ module utils
   ! three spatial dimensions, for example gravity, acceleration, 
   ! velocity, position, orientation etc
   !-------------------------------------------------------------------!
-
+  
   type vector
-     real(dp)    :: x(NUM_SPAT_DIM) = 0.0_dp
+     real(dp)  :: x(NUM_SPAT_DIM) = 0.0_dp
+   contains
+     procedure :: get
+     procedure :: set
   end type vector
 
   !-------------------------------------------------------------------!
@@ -33,6 +36,9 @@ module utils
 
   type matrix
      real(dp)    :: ij(NUM_SPAT_DIM, NUM_SPAT_DIM) = 0.0_dp
+   contains
+     ! procedure :: get
+     ! procedure :: set
   end type matrix
 
   !-------------------------------------------------------------------!
@@ -93,6 +99,32 @@ module utils
 contains
 
   !-------------------------------------------------------------------!
+  ! Get the corresponding array from a vector
+  !-------------------------------------------------------------------!
+  
+  function get(this)
+    
+    class(vector) :: this
+    real(dp), dimension(NUM_SPAT_DIM) :: get
+
+    get = this % x
+
+  end function get
+
+  !-------------------------------------------------------------------!
+  ! Set the array into the vector
+  !-------------------------------------------------------------------!
+  
+  pure subroutine set(this, a)
+    
+    class(vector), intent(inout) :: this
+    real(dp), intent(in), dimension(NUM_SPAT_DIM) :: a
+
+    this % x = a
+
+  end subroutine set
+  
+  !-------------------------------------------------------------------!
   ! Product of a scalar and vector
   !-------------------------------------------------------------------!
 
@@ -102,7 +134,7 @@ contains
     type (vector), intent (in) :: b
     type (vector)              :: scal_vec
 
-    scal_vec%x   = a*b%x
+    scal_vec%x = a*b%x
 
   end function scal_vec
 
@@ -236,7 +268,7 @@ contains
     type(vector), intent (in) :: a
     real(dp)                  :: square
 
-    square =    sum(a%x**2)
+    square = sum(a%x**2)
 
   end function square
 
