@@ -535,6 +535,23 @@ contains
   end function idM
 
   !-------------------------------------------------------------------!
+  ! Returns an diagonal matrix of size NUM_SPAT_DIM with the scalar
+  ! input as diagonal elements
+  ! -------------------------------------------------------------------!
+
+  pure elemental function diag(val)
+    
+    real(dp), intent(in) :: val
+    type(matrix) :: diag
+    integer :: k
+    
+    forall(k=1:NUM_SPAT_DIM)
+       diag % ij (k,k) = val
+    end forall
+
+  end function diag
+
+  !-------------------------------------------------------------------!
   ! Returns an zero matrix of size NUM_SPAT_DIM  
   !-------------------------------------------------------------------!
 
@@ -542,7 +559,7 @@ contains
 
     type(matrix) :: zeroM
 
-    zeroM = matrix(zeros(NUM_SPAT_DIM))
+    zeroM % ij = 0.0d0
 
   end function zeroM
 
@@ -554,9 +571,33 @@ contains
 
     type(matrix) :: unitM
 
-    unitM =  matrix(ones(NUM_SPAT_DIM))
+    unitM % ij = 1.0d0
 
   end function unitM
+
+  !-------------------------------------------------------------------!
+  ! Returns an zero vector of size NUM_SPAT_DIM  
+  !-------------------------------------------------------------------!
+  
+  pure elemental function zeroV()
+
+    type(vector) :: zeroV
+
+    zeroV % x = 0.0d0
+
+  end function zeroV
+
+  !-------------------------------------------------------------------!
+  ! Returns an vector of ones of size NUM_SPAT_DIM  
+  !-------------------------------------------------------------------!
+  
+  pure elemental function oneV()
+    
+    type(vector) :: oneV
+
+    oneV % x = 1.0d0
+
+  end function oneV
 
   !-------------------------------------------------------------------!
   ! Generates a nxn identity matrix
@@ -568,12 +609,13 @@ contains
     real(dp)    :: eye(n,n)
     integer     :: i, j
 
+    ! generate a zero matrix
     eye = 0.0_dp
-    do i = 1, n
-       do j = 1, n
-          if (j.eq.i) eye(j,i) = 1.0_dp
-       end do
-    end do
+    
+    ! replace the diagonals with one
+    forall(i=1:n)
+       eye(i,i) = 1.0_dp
+    end forall
 
   end function eye
 
