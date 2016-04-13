@@ -537,7 +537,7 @@ module rigid_body_dynamics
   type :: rigid_body
 
      !----------------------------------------------------------------!
-     ! Position state variables (all in inertial frame)
+     ! Position state variables (all in body frame when stored)
      !----------------------------------------------------------------!
 
      type(vector) :: r              
@@ -546,7 +546,7 @@ module rigid_body_dynamics
      type(vector) :: omega          
 
      !----------------------------------------------------------------!
-     ! Velocity state variables (all in inertial frame)
+     ! Velocity state variables (all in body frame when stored)
      !----------------------------------------------------------------!
 
      type(vector) :: rdot
@@ -555,7 +555,7 @@ module rigid_body_dynamics
      type(vector) :: omegadot
 
      !----------------------------------------------------------------!
-     ! Inertial Properties (all in inertial frame)
+     ! Inertial Properties (all in body frame when stored)
      !----------------------------------------------------------------!
      ! First moment of mass
      ! C = [ cx,  cy,  cz ]
@@ -581,8 +581,8 @@ module rigid_body_dynamics
      ! Handy force and torque vectors
      !----------------------------------------------------------------!
 
-     type(vector) :: rforce   ! external/reaction force
-     type(vector) :: rtorque  ! external/reaction torque
+!     type(vector) :: rforce   ! external/reaction force
+!     type(vector) :: rtorque  ! external/reaction torque
      type(vector) :: grav     ! gravity vector in local frame
 
      !----------------------------------------------------------------!
@@ -596,6 +596,7 @@ module rigid_body_dynamics
    contains
 
      procedure :: set
+     procedure :: update
      procedure :: get_residual 
      procedure :: get_jacobian
 
@@ -605,9 +606,9 @@ contains
 
   !-------------------------------------------------------------------!
   ! Routine to set the states into the body and compute rotation
-  ! matrices for the set state. This function is to be called every
-  ! time the state of the body changes over time
-  !-------------------------------------------------------------------!
+  ! matrices for the set state. This function is to be called during
+  ! initialization or the first time step
+  ! -------------------------------------------------------------------!
 
   subroutine set(body, mass, q, qdot, qddot)
 
@@ -615,29 +616,66 @@ contains
     real(dp), intent(in) :: mass
     real(dp), intent(in) :: q(12), qdot(12), qddot(12)
 
-    ! set inertial properties
-    body % mass    = mass
-    body % c % x   = 0.0d0      ! Assuming body frame is located at CG
-    body % J % PSI  = mass/6.0d0 ! Assuming atleast two planes of symmetry and a cube side = 1
-
-    ! set the state into the body
-    body % r        = vector(q(1:3))
+    ! Set the rotation parameters
     body % theta    = vector(q(4:6))
+
+    ! Set inertial properties
+    body % mass     = mass
+    body % c % x    = 0.0d0       ! Assuming body frame is located at CG
+    body % J % PSI  = mass/6.0d0 ! Assuming atleast two planes of symmetry and a cube side = 1
+    
+    ! Set the gravity in global frame (this is converted to body frame
+    ! during residual and jacobian assembly)
+    body % grav % x(3) = -9.81d0
+    
+    ! Get rotation and angular rate matrices based on theta    
+    body % TIB     = get_rotation(body % theta)
+    body % S       = get_angrate(body % theta)
+    body % SDOT    = get_angrate_dot(body % theta, body % thetadot)
+
+    ! Set the state into the body
+    body % r        = body % TIB*vector(q(1:3))   ! convert to body frame
+    body % v        = body % TIB*vector(q(7:9))   ! convert to body frame
+    body % omega    = body % TIB*vector(q(10:12)) ! convert to body frame
+
+    ! Set the time derivatives of state into the body
+    body % rdot     = vector(qdot(1:3)) 
+    body % thetadot = vector(qdot(4:6))
+    body % vdot     = vector(qdot(7:9))
+    body % omegadot = vector(qdot(10:12))
+
+  end subroutine set
+
+  !-------------------------------------------------------------------!
+  ! Routine to update the states into the body and compute rotation
+  ! matrices for the new state. This function is to be called during
+  ! during subsequent time steps
+  !-------------------------------------------------------------------!
+
+  subroutine update(body, q, qdot, qddot)
+
+    class(rigid_body)    :: body
+    real(dp), intent(in) :: q(12), qdot(12), qddot(12)
+
+    body % theta    = vector(q(4:6))
+    
+    ! Get rotation and angular rate matrices based on theta    
+    body % TIB     = get_rotation(body % theta)
+    body % S       = get_angrate(body % theta)
+    body % SDOT    = get_angrate_dot(body % theta, body % thetadot)
+
+    ! Set the state into the body
+    body % r        = vector(q(1:3))
     body % v        = vector(q(7:9))
     body % omega    = vector(q(10:12))
 
-    ! set the time derivatives of state into the body
+    ! Set the time derivatives of state into the body
     body % rdot     = vector(qdot(1:3))
     body % thetadot = vector(qdot(4:6))
     body % vdot     = vector(qdot(7:9))
     body % omegadot = vector(qdot(10:12))
 
-    ! get rotation and angular rate matrices based on theta    
-    body % TIB     = get_rotation(body % theta)
-    body % S       = get_angrate(body % theta)
-    body % SDOT    = get_angrate_dot(body % theta, body % thetadot)
-
-  end subroutine set
+  end subroutine update
 
   !-------------------------------------------------------------------!
   ! Residual of the kinematic and dynamic equations in state-space
@@ -652,7 +690,7 @@ contains
     type(vector) :: R(4)
 
     !-----------------------------------------------------------------!
-    ! Kinematics eqn-1 (2 terms)
+    ! Translational Kinematics
     !-----------------------------------------------------------------!
     ! [T] r_dot - v = 0
     !-----------------------------------------------------------------!
@@ -661,7 +699,7 @@ contains
     R(1)  = body % TIB * body % rdot - body % v
 
     !-----------------------------------------------------------------!
-    ! Kinematics eqn-2 (2 terms)
+    ! Rotational Kinematics
     !-----------------------------------------------------------------!
     ! [S] theta_dot - omega = 0
     !-----------------------------------------------------------------!
@@ -670,20 +708,19 @@ contains
     R(2)  = body % S*body % thetadot - body % omega
 
     !-----------------------------------------------------------------!
-    ! Dynamics eqn-1 (8 terms) (Force Equation)
+    ! Translational Dynamics (8 terms) (Force Equation)
     !-----------------------------------------------------------------!
     ! m (vdot - TIB*g) - c x omegadot + omega x (m v - c x omega) - fr = 0
     !-----------------------------------------------------------------!
 
     !! May have to transform things into a frame
-    R(3)  =  body % mass*(body % vdot - body % grav) &
+    R(3)  =  body % mass*(body % vdot - body % TIB * body % grav) &
          & - skew(body % c)*body % omegadot &
-         & + skew(body % omega)*(body % mass * body % v &
-         & - skew(body % c)*body % omega) &
-         & - body % rforce
+         & + skew(body % omega)*(body % mass * body % v - skew(body % c)*body % omega) !&
+    !& - body % rforce
 
     !-----------------------------------------------------------------!
-    ! Dynamics eqn 2 (9-terms) (Moment Equation)
+    ! Rotational Dynamics (9-terms) (Moment Equation)
     !-----------------------------------------------------------------!
     ! c x vdot + J omegadot  + c x omega x v + omega x J - c x TIB*g - gr = 0
     !-----------------------------------------------------------------!
@@ -693,8 +730,8 @@ contains
          & + body % J * body % omegadot &
          & + skew(body % c) * skew(body % omega)*body % v &
          & + skew(body % omega) * body % J * body % omega &
-         & - skew(body % c) * body % grav &
-         & - body % rtorque
+         & - skew(body % c) * body % TIB * body % grav !&
+    !& - body % rtorque
 
   end function get_residual
 
