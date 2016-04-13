@@ -24,8 +24,8 @@ module utils
   type vector
      real(dp)  :: x(NUM_SPAT_DIM) = 0.0_dp
    contains
-     procedure :: get
-     procedure :: set
+     !procedure :: get
+     !procedure :: set
   end type vector
 
   !-------------------------------------------------------------------!
@@ -35,7 +35,7 @@ module utils
   !-------------------------------------------------------------------!
 
   type matrix
-     real(dp)    :: ij(NUM_SPAT_DIM, NUM_SPAT_DIM) = 0.0_dp
+     real(dp)    :: PSI(NUM_SPAT_DIM, NUM_SPAT_DIM) = 0.0_dp
    contains
      ! procedure :: get
      ! procedure :: set
@@ -51,8 +51,8 @@ module utils
   !-------------------------------------------------------------------!
 
   interface operator (*)
-     module procedure dot, scal_vec, scal_matrix, vector_matrix, &
-          &matrix_vector, matrix_matrix
+     module procedure dot, scal_vec, scal_matrix, &
+          & matrix_vector, matrix_matrix !vector_matrix
   end interface operator (*)
 
   !-------------------------------------------------------------------!
@@ -97,32 +97,6 @@ module utils
   end interface matrix
 
 contains
-
-  !-------------------------------------------------------------------!
-  ! Get the corresponding array from a vector
-  !-------------------------------------------------------------------!
-  
-  function get(this)
-    
-    class(vector) :: this
-    real(dp), dimension(NUM_SPAT_DIM) :: get
-
-    get = this % x
-
-  end function get
-
-  !-------------------------------------------------------------------!
-  ! Set the array into the vector
-  !-------------------------------------------------------------------!
-  
-  pure subroutine set(this, a)
-    
-    class(vector), intent(inout) :: this
-    real(dp), intent(in), dimension(NUM_SPAT_DIM) :: a
-
-    this % x = a
-
-  end subroutine set
   
   !-------------------------------------------------------------------!
   ! Product of a scalar and vector
@@ -148,23 +122,23 @@ contains
     type(matrix), intent (in) :: B 
     type(matrix)              :: scal_matrix
 
-    scal_matrix%ij =  a*B%ij
+    scal_matrix%PSI =  a*B%PSI
 
   end function scal_matrix
 
-  !-------------------------------------------------------------------!
-  ! Product of a vector and matrix {c} = {a}^T[B]
-  !-------------------------------------------------------------------!
-
-  pure elemental function vector_matrix(a, B) 
-
-    type(vector), intent (in) :: a
-    type(matrix), intent (in) :: B 
-    type(vector) ::  vector_matrix
-
-    vector_matrix = vector(matmul(a%x, B%ij))
-
-  end function vector_matrix
+!!$  !-------------------------------------------------------------------!
+!!$  ! Product of a vector and matrix {c} = {a}^T[B]
+!!$  !-------------------------------------------------------------------!
+!!$
+!!$  pure elemental function vector_matrix(a, B) 
+!!$
+!!$    type(vector), intent (in) :: a
+!!$    type(matrix), intent (in) :: B 
+!!$    type(vector) ::  vector_matrix
+!!$
+!!$    vector_matrix = vector(matmul(a%x, B%PSI))
+!!$
+!!$  end function vector_matrix
 
   !-------------------------------------------------------------------!
   ! Product of a matrix with vector {c} = [B]{a}
@@ -176,7 +150,7 @@ contains
     type(matrix), intent (in) :: B 
     type(vector) ::  matrix_vector
 
-    matrix_vector = vector(matmul(B%ij, a%x))
+    matrix_vector = vector(matmul(B % PSI, a % x))
 
   end function matrix_vector
 
@@ -189,7 +163,7 @@ contains
     type(matrix), intent (in) :: A, B 
     type(matrix)              :: matrix_matrix
 
-    matrix_matrix = matrix( matmul(A%ij,B%ij))
+    matrix_matrix = matrix( matmul(A % PSI, B % PSI))
 
   end function matrix_matrix
 
@@ -201,9 +175,9 @@ contains
 
     type(vector), intent(in)           :: a
     type(matrix)                       :: skew
-
-    skew = matrix((/ 0.0_dp, a%x(3), -a%x(2), -a%x(3), 0.0_dp, a%x(1),&
-         &  a%x(2), -a%x(1), 0.0_dp /))
+    
+    skew = trans( matrix((/ 0.0_dp, a%x(3), -a%x(2), -a%x(3), 0.0_dp, a%x(1), &
+         &  a%x(2), -a%x(1), 0.0_dp /)) )
 
   end function skew
 
@@ -216,7 +190,7 @@ contains
     type(matrix), intent(in) :: a
     type(vector)             :: unskew
 
-    unskew = vector((/ a%ij(2,3), a%ij(1,3), a%ij(2,1) /))
+    unskew = vector((/ a%PSI(3,2), a%PSI(1,3), a%PSI(2,1) /))
 
   end function unskew
 
@@ -242,7 +216,7 @@ contains
     type (vector), intent (in) :: a, b
     real(dp)                   :: dot
 
-    dot = sum(a%x*b%x)
+    dot = sum(a%x*b%x) ! a*a
 
   end function dot
 
@@ -255,22 +229,9 @@ contains
     type (vector), intent (in) :: a
     real(dp)                   :: norm_vec  
 
-    norm_vec = norm2(a%x(:))
+    norm_vec = norm2(a%x) ! sqrt(dot(a,a)), sqrt(a*a)
 
   end function norm_vec
-
-  !-------------------------------------------------------------------!
-  ! Returns the square of the given vector
-  !-------------------------------------------------------------------!
-
-  pure elemental function square(a)
-
-    type(vector), intent (in) :: a
-    real(dp)                  :: square
-
-    square = sum(a%x**2)
-
-  end function square
 
   !-------------------------------------------------------------------!
   ! Get the vector entries as array (can simply use a%x)
@@ -314,8 +275,8 @@ contains
     real(dp), intent(in) :: a(NUM_SPAT_DIM**2)
     type(matrix)         :: new_matrix_from_array
 
-    new_matrix_from_array%ij = &
-         &reshape(a, (/ NUM_SPAT_DIM, NUM_SPAT_DIM /))
+    new_matrix_from_array % PSI = &
+         & transpose( reshape(a, (/ NUM_SPAT_DIM, NUM_SPAT_DIM /)) )
 
   end function new_matrix_from_array
 
@@ -330,7 +291,7 @@ contains
     integer, intent(in) :: n
     real(dp)                :: mat(n,n)
 
-    mat   = reshape(arr, (/n,n/))
+    mat = transpose(reshape(arr, (/n,n/)))
 
   end function mat
 
@@ -343,7 +304,7 @@ contains
     type(matrix), intent(in) :: A
     real(dp)                 :: get_matrix(NUM_SPAT_DIM, NUM_SPAT_DIM)
 
-    get_matrix = A % ij
+    get_matrix = A % PSI
 
   end function get_matrix
 
@@ -410,11 +371,11 @@ contains
   !-------------------------------------------------------------------!
 
   pure elemental function trans(A)
-
+    
     type(matrix), intent(in) :: A
     type(matrix)             :: trans
 
-    trans = matrix(transpose(get_matrix(A)))
+    trans = matrix( transpose(A % PSI) )
 
   end function trans
 
@@ -427,7 +388,7 @@ contains
     type(matrix), intent(in) :: A, B
     type(matrix)  :: add_matrices
 
-    add_matrices%ij = A%ij +B%ij
+    add_matrices%PSI = A%PSI + B%PSI
 
   end function add_matrices
 
@@ -453,7 +414,7 @@ contains
     type(matrix), intent(in)  :: A, B
     type(matrix)  :: sub_matrices
 
-    sub_matrices%ij = A%ij -B%ij
+    sub_matrices%PSI = A%PSI - B%PSI
 
   end function sub_matrices
 
@@ -479,7 +440,7 @@ contains
     type(matrix), intent(in)  :: A
     type(matrix)  :: negate_matrix
 
-    negate_matrix%ij = -A%ij
+    negate_matrix%PSI = -A%PSI
 
   end function negate_matrix
 
@@ -495,6 +456,43 @@ contains
     negate_vector%x = -a%x
 
   end function negate_vector
+
+  !-------------------------------------------------------------------!
+  ! Returns an diagonal matrix of size NUM_SPAT_DIM with the scalar
+  ! input as diagonal elements
+  ! -------------------------------------------------------------------!
+
+  pure elemental function diag(val)
+    
+    real(dp), intent(in) :: val
+    type(matrix) :: diag
+    integer :: k
+    
+    forall(k=1:NUM_SPAT_DIM)
+       diag % PSI (k,k) = val
+    end forall
+
+  end function diag
+
+  !-------------------------------------------------------------------!
+  ! Generates a nxn identity matrix
+  !-------------------------------------------------------------------!
+
+  pure function eye(n)
+
+    integer, intent(in) :: n
+    real(dp)    :: eye(n,n)
+    integer     :: i, j
+
+    ! generate a zero matrix
+    eye = 0.0_dp
+    
+    ! replace the diagonals with one
+    forall(i=1:n)
+       eye(i,i) = 1.0_dp
+    end forall
+
+  end function eye
 
   !-------------------------------------------------------------------!
   ! Convert from degree to radian
@@ -521,164 +519,5 @@ contains
     rad2deg  =  rad*DEG_PER_RAD
 
   end function rad2deg
-
-  !-------------------------------------------------------------------!
-  ! Returns an identity matrix of size NUM_SPAT_DIM
-  !-------------------------------------------------------------------!
-
-  pure elemental function idM()
-
-    type(matrix) :: idM
-
-    idM = matrix(eye(NUM_SPAT_DIM))
-
-  end function idM
-
-  !-------------------------------------------------------------------!
-  ! Returns an diagonal matrix of size NUM_SPAT_DIM with the scalar
-  ! input as diagonal elements
-  ! -------------------------------------------------------------------!
-
-  pure elemental function diag(val)
-    
-    real(dp), intent(in) :: val
-    type(matrix) :: diag
-    integer :: k
-    
-    forall(k=1:NUM_SPAT_DIM)
-       diag % ij (k,k) = val
-    end forall
-
-  end function diag
-
-  !-------------------------------------------------------------------!
-  ! Returns an zero matrix of size NUM_SPAT_DIM  
-  !-------------------------------------------------------------------!
-
-  pure elemental function zeroM()
-
-    type(matrix) :: zeroM
-
-    zeroM % ij = 0.0d0
-
-  end function zeroM
-
-  !-------------------------------------------------------------------!
-  ! Returns an unit matrix of size NUM_SPAT_DIM
-  !-------------------------------------------------------------------!
-
-  pure elemental function unitM()
-
-    type(matrix) :: unitM
-
-    unitM % ij = 1.0d0
-
-  end function unitM
-
-  !-------------------------------------------------------------------!
-  ! Returns an zero vector of size NUM_SPAT_DIM  
-  !-------------------------------------------------------------------!
-  
-  pure elemental function zeroV()
-
-    type(vector) :: zeroV
-
-    zeroV % x = 0.0d0
-
-  end function zeroV
-
-  !-------------------------------------------------------------------!
-  ! Returns an vector of ones of size NUM_SPAT_DIM  
-  !-------------------------------------------------------------------!
-  
-  pure elemental function oneV()
-    
-    type(vector) :: oneV
-
-    oneV % x = 1.0d0
-
-  end function oneV
-
-  !-------------------------------------------------------------------!
-  ! Generates a nxn identity matrix
-  !-------------------------------------------------------------------!
-
-  pure function eye(n)
-
-    integer, intent(in) :: n
-    real(dp)    :: eye(n,n)
-    integer     :: i, j
-
-    ! generate a zero matrix
-    eye = 0.0_dp
-    
-    ! replace the diagonals with one
-    forall(i=1:n)
-       eye(i,i) = 1.0_dp
-    end forall
-
-  end function eye
-
-  !-------------------------------------------------------------------!
-  ! Generates a nxn zero matrix
-  !-------------------------------------------------------------------!
-
-  pure function zeros(n)
-
-    integer, intent(in) :: n
-    real(dp)    :: zeros(n,n)
-
-    zeros        = 0.0_dp
-
-  end function zeros
-
-  !-------------------------------------------------------------------!
-  ! Generates a nxn unit matrix
-  !-------------------------------------------------------------------!
-
-  pure function ones(n)
-
-    integer, intent(in) :: n
-    real(dp)    :: ones(n,n)
-
-    ones        = 1.0_dp
-
-  end function ones
-
-  !-------------------------------------------------------------------!
-  ! Function that reverses the order of the constituent elements in
-  ! the vector for real numbered vectors
-  !-------------------------------------------------------------------!
-
-  pure function reverse_real(a) result(rev_a)
-
-    real(dp), intent(in)     :: a(:)
-    real(dp)                 :: rev_a(size(a))
-    integer              :: i , n
-
-    n= size(a)
-    do i =  1, n
-       rev_a(i) = a(n+1-i)
-    end do
-
-  end function reverse_real
-
-  !-------------------------------------------------------------------!
-  ! Function that reverses the order of the constituent elements in
-  ! the vector for integer vectors
-  !-------------------------------------------------------------------!
-
-  function reverse_int(a) result(rev_a)
-
-    integer, intent(in)     :: a(:)
-    integer                 :: rev_a(size(a))
-    integer                 :: i, n
-
-    n= size(a)
-    do i =  1, n
-       rev_a(i) = a(n+1-i)
-    end do
-
-  end function reverse_int
 
 end module utils
