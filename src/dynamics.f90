@@ -313,9 +313,16 @@ end module rigid_body_class
 !=====================================================================!
 
 module rigid_body_dynamics_class
+  
+  ! parent class
+  use physics_class, only : physics
 
-  use physics_class
-  use rigid_body_class
+  ! any other classes
+  use utils, only : vector, matrix, skew, unskew, &
+       & operator(*), operator(+), operator(-), &
+       & norm, array, dp
+
+  use rigid_body_class, only : rigid_body
 
   implicit none
 
@@ -351,8 +358,10 @@ contains
     real(8), intent(inout), dimension(:) :: res
     real(8), intent(in) :: time
     real(8), intent(in), dimension(:) :: u, udot, uddot
-
-    print*, "DUMMY residual"
+    
+    call this % body % set (1.0d0, u, udot, uddot)
+    
+    res = array(this % body % get_residual())
 
   end subroutine assembleResidual
 
