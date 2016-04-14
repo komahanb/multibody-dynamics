@@ -35,9 +35,11 @@ program test
   
   print *, body % get_residual()
 
-  call integrator % initialize(tfinal = 25.0d0, num_stages=3)
+  call integrator % initialize(tfinal = 20.0d0, num_stages=3, nvars=2, second_order=.true.)
   call integrator % integrate()
   call integrator % write_solution()
   call integrator % finalize()
-  
+
 end program test
+
+

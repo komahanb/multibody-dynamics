@@ -28,8 +28,7 @@ module runge_kutta_integrator
      real(8) :: tinit = 0.0d0, tfinal = 1.0d0
      real(8) :: h = 0.1d0       ! default step size
 
-     logical :: descriptor_form = .true.
-     logical :: second_order = .true.
+     logical :: second_order = .false.
 
      integer :: current_stage = 0
      integer :: current_step  = 1
@@ -167,13 +166,23 @@ contains
   ! Initialize the dirk datatype and construct the tableau
   !-------------------------------------------------------------------!
   
-  subroutine initialize(this, nvars, num_stages, tinit, tfinal, h)
-
+  subroutine initialize(this, nvars, num_stages, tinit, tfinal, h, second_order)
+    
     class(RK) :: this
     integer, OPTIONAL, intent(in) :: num_stages
     integer, OPTIONAL, intent(in) :: nvars
     real(8), OPTIONAL, intent(in) :: tinit, tfinal
     real(8), OPTIONAL, intent(in) :: h
+    logical, OPTIONAL, intent(in) :: second_order
+
+    !-----------------------------------------------------------------!
+    ! Set the order of the governing equations
+    !-----------------------------------------------------------------!
+    
+    if (present(second_order)) then
+       this % second_order = second_order
+    end if
+    print '(">> Second order           : ",L1)', this % second_order
 
     !-----------------------------------------------------------------!
     ! Set the initial and final time
@@ -181,15 +190,13 @@ contains
 
     if (present(tinit)) then
        this % tinit = tinit
-    else
-       print '("Using default start time : ",F8.3)', this % tinit
     end if
+    print '(">> Start time             : ",F8.3)', this % tinit
 
     if (present(tfinal)) then
        this % tfinal = tfinal
-    else
-       print '("Using default end time : ",F8.3)', this % tfinal
     end if
+    print '(">> End time               : ",F8.3)', this % tfinal
 
     !-----------------------------------------------------------------!
     ! Set the order of integration
@@ -197,9 +204,8 @@ contains
 
     if (present(num_stages)) then
        this % num_stages = num_stages
-    else
-       print '("Using default number of stages : ",i4)', this % num_stages
     end if
+    print '(">> Number of stages       : ",i4)', this % num_stages
 
     !-----------------------------------------------------------------!
     ! Set the user supplied initial step size
@@ -207,25 +213,24 @@ contains
 
     if (present(h)) then
        this % h = h 
-    else
-       print '("Using default step size h : ", E9.3)', this % h
     end if
-
-    !-----------------------------------------------------------------!
-    ! Find the number of time steps required during integration
-    !-----------------------------------------------------------------!
-
-    this % num_steps = int((this % tfinal - this % tinit)/this % h) + 1 
-
+    print '(">> Step size              : ",E9.3)', this % h
+    
     !-----------------------------------------------------------------!
     ! Set the user supplied number of variables
     !-----------------------------------------------------------------!
 
     if (present(nvars)) then
        this % nvars = nvars 
-    else
-       print '("Using default nvars : ", i4)', this % nvars
     end if
+    print '(">> Number of variables    : ",i4)', this % nvars
+
+    !-----------------------------------------------------------------!
+    ! Find the number of time steps required during integration
+    !-----------------------------------------------------------------!
+
+    this % num_steps = int((this % tfinal - this % tinit)/this % h) + 1 
+    print '(">> Number of steps        : ",i6)', this % num_steps
 
     !-----------------------------------------------------------------!
     ! Allocate space for the tableau
@@ -296,9 +301,6 @@ contains
 
     ! set the start time
     this % time(1) = this % tinit
-
-    print*, "Second order    :", this % second_order
-    print*, "Descriptor form :", this % descriptor_form
 
   end subroutine initialize
 
@@ -371,8 +373,8 @@ contains
     integer :: k
 
     ! Initial condition
-    this % u(1,1) = 1.0d0
-
+    this % u(1,1) = 2.0d0
+    
     this % current_step = 1
 
     ! March in time
@@ -910,6 +912,7 @@ contains
 
        end do loop_vars
 
+       ! scale/multiply the block with the corresponding coefficient
        jtmp1 =  this % h * this % A(i,i) * this % h * this % A(i,i) * jtmp1
 
        !-----------------------------------------------------------!
@@ -933,6 +936,7 @@ contains
 
        end do
 
+       ! scale/multiply the block with the corresponding coefficient
        jtmp2 =  this % h * this % A(i,i) * jtmp2
 
        !-----------------------------------------------------------!
@@ -956,6 +960,10 @@ contains
 
        end do
 
+       ! Scale/multiply the block with the corresponding coefficient
+       jtmp3 =  1.0d0* jtmp3
+       
+       ! Add the blocks together
        jtmp = jtmp3 + jtmp2 + jtmp1 
 
     else
@@ -986,24 +994,25 @@ contains
 
        end do loopvars
 
+       ! Scale the block with the coefficient
        jtmp1 =  this % h * this % A(i,i) * jtmp1
-
-       !-----------------------------------------------------------------!
+       
+       !--------------------------------------------------------------!
        ! Derivative of R WRT QDOT
-       !-----------------------------------------------------------------!
+       !--------------------------------------------------------------!
 
        qdottmp(:) = this % QDOT(i,:)
 
        do k = 1, this % nvars
 
           ! perturb the k-th variable
-          qdottmp(k) = this % Qdot(i,k) + small
+          qdottmp(k) = this % qdot(i,k) + small
 
           call R(tmp1, this % nvars, this % T(i), this % Q(i,:), &
                & qdottmp)
 
           ! unperturb the k-th variable
-          qdottmp(k) = this % Qdot(i,k)
+          qdottmp(k) = this % qdot(i,k)
 
           jtmp2(:,k) = (tmp1-tmp2)/small
 
