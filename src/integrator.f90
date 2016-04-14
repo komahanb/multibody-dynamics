@@ -21,45 +21,68 @@ module runge_kutta_integrator
   type, abstract :: RK
 
      integer :: num_stages = 1  ! default number of stages
-     integer :: order           ! order of accuracy
      integer :: nvars = 1       ! number of states/equations
+     integer :: order           ! order of accuracy
+     integer :: num_steps       ! number of time steps
 
-     real(8) :: h = 0.1d0       ! default step size (will reconsider when implementing adaptive step size)
-     real(8) :: time            ! scalar to track integration time
+     real(8) :: h = 0.1d0       ! default step size
 
      logical :: second_order = .false.
-
-     ! The Butcher Tableau 
-     real(8), dimension(:,:), allocatable :: A ! forms the coeff matrix
-     real(8), dimension(:), allocatable :: B ! multiplies the state derivatives
-     real(8), dimension(:), allocatable :: C ! multiplies the time
-
-     ! The stage time and its corresponding derivatives
-     real(8), dimension(:), allocatable :: T ! the corresponding stage time
-     real(8), dimension(:,:), allocatable :: Q ! the corresponding state
-     real(8), dimension(:,:), allocatable :: QDOT ! the stage derivatives K = F(T,Q)
-     real(8), dimension(:,:), allocatable :: QDDOT ! the stage derivatives K = F(T,Q)
-
-     real(8), dimension(:,:), allocatable :: R ! stage residual
-     real(8), dimension(:,:,:,:), allocatable :: J ! stage jacobian
-
-     ! The form of the governing equation
      logical :: descriptor_form = .true.
 
-     ! number of function and gradient calls
-     integer :: fcnt=0, fgcnt = 0
+     !----------------------------------------------------------------!
+     ! Track global time and states
+     !----------------------------------------------------------------!
+
+     real(8), dimension(:), allocatable   :: time
+     real(8), dimension(:,:), allocatable :: U
+     real(8), dimension(:,:), allocatable :: UDOT
+     real(8), dimension(:,:), allocatable :: UDDOT
+
+     !----------------------------------------------------------------!
+     ! The Butcher Tableau 
+     !----------------------------------------------------------------!
+
+     real(8), dimension(:,:), allocatable :: A ! forms the coeff matrix
+     real(8), dimension(:), allocatable   :: B ! multiplies the state derivatives
+     real(8), dimension(:), allocatable   :: C ! multiplies the time
+
+     !----------------------------------------------------------------!
+     ! The stage time and its corresponding derivatives
+     !----------------------------------------------------------------!
+
+     real(8), dimension(:), allocatable   :: T
+     real(8), dimension(:,:), allocatable :: Q
+     real(8), dimension(:,:), allocatable :: QDOT
+     real(8), dimension(:,:), allocatable :: QDDOT
+
+     !----------------------------------------------------------------!
+     ! The stage residual and jacobian
+     !----------------------------------------------------------------!
+
+     real(8), dimension(:,:), allocatable     :: R ! stage residual
+     real(8), dimension(:,:,:,:), allocatable :: J ! stage jacobian
 
    contains
 
+     !----------------------------------------------------------------!
      ! Implemented common procedures (visible to the user)
+     !----------------------------------------------------------------!
+
      procedure :: initialize, finalize, integrate
 
+     !----------------------------------------------------------------!
      ! Implemented procedures (not callable by the user)
+     !----------------------------------------------------------------!
+
      procedure, private :: time_march
      procedure, private :: reset_stage_values
      procedure, private :: check_butcher_tableau
 
+     !----------------------------------------------------------------!
      ! Deferred common procedures
+     !----------------------------------------------------------------!
+
      procedure(compute_stage_values_interface), private, deferred :: compute_stage_values
      procedure(buthcher_interface), private, deferred :: setup_butcher_tableau
 
@@ -71,7 +94,10 @@ module runge_kutta_integrator
   
   type, extends(RK) :: DIRK
 
-     ! For the nonlinear solution at each stage
+     !----------------------------------------------------------------!
+     ! Nonlinear solution at each stage
+     !----------------------------------------------------------------!
+
      integer :: max_newton = 25
      real(8) :: tol = 1.0d-12
 
@@ -79,10 +105,16 @@ module runge_kutta_integrator
 
      private
 
+     !----------------------------------------------------------------!
      ! Implement/override the abstract class routines
+     !----------------------------------------------------------------!
+
      procedure :: setup_butcher_tableau => ButcherDIRK
 
+     !----------------------------------------------------------------!
      ! More specialized procedures
+     !----------------------------------------------------------------!
+
      procedure :: compute_stage_values
 
      procedure :: newton_solve
@@ -133,16 +165,16 @@ contains
   ! Initialize the dirk datatype and construct the tableau
   !-------------------------------------------------------------------!
   
-  subroutine initialize(this, nvars, tinit, num_stages, h)
+  subroutine initialize(this, nvars, num_stages, tinit, tfinal, h)
 
     class(RK) :: this
     integer, OPTIONAL, intent(in) :: num_stages
     integer, OPTIONAL, intent(in) :: nvars
-    real(8), OPTIONAL, intent(in) :: tinit
+    real(8), OPTIONAL, intent(in) :: tinit, tfinal
     real(8), OPTIONAL, intent(in) :: h
 
     !-----------------------------------------------------------------!
-    ! set the initial time
+    ! Set the initial time
     !-----------------------------------------------------------------!
 
     if (present(tinit)) then
@@ -152,7 +184,7 @@ contains
     end if
 
     !-----------------------------------------------------------------!
-    ! set the order of integration
+    ! Set the order of integration
     !-----------------------------------------------------------------!
 
     if (present(num_stages)) then
@@ -162,7 +194,7 @@ contains
     end if
 
     !-----------------------------------------------------------------!
-    ! set the user supplied initial step size
+    ! Set the user supplied initial step size
     !-----------------------------------------------------------------!
 
     if (present(h)) then
@@ -172,7 +204,13 @@ contains
     end if
 
     !-----------------------------------------------------------------!
-    ! set the user supplied number of variables
+    ! Find the number of time steps required during integration
+    !-----------------------------------------------------------------!
+    
+    this % num_steps = int((tfinal - tinit)/h) + 1
+    
+    !-----------------------------------------------------------------!
+    ! Set the user supplied number of variables
     !-----------------------------------------------------------------!
 
     if (present(nvars)) then
@@ -182,7 +220,7 @@ contains
     end if
 
     !-----------------------------------------------------------------!
-    ! allocate space for the tableau
+    ! Allocate space for the tableau
     !-----------------------------------------------------------------!
 
     allocate(this % A(this % num_stages, this % num_stages))
@@ -195,56 +233,55 @@ contains
     this % C = 0.0d0
 
     !-----------------------------------------------------------------!
-    ! allocate space for the stage state
-    !-----------------------------------------------------------------!
-
-    allocate(this % Q(this % num_stages, this % nvars))
-    this % Q = 0.0d0
-
-    !-----------------------------------------------------------------!
-    ! allocate space for the stage derivatives
-    !-----------------------------------------------------------------!
-
-    allocate(this % QDOT(this % num_stages, this % nvars))
-    this % QDOT = 0.0d0
-
-    !-----------------------------------------------------------------!
-    ! allocate space for the second stage derivatives
-    !-----------------------------------------------------------------!
-
-    allocate(this % QDDOT(this % num_stages, this % nvars))
-    this % QDDOT = 0.0d0
-
-    !-----------------------------------------------------------------!
-    ! allocate space for the stage time
+    ! Allocate space for the stage states and time
     !-----------------------------------------------------------------!
 
     allocate(this % T(this % num_stages))
     this % T = 0.0d0
 
+    allocate(this % Q(this % num_stages, this % nvars))
+    this % Q = 0.0d0
+
+    allocate(this % QDOT(this % num_stages, this % nvars))
+    this % QDOT = 0.0d0
+
+    allocate(this % QDDOT(this % num_stages, this % nvars))
+    this % QDDOT = 0.0d0
+
     !-----------------------------------------------------------------!
-    ! allocate space for the stage time
+    ! Allocate space for the stage residual and jacobian
     !-----------------------------------------------------------------!
 
     allocate(this % R(this % num_stages, this % nvars))
     this % R = 0.0d0
 
-    !-----------------------------------------------------------------!
-    ! allocate space for the stage time
-    !-----------------------------------------------------------------!
-
-    allocate(this % J(this % num_stages,&
-         & this % num_stages, this % nvars, this % nvars))
+    allocate(this % J(this % num_stages, this % num_stages, this % nvars, this % nvars))
     this % J = 0.0d0
+    
+    !-----------------------------------------------------------------!
+    ! Allocate space for the global states and time
+    !-----------------------------------------------------------------!
+    
+    allocate(this % time(this % num_steps))
+    this % time = 0.0d0
+
+    allocate(this % U(this % num_steps, this % nvars))
+    this % U = 0.0d0
+
+    allocate(this % uDOT(this % num_steps, this % nvars))
+    this % UDOT = 0.0d0
+
+    allocate(this % UDDOT(this % num_steps, this % nvars))
+    this % UDDOT = 0.0d0
 
     !-----------------------------------------------------------------!
-    ! this subroutine puts values into the Butcher tableau
+    ! Put values into the Butcher tableau
     !-----------------------------------------------------------------!
 
     call this % setup_butcher_tableau()
 
     !-----------------------------------------------------------------!
-    ! sanity check
+    ! Sanity check for consistency of Butcher Tableau
     !-----------------------------------------------------------------!
 
     call this % check_butcher_tableau()
@@ -262,19 +299,13 @@ contains
     integer :: i
 
     do i = 1, this  % num_stages
-
        if (abs(this % C(i) - sum(this % A(i,:))) .gt. 5.0d-16) then
-
           print *, "WARNING: sum(A(i,j)) != C(i)", i, this % num_stages
-
        end if
-
     end do
 
     if ((sum(this % B) - 1.0d0) .gt. 5.0d-16) then
-
        print *, "WARNING: sum(B) != 1", this % num_stages
-
     end if
 
   end subroutine check_butcher_tableau
@@ -287,20 +318,26 @@ contains
 
     class(RK) :: this
 
-    ! clear butcher's tableau
+    ! Clear butcher's tableau
     if(allocated(this % A)) deallocate(this % A)
     if(allocated(this % B)) deallocate(this % B)
     if(allocated(this % C)) deallocate(this % C)
 
-    ! clear stage value
+    ! Clear stage value
     if(allocated(this % QDDOT)) deallocate(this % QDDOT)
     if(allocated(this % QDOT)) deallocate(this % QDOT)
     if(allocated(this % Q)) deallocate(this % Q)
     if(allocated(this % T)) deallocate(this % T)
 
-    ! clear the stage residual and jacobian
+    ! Clear the stage residual and jacobian
     if(allocated(this % R)) deallocate(this % R)
     if(allocated(this % J)) deallocate(this % J)
+
+    ! Clear global states and time
+    if(allocated(this % UDDOT)) deallocate(this % UDDOT)
+    if(allocated(this % UDOT)) deallocate(this % UDOT)
+    if(allocated(this % U)) deallocate(this % U)
+    if(allocated(this % time)) deallocate(this % time)
 
   end subroutine finalize
 
@@ -308,23 +345,20 @@ contains
   ! Time integration logic
   !-------------------------------------------------------------------!
   ! Input: 
-  ! o state arrays q and qdot with initial conditions set at q(1)
-  ! o number of steps N
-  ! o step size h
+  ! o state arrays q and qdot with initial conditions set at q (1)
   !-------------------------------------------------------------------!
   ! Output:
   ! o q, qdot arrays are modified by the routine
   !-------------------------------------------------------------------!
   
-  subroutine Integrate(this, N, q, qdot)
+  subroutine Integrate(this, q, qdot)
 
     class(RK) :: this
     real(8), intent(inout), dimension(:,:) :: q, qdot
-    integer, intent(in) :: N 
     integer :: k
 
     ! March in time
-    march: do k = 2, N + 1
+    march: do k = 2, this % num_steps
 
        ! find the stage derivatives at the current step
        call this % compute_stage_values(k, q, qdot)
@@ -367,7 +401,7 @@ contains
     end if
 
     ! increment the time
-    this % time = this % time + this % h
+    this % time(k) = this % time(k) + this % h
 
   end subroutine time_march
   
@@ -490,14 +524,10 @@ contains
 
        ! Find the stage times
 
-       this % T(j) = this % time + this % C(j)*this % h
+       this % T(j) = this % time(k-1) + this % C(j)*this % h
 
        ! Guess the solution for stage states
 
-       if (.not. this % descriptor_form) then
-          ! guess q
-          this % Q(j,:) = 1.0d0
-       else 
           if (this % second_order) then
              ! guess qddot
              this % QDDOT(j,:) = 1.0d0 
@@ -505,7 +535,6 @@ contains
              ! guess qdot
              this % QDOT(j,:) = 1.0d0 
           end if
-       end if
 
        ! solve the non linear stage equations using Newton's method for
        ! the actual stage states 
@@ -549,11 +578,9 @@ contains
 
        ! Get the residual of the function
        call this % get_residual(qk, qdotk)
-       this % fcnt = this % fcnt + 1
 
        ! Get the jacobian matrix
        call this % get_jacobian()
-       this % fgcnt = this % fgcnt + 1
 
        ! setup linear system in lapack format
        call this % setup_linear_system(res, jac)
