@@ -5,14 +5,14 @@
 #------------------------------
 CC = gcc
 CX = g++
-FC = mpif90
+FC = gfortran
 
 #------------------------------
 # Define any compile-time flags
 #------------------------------
 CC_FLAGS =  -g #-Wall
 CX_FLAGS =  -g #-Wall
-FC_FLAGS =  -g -fbounds-check #-Wall-cpp -dM -Wno-unused
+FC_FLAGS =  -g -fbounds-check -ffree-form #-Wall-cpp -dM -Wno-unused
 
 #------------------------------
 # Define the suffixes in use
@@ -43,7 +43,7 @@ LIBS = -lm -llapack
 #---------------------------------------------------------------------#
 # Define all the source files to compile here
 #---------------------------------------------------------------------#
-SRC  :=	 src/utils.f90 src/rotation.f90 src/integrator.f90 src/functions.f90 src/dynamics.f90 src/main.f90
+SRC  :=	 src/utils.f90 src/rotation.f90 src/dynamics.f90 src/integrator.f90 src/functions.f90 src/main.f90
 
 #-----------------------------------------------------------------------
 # define the C,C++, Fortran object files 

@@ -17,6 +17,7 @@ module physics_class
 
      procedure(residual_assembly_interface), deferred :: assembleResidual
      procedure(jacobian_assembly_interface), deferred :: assembleJacobian
+     procedure(initial_condition_interface), deferred :: getInitialStates
 
   end type physics
 
@@ -53,6 +54,20 @@ module physics_class
        real(8), intent(in), dimension(:) :: u, udot, uddot
 
      end subroutine jacobian_assembly_interface
+     
+     !----------------------------------------------------------------!
+     ! Interface for supplying the initial condition to the integrator
+     !----------------------------------------------------------------!
+     
+     subroutine initial_condition_interface(this, time, u, udot)
+
+       import physics
+
+       class(physics) :: this
+       real(8), intent(in) :: time
+       real(8), intent(inout), dimension(:) :: u, udot
+
+     end subroutine initial_condition_interface
 
   end interface
 
@@ -170,7 +185,7 @@ contains
   subroutine set(body, mass, q, qdot, qddot)
 
     class(rigid_body)    :: body
-    real(dp), intent(in) :: mass
+    real(dp), intent(in), OPTIONAL :: mass
     real(dp), intent(in) :: q(12), qdot(12), qddot(12)
 
     ! Set the rotation parameters
@@ -301,6 +316,8 @@ contains
 
     class(rigid_body) :: this
 
+    stop "impl_get_jacobian"
+
   end subroutine get_jacobian
 
 end module rigid_body_class
@@ -342,6 +359,7 @@ module rigid_body_dynamics_class
      
      procedure :: assembleResidual
      procedure :: assembleJacobian
+     procedure :: getInitialStates
 
   end type rigid_body_dynamics
   
@@ -359,7 +377,7 @@ contains
     real(8), intent(in) :: time
     real(8), intent(in), dimension(:) :: u, udot, uddot
     
-    call this % body % set (1.0d0, u, udot, uddot)
+    call this % body % set (mass=1.0d0, q=u, qdot=udot, qddot=uddot)
     
     res = array(this % body % get_residual())
 
@@ -380,6 +398,26 @@ contains
 
     print*, "DUMMY jacobian"
 
+    ! jac = array(this % body % get_residual())
+
   end subroutine assembleJacobian
+  
+  !-------------------------------------------------------------------!
+  ! Sets the initial condition for use in the integator
+  !-------------------------------------------------------------------!
+  
+  subroutine getInitialStates(this, time, u, udot)
+    
+    class(rigid_body_dynamics) :: this
+    
+    real(8), intent(in) :: time
+    real(8), intent(inout), dimension(:) :: u, udot
+    
+    ! Initial condition
+    u(1) = 2.0d0
+
+    ! how to handle first and secondorder stuff ?
+
+  end subroutine getInitialStates
 
 end module rigid_body_dynamics_class

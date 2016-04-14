@@ -7,6 +7,7 @@
 module runge_kutta_integrator
 
   use iso_fortran_env, only: dp => real64
+  use physics_class
 
   implicit none
 
@@ -19,6 +20,12 @@ module runge_kutta_integrator
   !-------------------------------------------------------------------!
 
   type, abstract :: RK
+
+     !----------------------------------------------------------------!
+     ! Contains the actual physical system
+     !----------------------------------------------------------------!
+
+     class(physics), pointer :: system => null()
 
      integer :: num_stages = 1  ! default number of stages
      integer :: nvars = 1       ! number of states/equations
@@ -372,8 +379,8 @@ contains
     class(RK) :: this
     integer :: k
 
-    ! Initial condition
-    this % u(1,1) = 2.0d0
+    call this % system % getInitialStates(this % time(1), &
+         & this % u(1,:), this % udot(1,:))
     
     this % current_step = 1
 
@@ -651,10 +658,12 @@ contains
     real(8), allocatable, dimension(:)   :: res, dq
     real(8), allocatable, dimension(:,:) :: jac
     integer, allocatable, dimension(:)   :: ipiv
-    integer :: n, info, size, k
+    integer :: n, info, size, k, j
     logical :: conv = .false.
+    real(8) :: alpha, beta, gamma
 
     k = this % current_step
+    j = this % current_stage
 
     ! find the size of the linear system based on the calling object
     size = this % nvars
@@ -665,14 +674,27 @@ contains
     if (.not.allocated(jac)) allocate(jac(size,size))
 
     newton: do n = 1, this % max_newton
-
-       this % R = 0.0d0
+       
        ! Get the residual of the function
-       call this % get_residual()
+       this % R = 0.0d0
+       call this % system % assembleResidual( this % R(j,:), this % T(j), &
+            & this % Q(j,:), &
+            & this % QDOT(j,:), &
+            & this % QDDOT(j,:))
 
-       this % J = 0.0d0
        ! Get the jacobian matrix
-       call this % get_jacobian()
+       this % J = 0.0d0
+
+       alpha = this % h * this % A(j,j)* this % h * this % A(j,j)
+       beta  = this % h * this % A(j,j)
+       gamma = 1.0d0
+
+       call this % system % assembleJacobian(this % J(j, j,:,:),&
+            & alpha, beta, gamma, &
+            & this % T(j), &
+            & this % Q(j,:), &
+            & this % QDOT(j,:), &
+            & this % QDDOT(j,:))
 
        ! setup linear system in lapack format
        call this % setup_linear_system(res, jac)
