@@ -402,15 +402,17 @@ contains
     integer   :: k, j
 
     open(unit=90, file='solution.dat')
-
+    
     do k = 1, this % num_steps
-       write(90, *)  this % time(k), (this % u(k,j), j=1,this%nvars ), exact_solution(this % time(k),1.0d0,0.0d0)
+       write(90, *)  this % time(k), (this % u(k,j), j=1,this%nvars ), &
+            & (this % udot(k,j), j=1,this%nvars ), &
+            & (this % uddot(k,j), j=1,this%nvars )
     end do
 
     close(90)
 
     ! exact_solution(this % time(k),1.0d0,0.0d0)
-
+    
   end subroutine write_solution
 
   !-------------------------------------------------------------------!
