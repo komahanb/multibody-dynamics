@@ -59,15 +59,13 @@ module physics_class
 end module physics_class
 
 !=====================================================================!
-! Module that contains all the implementation of rigid body dynamics
-! related physics. 
+! Module that contains all the implementation of a rigid body 
 !
 ! Author: Komahan Boopathy (komahan@gatech.edu)
 !=====================================================================!
 
-module rigid_body_dynamics_class
+module rigid_body_class
 
-  use physics_class
   use utils, only : vector, matrix, skew, unskew, &
        & operator(*), operator(+), operator(-), &
        & norm, array, dp
@@ -78,20 +76,7 @@ module rigid_body_dynamics_class
 
   private
 
-  public :: rigid_body, rigid_body_dynamics
-
-  !-------------------------------------------------------------------!
-  ! Type that models rigid body dynamics
-  !-------------------------------------------------------------------!
-  
-  type, extends(physics) :: rigid_body_dynamics
-
-   contains
-
-     procedure :: assembleResidual
-     procedure :: assembleJacobian
-
-  end type rigid_body_dynamics
+  public :: rigid_body
 
   !-------------------------------------------------------------------!
   ! Rigid body type that contains pertaining data and routines that
@@ -175,39 +160,6 @@ module rigid_body_dynamics_class
   end type rigid_body
 
 contains
-
-  !-------------------------------------------------------------------!
-  ! Residual assembly at each time step
-  !-------------------------------------------------------------------!
-  
-  subroutine assembleResidual(this, res, time, u, udot, uddot)
-
-    class(rigid_body_dynamics) :: this
-
-    real(8), intent(inout), dimension(:) :: res
-    real(8), intent(in) :: time
-    real(8), intent(in), dimension(:) :: u, udot, uddot
-
-    print*, "DUMMY residual"
-
-  end subroutine assembleResidual
-
-  !-------------------------------------------------------------------!
-  ! Jacobian assembly at each time step
-  !-------------------------------------------------------------------!
-
-  subroutine assembleJacobian(this, jac, alpha, beta, gamma, &
-       & time, u, udot, uddot)
-
-    class(rigid_body_dynamics) :: this
-    real(8), intent(inout), dimension(:,:) :: jac
-    real(8), intent(in) :: alpha, beta, gamma
-    real(8), intent(in) :: time
-    real(8), intent(in), dimension(:) :: u, udot, uddot
-
-    print*, "DUMMY jacobian"
-
-  end subroutine assembleJacobian
 
   !-------------------------------------------------------------------!
   ! Routine to set the states into the body and compute rotation
@@ -350,5 +302,75 @@ contains
     class(rigid_body) :: this
 
   end subroutine get_jacobian
+
+end module rigid_body_class
+
+!=====================================================================!
+! Module that contains all the implementation of rigid body dynamics
+! related physics. 
+!
+! Author: Komahan Boopathy (komahan@gatech.edu)
+!=====================================================================!
+
+module rigid_body_dynamics_class
+
+  use physics_class
+  use rigid_body_class
+
+  implicit none
+
+  private
+
+  public :: rigid_body_dynamics
+  
+  !-------------------------------------------------------------------!
+  ! Type that models rigid body dynamics
+  !-------------------------------------------------------------------!
+  
+  type, extends(physics) :: rigid_body_dynamics
+     
+     type(rigid_body) :: body
+     
+   contains
+     
+     procedure :: assembleResidual
+     procedure :: assembleJacobian
+
+  end type rigid_body_dynamics
+  
+contains
+
+  !-------------------------------------------------------------------!
+  ! Residual assembly at each time step
+  !-------------------------------------------------------------------!
+
+  subroutine assembleResidual(this, res, time, u, udot, uddot)
+
+    class(rigid_body_dynamics) :: this
+
+    real(8), intent(inout), dimension(:) :: res
+    real(8), intent(in) :: time
+    real(8), intent(in), dimension(:) :: u, udot, uddot
+
+    print*, "DUMMY residual"
+
+  end subroutine assembleResidual
+
+  !-------------------------------------------------------------------!
+  ! Jacobian assembly at each time step
+  !-------------------------------------------------------------------!
+
+  subroutine assembleJacobian(this, jac, alpha, beta, gamma, &
+       & time, u, udot, uddot)
+
+    class(rigid_body_dynamics) :: this
+    real(8), intent(inout), dimension(:,:) :: jac
+    real(8), intent(in) :: alpha, beta, gamma
+    real(8), intent(in) :: time
+    real(8), intent(in), dimension(:) :: u, udot, uddot
+
+    print*, "DUMMY jacobian"
+
+  end subroutine assembleJacobian
 
 end module rigid_body_dynamics_class

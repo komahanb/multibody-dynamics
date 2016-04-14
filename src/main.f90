@@ -5,7 +5,7 @@
 program test
 
   use utils
-  use rigid_body_dynamics_class
+  use rigid_body_class
   use runge_kutta_integrator
 
   real(dp) :: q(12)=0.0d0, qdot(12)=0.0d0, qddot(12)=0.0d0
