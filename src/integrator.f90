@@ -689,12 +689,14 @@ contains
        beta  = this % h * this % A(j,j)
        gamma = 1.0d0
 
-       call this % system % assembleJacobian(this % J(j, j,:,:),&
-            & alpha, beta, gamma, &
-            & this % T(j), &
-            & this % Q(j,:), &
-            & this % QDOT(j,:), &
-            & this % QDDOT(j,:))
+       call this % get_jacobian()
+
+!!$       call this % system % assembleJacobian(this % J(j, j,:,:),&
+!!$            & alpha, beta, gamma, &
+!!$            & this % T(j), &
+!!$            & this % Q(j,:), &
+!!$            & this % QDOT(j,:), &
+!!$            & this % QDDOT(j,:))
 
        ! setup linear system in lapack format
        call this % setup_linear_system(res, jac)
@@ -722,12 +724,13 @@ contains
 
     ! print warning message if not converged
     if (.not. conv) then
-       stop
-    end if
+       
+       print '("Newton solve: step = ", i3 , " iters = ", i3,&
+            & " |R| = ",E10.3," |dq| = ",E10.3)',&
+            & k, n, norm2(res), norm2(dq)
 
-    print '("Newton solve: step = ", i3 , " iters = ", i3,&
-         & " |R| = ",E10.3," |dq| = ",E10.3)',&
-         & k, n, norm2(res), norm2(dq)
+       stop "Newton Solve Failed"
+    end if
 
     if (allocated(ipiv)) deallocate(ipiv)
     if (allocated(res)) deallocate(res)
@@ -842,37 +845,37 @@ contains
     external :: DRDQ, DRDQDOT, DRDQDDOT
     
     i = this % current_stage
-    
-    if (this % second_order) then
-
-       ! get the q block
-       alpha =  this % h * this % A(i,i)* this % h * this % A(i,i)
-       call DRDQ(this % J(i,i,:,:), alpha, this % nvars, this % T(i), &
-            & this % Q(i,:), this % QDOT(i,:), this % QDDOT(i,:))
-
-       ! get the qdot block
-       alpha =  this % h * this % A(i,i)
-       call DRDQDOT(this % J(i,i,:,:), alpha, this % nvars, this % T(i), &
-            & this % Q(i,:), this % QDOT(i,:), this % QDDOT(i,:))
-
-       ! get the qddot block
-       alpha = 1.0d0
-       call DRDQDDOT(this % J(i,i,:,:), alpha, this % nvars, this % T(i), &
-            & this % Q(i,:), this % QDOT(i,:), this % QDDOT(i,:))
-
-    else
-
-       ! get the q block
-       alpha = this % h * this % A(i,i)
-       call DRDQ(this % J(i,i,:,:), alpha, this % nvars, this % T(i), &
-            & this % Q(i,:), this % QDOT(i,:))
-
-       ! get the qdot block
-       alpha = 1.0d0
-       call DRDQDOT(this % J(i,i,:,:), alpha, this % nvars, this % T(i), &
-            & this % Q(i,:), this % QDOT(i,:))
-
-    end if
+!!$    
+!!$    if (this % second_order) then
+!!$
+!!$       ! get the q block
+!!$       alpha =  this % h * this % A(i,i)* this % h * this % A(i,i)
+!!$       call DRDQ(this % J(i,i,:,:), alpha, this % nvars, this % T(i), &
+!!$            & this % Q(i,:), this % QDOT(i,:), this % QDDOT(i,:))
+!!$
+!!$       ! get the qdot block
+!!$       alpha =  this % h * this % A(i,i)
+!!$       call DRDQDOT(this % J(i,i,:,:), alpha, this % nvars, this % T(i), &
+!!$            & this % Q(i,:), this % QDOT(i,:), this % QDDOT(i,:))
+!!$
+!!$       ! get the qddot block
+!!$       alpha = 1.0d0
+!!$       call DRDQDDOT(this % J(i,i,:,:), alpha, this % nvars, this % T(i), &
+!!$            & this % Q(i,:), this % QDOT(i,:), this % QDDOT(i,:))
+!!$
+!!$    else
+!!$
+!!$       ! get the q block
+!!$       alpha = this % h * this % A(i,i)
+!!$       call DRDQ(this % J(i,i,:,:), alpha, this % nvars, this % T(i), &
+!!$            & this % Q(i,:), this % QDOT(i,:))
+!!$
+!!$       ! get the qdot block
+!!$       alpha = 1.0d0
+!!$       call DRDQDOT(this % J(i,i,:,:), alpha, this % nvars, this % T(i), &
+!!$            & this % Q(i,:), this % QDOT(i,:))
+!!$
+!!$    end if
 
     ! check with FD
     call this % check_jacobian(i, this % J(i,i,:,:))
@@ -911,7 +914,8 @@ contains
 
        ! original function call
 
-       call R(tmp2, this % nvars, this % T(i), this % Q(i,:), &
+       call this % system % assembleResidual(tmp2, &
+            & this % T(i), this % Q(i,:), &
             & this % QDOT(i,:), this % QDDOT(i,:))
 
        !-----------------------------------------------------------!
@@ -925,7 +929,8 @@ contains
           ! perturb the k-th variable
           qtmp(k) = this % Q(i,k) + small
 
-          call R(tmp1, this % nvars, this % T(i), qtmp, &
+          call this % system % assembleResidual(tmp1, &
+               & this % T(i), qtmp, &
                & this % QDOT(i,:), this % QDDOT(i,:))
 
           ! unperturb the k-th variable
@@ -950,7 +955,8 @@ contains
           ! perturb the k-th variable
           qdottmp(k) = this % QDOT(i,k) + small
 
-          call R(tmp1, this % nvars, this % T(i), this % Q(i,:), &
+          call this % system % assembleResidual(tmp1, &
+               & this % T(i), this % Q(i,:), &
                & qdottmp, this % QDDOT(i,:))
 
           ! unperturb the k-th variable
@@ -974,7 +980,8 @@ contains
           ! perturb the k-th variable
           qddottmp(k) = this % QDDOT(i,k) + small
 
-          call R(tmp1, this % nvars, this % T(i), this % Q(i,:), &
+          call this % system % assembleResidual(tmp1,&
+               & this % T(i), this % Q(i,:), &
                & this % QDOT(i,:), qddottmp)
 
           ! unperturb the k-th variable
@@ -993,9 +1000,10 @@ contains
     else
 
        ! original function call
-
-       call R(tmp2, this % nvars, this % T(i), this % Q(i,:), &
-            & this % QDOT(i,:))
+       
+       call this % system % assembleResidual(tmp2, &
+            & this % T(i), this % Q(i,:), &
+            & this % QDOT(i,:), this % QDDOT(i,:))
 
        !--------------------------------------------------------------!
        ! Derivative of R WRT Q
@@ -1008,7 +1016,11 @@ contains
           ! perturb the k-th variable
           qtmp(k) = this % Q(i,k) + small
 
-          call R(tmp1, this % nvars, this % T(i), qtmp, this % QDOT(i,:))
+          call this % system % assembleResidual(tmp1, &
+               & this % T(i), qtmp, &
+               & this % QDOT(i,:), this % QDDOT(i,:))
+
+          !call R(tmp1, this % nvars, this % T(i), qtmp, this % QDOT(i,:))
 
           ! unperturb the k-th variable
           qtmp(k) = this % Q(i,k)
@@ -1020,7 +1032,7 @@ contains
 
        ! Scale the block with the coefficient
        jtmp1 =  this % h * this % A(i,i) * jtmp1
-       
+
        !--------------------------------------------------------------!
        ! Derivative of R WRT QDOT
        !--------------------------------------------------------------!
@@ -1032,8 +1044,12 @@ contains
           ! perturb the k-th variable
           qdottmp(k) = this % qdot(i,k) + small
 
-          call R(tmp1, this % nvars, this % T(i), this % Q(i,:), &
-               & qdottmp)
+          call this % system % assembleResidual(tmp1, &
+               & this % T(i), this % Q(i,:), &
+               & qdottmp,this % QDDOT(i,:))
+
+!!$          call R(tmp1, this % nvars, this % T(i), this % Q(i,:), &
+!!$               & qdottmp)
 
           ! unperturb the k-th variable
           qdottmp(k) = this % qdot(i,k)
@@ -1048,11 +1064,11 @@ contains
     end if ! first or second order
 
     if (maxval(abs(exact_jac - jtmp)) .gt. small) then
-       print *, "WARNING: Possible error in jacobian", &
-            & maxval(abs(exact_jac - jtmp))
+!       print *, "WARNING: Possible error in jacobian", &
+!            & maxval(abs(exact_jac - jtmp))
     end if
 
-!!$    exact_jac = jtmp
+    exact_jac = jtmp
 
     deallocate(qtmp,qdottmp)
     deallocate(tmp1,tmp2)

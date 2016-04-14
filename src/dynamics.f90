@@ -182,11 +182,11 @@ contains
   ! initialization or the first time step
   ! -------------------------------------------------------------------!
 
-  subroutine set(body, mass, q, qdot, qddot)
+  subroutine set(body, mass, q, qdot)
 
     class(rigid_body)    :: body
     real(dp), intent(in), OPTIONAL :: mass
-    real(dp), intent(in) :: q(12), qdot(12), qddot(12)
+    real(dp), intent(in) :: q(12), qdot(12)
 
     ! Set the rotation parameters
     body % theta    = vector(q(4:6))
@@ -198,7 +198,7 @@ contains
 
     ! Set the gravity in global frame (this is converted to body frame
     ! during residual and jacobian assembly)
-    body % grav % x(3) = -9.81d0
+    body % grav % x(3) = -10.0d0
 
     ! Get rotation and angular rate matrices based on theta    
     body % TIB     = get_rotation(body % theta)
@@ -211,10 +211,10 @@ contains
     body % omega    = body % TIB*vector(q(10:12)) ! convert to body frame
 
     ! Set the time derivatives of state into the body
-    body % rdot     = vector(qdot(1:3)) 
-    body % thetadot = vector(qdot(4:6))
-    body % vdot     = vector(qdot(7:9))
-    body % omegadot = vector(qdot(10:12))
+    body % rdot     = body % TIB*vector(qdot(1:3)) 
+    body % thetadot = body % TIB*vector(qdot(4:6))
+    body % vdot     = body % TIB*vector(qdot(7:9))
+    body % omegadot = body % TIB*vector(qdot(10:12))
 
   end subroutine set
 
@@ -224,10 +224,10 @@ contains
   ! during subsequent time steps
   !-------------------------------------------------------------------!
 
-  subroutine update(body, q, qdot, qddot)
+  subroutine update(body, q, qdot)
 
     class(rigid_body)    :: body
-    real(dp), intent(in) :: q(12), qdot(12), qddot(12)
+    real(dp), intent(in) :: q(12), qdot(12)
 
     body % theta    = vector(q(4:6))
 
@@ -376,8 +376,10 @@ contains
     real(8), intent(inout), dimension(:) :: res
     real(8), intent(in) :: time
     real(8), intent(in), dimension(:) :: u, udot, uddot
-    
-    call this % body % set (mass=1.0d0, q=u, qdot=udot, qddot=uddot)
+
+    ! print*, "DUMMY residual"
+
+    call this % body % update (q=u, qdot=udot)
     
     res = array(this % body % get_residual())
 
@@ -413,10 +415,19 @@ contains
     real(8), intent(in) :: time
     real(8), intent(inout), dimension(:) :: u, udot
     
-    ! Initial condition
-    u(1) = 2.0d0
+    ! Initial position in inertial frame (r)
+    u(1:3) = (/ 0.0d0, 0.0d0, 100.0d0 /)
+
+    ! Initial velocity in inertial frame (v)
+    u(7:9) = (/ 0.0d0, 0.0d0, 0.0d0 /)
+
+    ! Initial angular velocity in inertial frame (omega)
+    u(10:12) = (/ 0.0d0, 0.0d0, 0.0d0 /)
+
+    call this % body % set(1.0d0, u, udot)
 
     ! how to handle first and secondorder stuff ?
+    print*,"Dummy initial state"
 
   end subroutine getInitialStates
 
