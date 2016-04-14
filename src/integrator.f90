@@ -31,7 +31,8 @@ module runge_kutta_integrator
      logical :: descriptor_form = .true.
      logical :: second_order = .true.
 
-     integer :: current_step = 1
+     integer :: current_stage = 0
+     integer :: current_step  = 1
 
      !----------------------------------------------------------------!
      ! Track global time and states
@@ -127,7 +128,6 @@ module runge_kutta_integrator
      procedure :: get_residual
      procedure :: get_jacobian
 
-     procedure :: find_indices
      procedure :: check_jacobian
 
   end type DIRK
@@ -373,6 +373,8 @@ contains
     ! Initial condition
     this % u(1,1) = 1.0d0
 
+    this % current_step = 1
+
     ! March in time
     march: do k = 2, this % num_steps
 
@@ -400,7 +402,7 @@ contains
     open(unit=90, file='solution.dat')
 
     do k = 1, this % num_steps
-       write(90, *)  this % time(k), (this % u(k,j), j=1,this%nvars )
+       write(90, *)  this % time(k), (this % u(k,j), j=1,this%nvars ), exact_solution(this % time(k),1.0d0,0.0d0)
     end do
 
     close(90)
@@ -571,32 +573,58 @@ contains
     class(DIRK) :: this
     real(8), intent(in), dimension(:,:) :: q
     real(8), OPTIONAL, intent(in), dimension(:,:) :: qdot
-    integer :: k, j
+    integer :: k, j, m
 
     ! set the stage values to zero
     call this % reset_stage_values()
-
+    
     k = this % current_step
+
+    this % current_stage = 0
 
     do j = 1, this % num_stages
 
-       ! Find the stage times
+       this % current_stage = this % current_stage + 1
 
+       ! Find the stage times
        this % T(j) = this % time(k-1) + this % C(j)*this % h
 
        ! Guess the solution for stage states
 
        if (this % second_order) then
+
           ! guess qddot
           this % QDDOT(j,:) = 1.0d0 
+
+          ! compute the stage velocities for the guessed QDDOT
+          forall(m = 1 : this % nvars)
+             this % QDOT(j,m) = qdot(k-1,m) &
+                  & + this % h*sum(this % A(j,:)&
+                  & * this % QDDOT(:, m))
+          end forall
+
+          ! compute the stage states for the guessed QDDOT
+          forall(m = 1 : this % nvars)
+             this % Q(j,m) = q(k-1,m) &
+                  & + this % h*sum(this % A(j,:)*this % QDOT(:, m))
+          end forall
+
        else
+
           ! guess qdot
           this % QDOT(j,:) = 1.0d0 
+
+          ! compute the stage states for the guessed 
+          forall(m = 1 : this % nvars)
+             this % Q(j,m) = q(k-1,m) &
+                  & + this % h*sum(this % A(j,:)*this % QDOT(:, m))
+          end forall
+
        end if
 
        ! solve the non linear stage equations using Newton's method for
        ! the actual stage states 
-       call this % newton_solve(q(k-1, 1:this % nvars), qdot(k-1,1:this % nvars))
+       call this % newton_solve()
 
     end do
 
@@ -613,10 +641,9 @@ contains
   ! that are solved using Newton's method at each time step
   ! -------------------------------------------------------------------!
 
-  subroutine newton_solve(this, qk, qdotk)
+  subroutine newton_solve(this)
 
     class(DIRK) :: this
-    real(8), intent(in), dimension(:)    :: qk, qdotk
     real(8), allocatable, dimension(:)   :: res, dq
     real(8), allocatable, dimension(:,:) :: jac
     integer, allocatable, dimension(:)   :: ipiv
@@ -635,9 +662,11 @@ contains
 
     newton: do n = 1, this % max_newton
 
+       this % R = 0.0d0
        ! Get the residual of the function
-       call this % get_residual(qk, qdotk)
+       call this % get_residual()
 
+       this % J = 0.0d0
        ! Get the jacobian matrix
        call this % get_jacobian()
 
@@ -694,13 +723,8 @@ contains
     real(8), intent(inout), dimension(:) :: res
     real(8), intent(inout), dimension(:,:) :: jac
 
-    integer :: stage_num
-
-    call this % find_indices(stage_num, stage_num)
-
-    res = this % R(stage_num,:)
-
-    jac = this % J(stage_num, stage_num, :, :)
+    res = this % R(this % current_stage,:)
+    jac = this % J(this % current_stage, this % current_stage, :, :)
 
   end subroutine setup_linear_system
 
@@ -717,7 +741,7 @@ contains
     real(8) :: sol(:)
     integer :: i
 
-    call this % find_indices(i, i)
+    i = this % current_stage
 
     if (this % second_order) then
 
@@ -747,33 +771,6 @@ contains
 
   end subroutine state_update
 
-  !-----------------------------------------------------------------!    
-  ! Select type and set appropriate indices for looping  
-  !-----------------------------------------------------------------!
-
-  subroutine find_indices(this, istart, iend)
-
-    class(DIRK) :: this
-    integer, intent(inout) :: istart, iend
-    logical :: found = .false.
-    integer :: i
-
-    findstagenum: do i = this % num_stages, 1, -1
-
-       ! we hope to find the last non-zero time state
-       if (this % T(i) .ne. 0.0d0) then
-          istart = i
-          iend = i
-          found = .true.
-          exit findstagenum
-       end if
-
-       if (.not. found ) stop "index finding failed!"
-
-    end do findstagenum
-
-  end subroutine find_indices
-
   !-------------------------------------------------------------------!
   ! Computes the stage residual for the set stage state Y (comes from
   ! Newton's iteration) and sets into the same instance
@@ -781,58 +778,26 @@ contains
   ! R_{i}= q_{k,i} - q_{k} - h \sum_{j=1}^s {a_{ij} f(t_{k,j}, q_{k,j})
   ! i = 1,\ldots,s 
   !-------------------------------------------------------------------!
-
-  subroutine get_residual(this, qk, qdotk)
+  
+  subroutine get_residual(this)
 
     class(DIRK) :: this
-    real(8), intent(in), dimension(:) :: qk, qdotk
-    integer :: i, m
-    integer :: istart, iend
-
+    integer ::  m
     external :: R
-
-    ! get the appropriate indices based on type and stage number
-    call this % find_indices(istart, iend)
 
     if (this % second_order) then
 
-       ! compute the stage velocities for the guessed QDDOT
-       do i = istart, iend
-          forall(m = 1 : this % nvars)
-             this % QDOT(i,m) = qdotk(m) &
-                  & + this % h*sum(this % A(i,:)*this % QDDOT(:, m))
-          end forall
-       end do
-
-       ! compute the stage states for the guessed QDDOT
-       do i = istart, iend
-          forall(m = 1 : this % nvars)
-             this % Q(i,m) = qk(m) &
-                  & + this % h*sum(this % A(i,:)*this % QDOT(:, m))
-          end forall
-       end do
-
        ! compute the stage residuals for Q, QDOT, QDDOT
-       do i = istart, iend
-          call R(this % R(i,:), this % nvars, this % T(i), this % Q(i,:), &
-               & this % QDOT(i,:), this % QDDOT(i,:))
-       end do
+       call R(this % R(this % current_stage,:), this % nvars, &
+            & this % T(this % current_stage), this % Q(this % current_stage,:), &
+            & this % QDOT(this % current_stage,:), this % QDDOT(this % current_stage,:))
 
     else 
 
-       ! compute the stage states for the guessed QDOT
-       do i = istart, iend
-          forall(m = 1 : this % nvars)
-             this % Q(i,m) = qk(m) &
-                  & + this % h*sum(this % A(i,:)*this % QDOT(:, m))
-          end forall
-       end do
-
        ! compute the stage residuals
-       do i = istart, iend
-          call R(this % R(i,:), this % nvars, this % T(i), this % Q(i,:), &
-               & this % QDOT(i,:))
-       end do
+       call R(this % R(this % current_stage,:), this % nvars, &
+            & this % T(this % current_stage), this % Q(this % current_stage,:), &
+            & this % QDOT(this % current_stage,:))
 
     end if
 
@@ -846,49 +811,45 @@ contains
   subroutine get_jacobian(this)
 
     class(DIRK) :: this
-    integer :: i, j
+    integer :: i
     real(8) :: alpha
     external :: DRDQ, DRDQDOT, DRDQDDOT
-
-    ! get the appropriate indices based on type and stage number
-    call this % find_indices(j, i)
-
-    this % J(i,j,:,:) = 0.0d0
-
-
+    
+    i = this % current_stage
+    
     if (this % second_order) then
 
        ! get the q block
        alpha =  this % h * this % A(i,i)* this % h * this % A(i,i)
-       call DRDQ(this % J(i,j,:,:), alpha, this % nvars, this % T(j), &
-            & this % Q(j,:), this % QDOT(j,:), this % QDDOT(j,:))
+       call DRDQ(this % J(i,i,:,:), alpha, this % nvars, this % T(i), &
+            & this % Q(i,:), this % QDOT(i,:), this % QDDOT(i,:))
 
        ! get the qdot block
        alpha =  this % h * this % A(i,i)
-       call DRDQDOT(this % J(i,j,:,:), alpha, this % nvars, this % T(j), &
-            & this % Q(j,:), this % QDOT(j,:), this % QDDOT(j,:))
+       call DRDQDOT(this % J(i,i,:,:), alpha, this % nvars, this % T(i), &
+            & this % Q(i,:), this % QDOT(i,:), this % QDDOT(i,:))
 
        ! get the qddot block
        alpha = 1.0d0
-       call DRDQDDOT(this % J(i,j,:,:), alpha, this % nvars, this % T(j), &
-            & this % Q(j,:), this % QDOT(j,:), this % QDDOT(j,:))
+       call DRDQDDOT(this % J(i,i,:,:), alpha, this % nvars, this % T(i), &
+            & this % Q(i,:), this % QDOT(i,:), this % QDDOT(i,:))
 
     else
 
        ! get the q block
        alpha = this % h * this % A(i,i)
-       call DRDQ(this % J(i,j,:,:), alpha, this % nvars, this % T(j), &
-            & this % Q(j,:), this % QDOT(j,:))
+       call DRDQ(this % J(i,i,:,:), alpha, this % nvars, this % T(i), &
+            & this % Q(i,:), this % QDOT(i,:))
 
        ! get the qdot block
        alpha = 1.0d0
-       call DRDQDOT(this % J(i,j,:,:), alpha, this % nvars, this % T(j), &
-            & this % Q(j,:), this % QDOT(j,:))
+       call DRDQDOT(this % J(i,i,:,:), alpha, this % nvars, this % T(i), &
+            & this % Q(i,:), this % QDOT(i,:))
 
     end if
 
     ! check with FD
-    call this % check_jacobian(i, this % J(i,j,:,:))
+    call this % check_jacobian(i, this % J(i,i,:,:))
 
   end subroutine get_jacobian
 
