@@ -12,7 +12,7 @@ module runge_kutta_integrator
 
   private
 
-  public :: RK
+  public :: DIRK
 
   !-------------------------------------------------------------------!
   ! Abstract Runge-Kutta type
@@ -25,10 +25,13 @@ module runge_kutta_integrator
      integer :: order           ! order of accuracy
      integer :: num_steps       ! number of time steps
 
+     real(8) :: tinit = 0.0d0, tfinal = 1.0d0
      real(8) :: h = 0.1d0       ! default step size
 
-     logical :: second_order = .false.
      logical :: descriptor_form = .true.
+     logical :: second_order = .true.
+
+     integer :: current_step = 1
 
      !----------------------------------------------------------------!
      ! Track global time and states
@@ -69,7 +72,7 @@ module runge_kutta_integrator
      ! Implemented common procedures (visible to the user)
      !----------------------------------------------------------------!
 
-     procedure :: initialize, finalize, integrate
+     procedure :: initialize, finalize, integrate, write_solution
 
      !----------------------------------------------------------------!
      ! Implemented procedures (not callable by the user)
@@ -87,17 +90,17 @@ module runge_kutta_integrator
      procedure(buthcher_interface), private, deferred :: setup_butcher_tableau
 
   end type RK
-  
+
   !-------------------------------------------------------------------!  
   ! Diagonally implicit Runge-Kutta
   !-------------------------------------------------------------------!  
-  
+
   type, extends(RK) :: DIRK
 
      !----------------------------------------------------------------!
      ! Nonlinear solution at each stage
      !----------------------------------------------------------------!
-
+     
      integer :: max_newton = 25
      real(8) :: tol = 1.0d-12
 
@@ -128,7 +131,7 @@ module runge_kutta_integrator
      procedure :: check_jacobian
 
   end type DIRK
-  
+
   !-------------------------------------------------------------------!
   ! Interfaces for deferred specialized procedures 
   !-------------------------------------------------------------------!
@@ -139,10 +142,9 @@ module runge_kutta_integrator
      ! Interface for finding the stage derivatives at each time step
      !----------------------------------------------------------------!
 
-     subroutine compute_stage_values_interface(this, k, q, qdot)
+     subroutine compute_stage_values_interface(this, q, qdot)
        import RK
        class(RK) :: this
-       integer, intent(in) :: k 
        real(8), intent(in), dimension(:,:) :: q
        real(8), OPTIONAL, intent(in), dimension(:,:) :: qdot
      end subroutine compute_stage_values_interface
@@ -160,7 +162,7 @@ module runge_kutta_integrator
   end interface
 
 contains
-
+  
   !-------------------------------------------------------------------!
   ! Initialize the dirk datatype and construct the tableau
   !-------------------------------------------------------------------!
@@ -174,13 +176,19 @@ contains
     real(8), OPTIONAL, intent(in) :: h
 
     !-----------------------------------------------------------------!
-    ! Set the initial time
+    ! Set the initial and final time
     !-----------------------------------------------------------------!
 
     if (present(tinit)) then
-       this % time = tinit
+       this % tinit = tinit
     else
-       print '("Using default start time : ",F8.3)', this % time
+       print '("Using default start time : ",F8.3)', this % tinit
+    end if
+
+    if (present(tfinal)) then
+       this % tfinal = tfinal
+    else
+       print '("Using default end time : ",F8.3)', this % tfinal
     end if
 
     !-----------------------------------------------------------------!
@@ -206,9 +214,9 @@ contains
     !-----------------------------------------------------------------!
     ! Find the number of time steps required during integration
     !-----------------------------------------------------------------!
-    
-    this % num_steps = int((tfinal - tinit)/h) + 1
-    
+
+    this % num_steps = int((this % tfinal - this % tinit)/this % h) + 1 
+
     !-----------------------------------------------------------------!
     ! Set the user supplied number of variables
     !-----------------------------------------------------------------!
@@ -257,11 +265,11 @@ contains
 
     allocate(this % J(this % num_stages, this % num_stages, this % nvars, this % nvars))
     this % J = 0.0d0
-    
+
     !-----------------------------------------------------------------!
     ! Allocate space for the global states and time
     !-----------------------------------------------------------------!
-    
+
     allocate(this % time(this % num_steps))
     this % time = 0.0d0
 
@@ -286,13 +294,19 @@ contains
 
     call this % check_butcher_tableau()
 
+    ! set the start time
+    this % time(1) = this % tinit
+
+    print*, "Second order    :", this % second_order
+    print*, "Descriptor form :", this % descriptor_form
+
   end subroutine initialize
 
   !-------------------------------------------------------------------!
   ! Routine that checks if the Butcher Tableau entries are valid for
   ! the chosen number of stages/order
   !--------------------------------------------------------------------!
-  
+
   subroutine check_butcher_tableau(this)
 
     class(RK) :: this
@@ -309,11 +323,11 @@ contains
     end if
 
   end subroutine check_butcher_tableau
-  
+
   !-------------------------------------------------------------------!
   ! Deallocate the tableau entries
   !-------------------------------------------------------------------!
-  
+
   subroutine finalize(this)
 
     class(RK) :: this
@@ -350,65 +364,105 @@ contains
   ! Output:
   ! o q, qdot arrays are modified by the routine
   !-------------------------------------------------------------------!
-  
-  subroutine Integrate(this, q, qdot)
+
+  subroutine Integrate(this)
 
     class(RK) :: this
-    real(8), intent(inout), dimension(:,:) :: q, qdot
     integer :: k
+
+    ! Initial condition
+    this % u(1,1) = 1.0d0
 
     ! March in time
     march: do k = 2, this % num_steps
 
-       ! find the stage derivatives at the current step
-       call this % compute_stage_values(k, q, qdot)
+       this % current_step = this % current_step + 1
 
-       ! advance the state to the current step
-       call this % time_march(k, q, qdot)
+       ! Find the stage derivatives at the current step
+       call this % compute_stage_values(this % u, this % udot)
 
-       ! set the stage values to zero
-       call this % reset_stage_values()
+       ! Advance the state to the current step
+       call this % time_march(this % u, this % udot, this % uddot)
 
     end do march
 
   end subroutine Integrate
-  
+
+  !-------------------------------------------------------------------!
+  ! Write solution to file
+  !-------------------------------------------------------------------!
+
+  subroutine write_solution(this)
+
+    class(RK) :: this
+    integer   :: k, j
+
+    open(unit=90, file='solution.dat')
+
+    do k = 1, this % num_steps
+       write(90, *)  this % time(k), (this % u(k,j), j=1,this%nvars )
+    end do
+
+    close(90)
+
+    ! exact_solution(this % time(k),1.0d0,0.0d0)
+
+  end subroutine write_solution
+
   !-------------------------------------------------------------------!
   ! Update the states based on RK Formulae
   !-------------------------------------------------------------------!
-  
-  subroutine time_march(this, k, q, qdot)
+
+  subroutine time_march(this, q, qdot, qddot)
 
     implicit none
 
     class(RK) :: this
-    integer, intent(in) :: k ! current time step
-    real(8),  dimension(:,:) :: q, qdot ! current state
-    integer :: m
+    real(8),  dimension(:,:) :: q, qdot, qddot ! current state
+    integer :: m, k
 
-    ! march q to next time step
+    ! Store the current time step
+    k = this % current_step
+
+    ! Increment the time
+    this % time(k) = this % time(k-1) + this % h
+
+    ! March q to next time step
     forall(m=1:this%nvars)
        q(k,m) = q(k-1,m) + this % h*sum(this % B(1:this%num_stages) &
             &* this % QDOT(1:this%num_stages,m))
     end forall
 
-    ! march qdot to next time step for second order system
     if (this % second_order) then
+
+       ! March qdot
        forall(m=1:this%nvars)
           qdot(k,m) = qdot(k-1,m) + this % h*sum(this % B(1:this%num_stages) &
                &* this % QDDOT(1:this%num_stages,m))
        end forall
+
+       ! March qddot
+       forall(m=1:this%nvars)
+          qddot(k,m) = qddot(k-1,m) + sum(this % B(1:this%num_stages) &
+               &* this % QDDOT(1:this%num_stages,m))
+       end forall
+
+    else
+
+       ! March qdot
+       forall(m=1:this%nvars)
+          qdot(k,m) = qdot(k-1,m) + sum(this % B(1:this%num_stages) &
+               & * this % QDOT(1:this%num_stages,m))
+       end forall
+
     end if
 
-    ! increment the time
-    this % time(k) = this % time(k) + this % h
-
   end subroutine time_march
-  
+
   !-------------------------------------------------------------------!
   ! Reset the array to store new stage values at each time step
   !-------------------------------------------------------------------!
-  
+
   subroutine reset_stage_values(this)
 
     class(RK) :: this
@@ -427,7 +481,7 @@ contains
   !-------------------------------------------------------------------!
   ! Butcher's tableau for DIRK 
   !-------------------------------------------------------------------!
-  
+
   subroutine ButcherDIRK(this)
 
     class(DIRK) :: this
@@ -511,14 +565,18 @@ contains
   ! Get the stage derivative array for the current step and states for
   ! DIRK
   !-------------------------------------------------------------------!
-  
-  subroutine compute_stage_values(this, k, q, qdot)
+
+  subroutine compute_stage_values(this, q, qdot)
 
     class(DIRK) :: this
-    integer, intent(in) :: k 
     real(8), intent(in), dimension(:,:) :: q
     real(8), OPTIONAL, intent(in), dimension(:,:) :: qdot
-    integer :: j
+    integer :: k, j
+
+    ! set the stage values to zero
+    call this % reset_stage_values()
+
+    k = this % current_step
 
     do j = 1, this % num_stages
 
@@ -528,23 +586,22 @@ contains
 
        ! Guess the solution for stage states
 
-          if (this % second_order) then
-             ! guess qddot
-             this % QDDOT(j,:) = 1.0d0 
-          else
-             ! guess qdot
-             this % QDOT(j,:) = 1.0d0 
-          end if
+       if (this % second_order) then
+          ! guess qddot
+          this % QDDOT(j,:) = 1.0d0 
+       else
+          ! guess qdot
+          this % QDOT(j,:) = 1.0d0 
+       end if
 
        ! solve the non linear stage equations using Newton's method for
        ! the actual stage states 
-
-       call this % newton_solve(q(k-1,:), qdot(k-1,:))
+       call this % newton_solve(q(k-1, 1:this % nvars), qdot(k-1,1:this % nvars))
 
     end do
 
   end subroutine compute_stage_values
-  
+
   !-------------------------------------------------------------------!
   ! Solve nonlinear stage equations using Newton's method at each time
   ! step.
@@ -555,7 +612,7 @@ contains
   ! This yields $s$ equations and $s$ unknown stage values, $q_{k,i}$,
   ! that are solved using Newton's method at each time step
   ! -------------------------------------------------------------------!
-  
+
   subroutine newton_solve(this, qk, qdotk)
 
     class(DIRK) :: this
@@ -563,8 +620,10 @@ contains
     real(8), allocatable, dimension(:)   :: res, dq
     real(8), allocatable, dimension(:,:) :: jac
     integer, allocatable, dimension(:)   :: ipiv
-    integer :: n, info, size
+    integer :: n, info, size, k
     logical :: conv = .false.
+
+    k = this % current_step
 
     ! find the size of the linear system based on the calling object
     size = this % nvars
@@ -608,15 +667,12 @@ contains
 
     ! print warning message if not converged
     if (.not. conv) then
-       print '("Newton solve failed : time = ", E10.3, " iters = ", i3,&
-            & " |R| = ",E10.3," |dq| = ",E10.3)',&
-            & this % time, n, norm2(res), norm2(dq)
        stop
-    else
-       print '("Newton solve: time = ", E10.3, " iters = ", i3,&
-            & " |R| = ",E10.3," |dq| = ",E10.3)',&
-            & this % time, n, norm2(res), norm2(dq)
     end if
+
+    print '("Newton solve: step = ", i3 , " iters = ", i3,&
+         & " |R| = ",E10.3," |dq| = ",E10.3)',&
+         & k, n, norm2(res), norm2(dq)
 
     if (allocated(ipiv)) deallocate(ipiv)
     if (allocated(res)) deallocate(res)
@@ -624,11 +680,11 @@ contains
     if (allocated(jac)) deallocate(jac)
 
   end subroutine newton_solve
-  
+
   !-------------------------------------------------------------------!
   ! Routine that packs the matrix in a form that is used in lapack
   !-------------------------------------------------------------------!
-  
+
   subroutine setup_linear_system(this, res, jac)
 
     implicit none
@@ -652,7 +708,7 @@ contains
   ! After the solution of stage equations, we update the states using
   ! this call
   ! -------------------------------------------------------------------!
-  
+
   subroutine state_update(this, sol)
 
     implicit none
@@ -690,11 +746,11 @@ contains
 
 
   end subroutine state_update
-  
+
   !-----------------------------------------------------------------!    
   ! Select type and set appropriate indices for looping  
   !-----------------------------------------------------------------!
-  
+
   subroutine find_indices(this, istart, iend)
 
     class(DIRK) :: this
@@ -717,7 +773,7 @@ contains
     end do findstagenum
 
   end subroutine find_indices
-  
+
   !-------------------------------------------------------------------!
   ! Computes the stage residual for the set stage state Y (comes from
   ! Newton's iteration) and sets into the same instance
@@ -725,7 +781,7 @@ contains
   ! R_{i}= q_{k,i} - q_{k} - h \sum_{j=1}^s {a_{ij} f(t_{k,j}, q_{k,j})
   ! i = 1,\ldots,s 
   !-------------------------------------------------------------------!
-  
+
   subroutine get_residual(this, qk, qdotk)
 
     class(DIRK) :: this
@@ -786,7 +842,7 @@ contains
   ! Computes the stage jacobian and sets into the same instance
   !          J(i,j) = [ 1 - h A(i,j) DFDQ(T(j),Y(j))]
   !-------------------------------------------------------------------!
-  
+
   subroutine get_jacobian(this)
 
     class(DIRK) :: this
@@ -1009,5 +1065,27 @@ contains
     deallocate(jtmp1,jtmp2,jtmp)
 
   end subroutine check_jacobian
+
+
+  !===================================================================!
+  ! Exact solution to the spring mass damper system
+  !===================================================================!
+
+  function exact_solution(t, x0, v0) result (x)
+
+    real(8) :: t, x, x0, v0
+    complex(8) :: mul, a, b, term1, term2, term3
+
+    a = 0.020d0
+    b = 5.00d0
+
+    mul = exp(-a*t*0.50d0)/sqrt(a*a - 4.00d0*b)
+    term1 = a*sinh(0.50d0*t*sqrt(a*a - 4.00d0*b))
+    term2 = sqrt(a*a - 4.00d0*b)*cosh(0.50d0*t*sqrt(a*a - 4.00d0*b))
+    term3 = 2.00d0*v0*sinh(0.50d0*t*sqrt(a*a - 4.00d0*b))
+
+    x = real(mul*((term1 + term2)*x0 + term3))
+
+  end function exact_solution
 
 end module runge_kutta_integrator

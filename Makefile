@@ -5,7 +5,7 @@
 #------------------------------
 CC = gcc
 CX = g++
-FC = gfortran
+FC = mpif90
 
 #------------------------------
 # Define any compile-time flags

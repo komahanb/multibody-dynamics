@@ -6,6 +6,7 @@ program test
 
   use utils
   use rigid_body_dynamics
+  use runge_kutta_integrator
 
   real(dp) :: q(12)=0.0d0, qdot(12)=0.0d0, qddot(12)=0.0d0
   
@@ -13,6 +14,8 @@ program test
 
   type(matrix) :: A
   type(vector) :: v, w
+
+  type(DIRK) :: integrator
 
   v % x = 2.0d0
   w % x = 3.0d0
@@ -31,5 +34,10 @@ program test
   call body % set (1.0d0, q, qdot, qddot)
   
   print *, body % get_residual()
+
+  call integrator % initialize(tfinal = 10.0d0)
+  call integrator % integrate()
+  call integrator % write_solution()
+  call integrator % finalize()
   
 end program test
