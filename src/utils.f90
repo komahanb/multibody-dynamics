@@ -52,7 +52,7 @@ module utils
 
   interface operator (*)
      module procedure dot, scal_vec, scal_matrix, &
-          & matrix_vector, matrix_matrix !vector_matrix
+          & matrix_vector, matrix_matrix, vector_matrix
   end interface operator (*)
 
   !-------------------------------------------------------------------!
@@ -125,20 +125,20 @@ contains
     scal_matrix%PSI =  a*B%PSI
 
   end function scal_matrix
+  
+  !-------------------------------------------------------------------!
+  ! Product of a vector and matrix {c} = {a}^T[B]
+  !-------------------------------------------------------------------!
+  
+  pure elemental function vector_matrix(a, B) 
 
-!!$  !-------------------------------------------------------------------!
-!!$  ! Product of a vector and matrix {c} = {a}^T[B]
-!!$  !-------------------------------------------------------------------!
-!!$
-!!$  pure elemental function vector_matrix(a, B) 
-!!$
-!!$    type(vector), intent (in) :: a
-!!$    type(matrix), intent (in) :: B 
-!!$    type(vector) ::  vector_matrix
-!!$
-!!$    vector_matrix = vector(matmul(a%x, B%PSI))
-!!$
-!!$  end function vector_matrix
+    type(vector), intent (in) :: a
+    type(matrix), intent (in) :: B 
+    type(vector) ::  vector_matrix
+
+    vector_matrix = vector(matmul(a%x, B%PSI))
+
+  end function vector_matrix
 
   !-------------------------------------------------------------------!
   ! Product of a matrix with vector {c} = [B]{a}
