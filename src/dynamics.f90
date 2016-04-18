@@ -329,7 +329,7 @@ end module rigid_body_class
 ! Author: Komahan Boopathy (komahan@gatech.edu)
 !=====================================================================!
 
-module rigid_body_dynamics_class
+module multibody_dynamics_class
   
   ! parent class
   use physics_class, only : physics
@@ -345,13 +345,13 @@ module rigid_body_dynamics_class
 
   private
 
-  public :: rigid_body_dynamics
+  public :: multibody_dynamics
   
   !-------------------------------------------------------------------!
   ! Type that models rigid body dynamics
   !-------------------------------------------------------------------!
   
-  type, extends(physics) :: rigid_body_dynamics
+  type, extends(physics) :: multibody_dynamics
      
      type(rigid_body) :: body
      
@@ -361,7 +361,7 @@ module rigid_body_dynamics_class
      procedure :: assembleJacobian
      procedure :: getInitialStates
 
-  end type rigid_body_dynamics
+  end type multibody_dynamics
   
 contains
 
@@ -371,7 +371,7 @@ contains
 
   subroutine assembleResidual(this, res, time, u, udot, uddot)
 
-    class(rigid_body_dynamics) :: this
+    class(multibody_dynamics) :: this
 
     real(8), intent(inout), dimension(:) :: res
     real(8), intent(in) :: time
@@ -392,7 +392,7 @@ contains
   subroutine assembleJacobian(this, jac, alpha, beta, gamma, &
        & time, u, udot, uddot)
 
-    class(rigid_body_dynamics) :: this
+    class(multibody_dynamics) :: this
     real(8), intent(inout), dimension(:,:) :: jac
     real(8), intent(in) :: alpha, beta, gamma
     real(8), intent(in) :: time
@@ -410,7 +410,7 @@ contains
   
   subroutine getInitialStates(this, time, u, udot)
     
-    class(rigid_body_dynamics) :: this
+    class(multibody_dynamics) :: this
     
     real(8), intent(in) :: time
     real(8), intent(inout), dimension(:) :: u, udot
@@ -431,4 +431,4 @@ contains
 
   end subroutine getInitialStates
 
-end module rigid_body_dynamics_class
+end module multibody_dynamics_class

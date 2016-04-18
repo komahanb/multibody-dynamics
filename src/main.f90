@@ -6,11 +6,11 @@ program test
 
   use utils
   use rigid_body_class, only: rigid_body
-  use rigid_body_dynamics_class, only: rigid_body_dynamics
+  use multibody_dynamics_class, only: multibody_dynamics
   use runge_kutta_integrator, only : DIRK
   
   type(DIRK) :: integrator
-  type(rigid_body_dynamics), target :: falcon
+  type(multibody_dynamics), target :: falcon
 
   ! Set the physics into the integrator
   integrator % system => falcon
