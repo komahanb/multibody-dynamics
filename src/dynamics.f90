@@ -212,10 +212,10 @@ contains
     body % omega    = body % TIB*vector(q(10:12)) ! convert to body frame
 
     ! Set the time derivatives of state into the body
-    body % rdot     = body % TIB*vector(qdot(1:3)) 
-    body % thetadot = body % TIB*vector(qdot(4:6))
-    body % vdot     = body % TIB*vector(qdot(7:9))
-    body % omegadot = body % TIB*vector(qdot(10:12))
+    body % rdot     = vector(qdot(1:3)) 
+    body % thetadot = vector(qdot(4:6))
+    body % vdot     = vector(qdot(7:9))
+    body % omegadot = vector(qdot(10:12))
     
     ! Compute and set energies into the body
     call body % computeEnergies()
@@ -418,6 +418,9 @@ contains
     call this % body % update (q=u, qdot=udot)
     
     res = array(this % body % get_residual())
+    
+    ! Temporary printing of energy
+    ! print *, this % body % KE, this % body % PE, this % body % TE
 
   end subroutine assembleResidual
 
