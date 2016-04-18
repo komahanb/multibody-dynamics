@@ -169,6 +169,7 @@ module rigid_body_class
 
      procedure :: set
      procedure :: update
+     procedure :: computeEnergies
      procedure :: get_residual 
      procedure :: get_jacobian
 
@@ -215,6 +216,9 @@ contains
     body % thetadot = body % TIB*vector(qdot(4:6))
     body % vdot     = body % TIB*vector(qdot(7:9))
     body % omegadot = body % TIB*vector(qdot(10:12))
+    
+    ! Compute and set energies into the body
+    call body % computeEnergies()
 
   end subroutine set
 
@@ -247,7 +251,39 @@ contains
     body % vdot     = vector(qdot(7:9))
     body % omegadot = vector(qdot(10:12))
 
+    ! Update the energies based on the new state
+    call body % computeEnergies()
+
   end subroutine update
+  
+  !-------------------------------------------------------------------!
+  ! Routine that computes the Kinetic and Potential energies of the
+  ! body and sets into the body. All quantities are to be in body
+  ! fixed frame of reference.
+  !-------------------------------------------------------------------!
+  
+  subroutine computeEnergies(this)
+
+    class(rigid_body):: this
+
+
+    ! KE = 0.5 m v.v + 0.5 omega^T J omega + v.T omega x c (all
+    ! quantities are in body frame)
+
+    this % KE = 0.5d0 * this % mass *this % v * this % v &
+         & + 0.5d0 *this % omega * this % J * this % omega  &
+         & + this % v * skew(this % omega) * this % c
+    
+    ! PE =  -m g.r - c.r (all quantities are in body frame)
+
+    this % PE = - this % mass * this % TIB * this % grav * this % r &
+         & - this % c * this % TIB * this % grav 
+
+    ! find the sum
+
+    this % TE = this % PE + this % KE
+
+  end subroutine computeEnergies
 
   !-------------------------------------------------------------------!
   ! Residual of the kinematic and dynamic equations in state-space
