@@ -23,10 +23,10 @@ program test
   ! Set the physics into the integrator
   !-------------------------------------------------------------------!
 
-  integrator % system => falcon
-
+  call integrator % setPhysicalSystem(falcon) ! mandatory
   call integrator % initialize(tfinal = 10.0d0, num_stages=3, &
-       & h=0.01d0, nvars=12, second_order=.true.)
+       & h=0.01d0, nvars=12, second_order=.true.) ! all are optional except nvars
+
   call integrator % integrate()
   call integrator % write_solution()
   call integrator % finalize()
@@ -35,10 +35,11 @@ program test
   ! Solve an example ODE using the same DIRK scheme
   !-------------------------------------------------------------------!
   
-  integrator % system => myode
-
+  call integrator % setPhysicalSystem(myode) ! mandatory
+  call integrator % setApproximateJacobian(.false.) ! optional
   call integrator % initialize(tfinal = 10.0d0, num_stages=2, &
-       & h=0.01d0, nvars=1, second_order=.true.)
+       & h=0.01d0, nvars=1, second_order=.true.) ! all are optional except nvars
+
   call integrator % integrate()
   call integrator % write_solution()
   call integrator % finalize()

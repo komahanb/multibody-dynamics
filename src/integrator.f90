@@ -40,6 +40,10 @@ module runge_kutta_integrator
      integer :: current_stage = 0
      integer :: current_step  = 1
 
+     logical :: approximate_jacobian = .true. ! by default approximate
+                                              ! Jacobian using finite
+                                              ! differences
+
      !----------------------------------------------------------------!
      ! Track global time and states
      !----------------------------------------------------------------!
@@ -96,6 +100,13 @@ module runge_kutta_integrator
      procedure(compute_stage_values_interface), private, deferred :: compute_stage_values
      procedure(buthcher_interface), private, deferred :: setup_butcher_tableau
 
+     !----------------------------------------------------------------!
+     ! Important setters
+     !----------------------------------------------------------------!
+
+     procedure :: setPhysicalSystem
+     procedure :: setApproximateJacobian
+     
   end type RK
 
   !-------------------------------------------------------------------!  
@@ -132,7 +143,7 @@ module runge_kutta_integrator
      procedure :: setup_linear_system
 
      procedure :: get_residual
-     procedure :: get_jacobian
+     procedure :: approx_jacobian
 
      procedure :: check_jacobian
 
@@ -169,6 +180,39 @@ module runge_kutta_integrator
 
 contains
   
+  
+  !--------------------------------------------------------------------!
+  ! Setter that can be used to set the method in which jacobian needs
+  ! to be computed. Setting this to .true. would make the code use
+  ! finite differences, this is enabled by default too. If set to
+  ! .false. the expects to provide implementation in assembleJacobian
+  ! in a type that extends PHYSICS.
+  !--------------------------------------------------------------------!
+
+  subroutine setApproximateJacobian(this, approx_jacobian)
+
+    class(RK) :: this
+    logical :: approx_jacobian
+
+    this % approximate_jacobian = approx_jacobian
+
+  end subroutine setApproximateJacobian
+  
+  !--------------------------------------------------------------------!
+  ! Set ANY physical system that extends the type PHYSICS and provides
+  ! implementation to the mandatory functions assembleResidual and
+  ! getInitialStates
+  ! --------------------------------------------------------------------!
+
+  subroutine setPhysicalSystem(this, physical_system)
+    
+    class(RK) :: this
+    class(physics), target :: physical_system
+
+    this % system => physical_system
+
+  end subroutine setPhysicalSystem
+
   !-------------------------------------------------------------------!
   ! Initialize the dirk datatype and construct the tableau
   !-------------------------------------------------------------------!
@@ -688,15 +732,33 @@ contains
        alpha = this % h * this % A(j,j)* this % h * this % A(j,j)
        beta  = this % h * this % A(j,j)
        gamma = 1.0d0
+       
+       if (this % approximate_jacobian) then
 
-       call this % get_jacobian()
+          ! Use finite difference to approximate the Jacobian
+          call this % approx_jacobian()
 
-!!$       call this % system % assembleJacobian(this % J(j, j,:,:),&
-!!$            & alpha, beta, gamma, &
-!!$            & this % T(j), &
-!!$            & this % Q(j,:), &
-!!$            & this % QDOT(j,:), &
-!!$            & this % QDDOT(j,:))
+       else
+
+          ! Use the analytical Jacobian the user provided
+          call this % system % assembleJacobian(this % J(j, j,:,:),&
+               & alpha, beta, gamma, &
+               & this % T(j), &
+               & this % Q(j,:), &
+               & this % QDOT(j,:), &
+               & this % QDDOT(j,:))
+
+          ! Check the jacobian implementation once at the beginning of integration
+          if (this % current_step .eq. 2 .and. this % current_stage .eq. 1 .and. n .eq. 1 ) then
+           
+             ! print *, ">> Checking Jacobian Implementation..."
+
+             call this % check_jacobian(this % current_stage, &
+                  & this % J(this % current_stage,this % current_stage,:,:) )
+
+          end if
+
+       end if
 
        ! setup linear system in lapack format
        call this % setup_linear_system(res, jac)
@@ -837,7 +899,7 @@ contains
   !          J(i,j) = [ 1 - h A(i,j) DFDQ(T(j),Y(j))]
   !-------------------------------------------------------------------!
 
-  subroutine get_jacobian(this)
+  subroutine approx_jacobian(this)
 
     class(DIRK) :: this
     integer :: i
@@ -880,7 +942,7 @@ contains
     ! check with FD
     call this % check_jacobian(i, this % J(i,i,:,:))
 
-  end subroutine get_jacobian
+  end subroutine approx_jacobian
 
   !-------------------------------------------------------------------!  
   ! Routine to sanity check the jacobian of the governing equations
@@ -1060,15 +1122,23 @@ contains
 
        ! sum the jacobian components to get the total derivative
        jtmp = jtmp2 + jtmp1 
-
+       
     end if ! first or second order
+    
+    ! Store the jacobian for return
+    if (this % approximate_jacobian) then
 
-    if (maxval(abs(exact_jac - jtmp)) .gt. small) then
-!       print *, "WARNING: Possible error in jacobian", &
-!            & maxval(abs(exact_jac - jtmp))
+       exact_jac = jtmp
+
+    else
+
+       ! Complain about the error in Jacobian if there is any
+       if (maxval(abs(exact_jac - jtmp)) .gt. small) then
+          print *, "WARNING: Possible error in jacobian", &
+               & maxval(abs(exact_jac - jtmp))
+       end if
+
     end if
-
-    exact_jac = jtmp
 
     deallocate(qtmp,qdottmp)
     deallocate(tmp1,tmp2)

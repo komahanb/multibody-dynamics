@@ -30,7 +30,7 @@ module myode_class
 
      real(dp) :: mass = 1.0d0
      real(dp) :: K    = 5.0d0
-     real(dp) :: C    = 0.01d0
+     real(dp) :: C    = 0.02d0
 
    contains
 
@@ -43,8 +43,11 @@ module myode_class
 contains
 
   !-------------------------------------------------------------------!
-  ! Residual assembly at each time step
-  !-------------------------------------------------------------------!
+  ! Residual assembly at each time step. This is a mandary function
+  ! that the user needs to implement to use the integration
+  ! scheme. This is where the differential equations are supplied to
+  ! the solver.
+  ! -------------------------------------------------------------------!
 
 subroutine assembleResidual(this, res, time, u, udot, uddot)
 
@@ -59,8 +62,20 @@ subroutine assembleResidual(this, res, time, u, udot, uddot)
 end subroutine assembleResidual
 
 !-------------------------------------------------------------------!
-! Jacobian assembly at each time step
-!-------------------------------------------------------------------!
+! Jacobian assembly at each time step. If you don't provide the
+! analytical jacobian, set setApproximateJacobian(.true.) into the
+! integrator object. We use finite-difference method to approximate
+! the Jacobian.
+! 
+! Jacobian is the matrix of partial derivatives. Each row in the
+! Jacobian matrix arises from differntiating a single equation. Each
+! column in the Jacobian comes from a variable in the problem. Note
+! the NEQN should be equal to NVARS for the system to be solved.
+!
+! Note: alpha, beta and gamma are scalars that need to be multiplied
+! with the partial derivatives DRDQ, DRDQDOT and DRDQDDOT
+! respectively.
+! -------------------------------------------------------------------!
 
 subroutine assembleJacobian(this, jac, alpha, beta, gamma, &
     & time, u, udot, uddot)
@@ -70,6 +85,23 @@ subroutine assembleJacobian(this, jac, alpha, beta, gamma, &
  real(8), intent(in) :: alpha, beta, gamma
  real(8), intent(in) :: time
  real(8), intent(in), dimension(:) :: u, udot, uddot
+
+ ! Derivative of the first equation with respect to the states 
+ ! (alpha*DRDQ + beta*DRDQDOT + gamma*DRDQDDOT)
+
+ ! first equation with repect to the first variable q(1), qdot(1) and qddot(1)
+ JAC(1,1) =  alpha*this % K +  beta*this % C+ gamma*this % mass
+
+ ! first equation with repect to the first variable q(1), qdot(1) and qddot(1)
+ ! JAC(1,2) =  alpha*this % K +  beta*this % C+ gamma*this % mass
+
+ ! Derivative of the second equation with respect to the states 
+ ! (alpha*DRDQ + beta*DRDQDOT + gamma*DRDQDDOT)
+
+ ! second equation with repect to the first variable q(1), qdot(1) and qddot(1)
+ ! J(2,1) = - alpha*0.05d0*qdot(2) + beta*0.05d0*q(1)
+ 
+ 
 
 end subroutine assembleJacobian
 
