@@ -10,9 +10,9 @@ FC = gfortran
 #------------------------------
 # Define any compile-time flags
 #------------------------------
-CC_FLAGS =  -g #-Wall
-CX_FLAGS =  -g #-Wall
-FC_FLAGS =  -g -fbounds-check -ffree-form #-Wall-cpp -dM -Wno-unused
+CC_FLAGS =  -g -Wall
+CX_FLAGS =  -g -Wall
+FC_FLAGS =  -g -fbounds-check -ffree-form -Wall -cpp -dM -Wno-unused
 
 #------------------------------
 # Define the suffixes in use
