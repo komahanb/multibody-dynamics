@@ -500,7 +500,7 @@ contains
 
        ! March qddot
        forall(m=1:this%nvars)
-          qddot(k,m) = qddot(k-1,m) + sum(this % B(1:this%num_stages) &
+          qddot(k,m) = sum(this % B(1:this%num_stages) &
                &* this % QDDOT(1:this%num_stages,m))
        end forall
 
@@ -508,7 +508,7 @@ contains
 
        ! March qdot
        forall(m=1:this%nvars)
-          qdot(k,m) = qdot(k-1,m) + sum(this % B(1:this%num_stages) &
+          qdot(k,m) = sum(this % B(1:this%num_stages) &
                & * this % QDOT(1:this%num_stages,m))
        end forall
 
