@@ -36,6 +36,7 @@ module runge_kutta_integrator
      real(8) :: h = 0.1d0       ! default step size
 
      logical :: second_order = .false.
+     logical :: forward       = .true.
 
      integer :: current_stage = 0
      integer :: current_step  = 1
@@ -69,6 +70,9 @@ module runge_kutta_integrator
      real(8), dimension(:,:), allocatable :: Q
      real(8), dimension(:,:), allocatable :: QDOT
      real(8), dimension(:,:), allocatable :: QDDOT
+
+     real(8), dimension(:,:), allocatable :: PSI
+     real(8), dimension(:,:), allocatable :: LAM
 
      !----------------------------------------------------------------!
      ! The stage residual and jacobian
@@ -319,7 +323,7 @@ contains
     allocate(this % R(this % num_stages, this % nvars))
     this % R = 0.0d0
 
-    allocate(this % J(this % num_stages, this % num_stages, this % nvars, this % nvars))
+    allocate(this % J(this % num_steps, this % num_stages, this % nvars, this % nvars))
     this % J = 0.0d0
 
     !-----------------------------------------------------------------!
@@ -337,6 +341,16 @@ contains
 
     allocate(this % UDDOT(this % num_steps, this % nvars))
     this % UDDOT = 0.0d0
+
+    !-----------------------------------------------------------------!
+    ! Adjoint variables
+    !-----------------------------------------------------------------!  
+
+    allocate(this % PSI(this % num_stages, this % nvars))
+    this % PSI = 0.0d0
+
+    allocate(this % LAM(this % num_steps, this % nvars))
+    this % LAM = 0.0d0
 
     !-----------------------------------------------------------------!
     ! Put values into the Butcher tableau
@@ -406,6 +420,10 @@ contains
     if(allocated(this % U)) deallocate(this % U)
     if(allocated(this % time)) deallocate(this % time)
 
+    ! Clear global and stage lagrange multipliers
+    if(allocated(this % LAM)) deallocate(this % LAM)
+    if(allocated(this % PSI)) deallocate(this % PSI)
+
   end subroutine finalize
 
   !-------------------------------------------------------------------!
@@ -422,6 +440,8 @@ contains
 
     class(RK) :: this
     integer :: k
+
+    this % forward = .true.
 
     call this % system % getInitialStates(this % time(1), &
          & this % u(1,:), this % udot(1,:))
@@ -718,45 +738,56 @@ contains
     if (.not.allocated(jac)) allocate(jac(size,size))
 
     newton: do n = 1, this % max_newton
-       
-       ! Get the residual of the function
-       this % R = 0.0d0
-       call this % system % assembleResidual( this % R(j,:), this % T(j), &
-            & this % Q(j,:), &
-            & this % QDOT(j,:), &
-            & this % QDDOT(j,:))
 
-       ! Get the jacobian matrix
-       this % J = 0.0d0
 
-       alpha = this % h * this % A(j,j)* this % h * this % A(j,j)
-       beta  = this % h * this % A(j,j)
-       gamma = 1.0d0
-       
-       if (this % approximate_jacobian) then
-
-          ! Use finite difference to approximate the Jacobian
-          call this % approx_jacobian()
-
-       else
-
-          ! Use the analytical Jacobian the user provided
-          call this % system % assembleJacobian(this % J(j, j,:,:),&
-               & alpha, beta, gamma, &
-               & this % T(j), &
+       if (this % forward) then
+          
+          ! Get the residual of the function
+          this % R(j,:) = 0.0d0
+          call this % system % assembleResidual( this % R(j,:), this % T(j), &
                & this % Q(j,:), &
                & this % QDOT(j,:), &
                & this % QDDOT(j,:))
 
-          ! Check the jacobian implementation once at the beginning of integration
-          if (this % current_step .eq. 2 .and. this % current_stage .eq. 1 .and. n .eq. 1 ) then
-           
-             ! print *, ">> Checking Jacobian Implementation..."
+          ! Get the jacobian matrix
+          alpha = this % h * this % A(j,j)* this % h * this % A(j,j)
+          beta  = this % h * this % A(j,j)
+          gamma = 1.0d0
 
-             call this % check_jacobian(this % current_stage, &
-                  & this % J(this % current_stage,this % current_stage,:,:) )
+          if (this % approximate_jacobian) then
+
+             ! Use finite difference to approximate the Jacobian
+             call this % approx_jacobian()
+
+          else
+
+             ! Use the analytical Jacobian the user provided
+             call this % system % assembleJacobian(this % J(k, j,:,:),&
+                  & alpha, beta, gamma, &
+                  & this % T(j), &
+                  & this % Q(j,:), &
+                  & this % QDOT(j,:), &
+                  & this % QDDOT(j,:))
+
+             ! Check the jacobian implementation once at the beginning of integration
+             if (this % current_step .eq. 2 .and. this % current_stage .eq. 1 .and. n .eq. 1 ) then
+
+                ! print *, ">> Checking Jacobian Implementation..."
+
+                call this % check_jacobian(this % current_stage, &
+                     & this % J(k,j,:,:) )
+
+             end if
 
           end if
+
+       else
+
+          ! Assemble RHS for adjoint solve
+          
+          
+          ! Transpose the existing stage jacobian
+          this % J(k,j,:,:) = transpose(this % J(k,j,:,:))
 
        end if
 
@@ -815,7 +846,7 @@ contains
     real(8), intent(inout), dimension(:,:) :: jac
 
     res = this % R(this % current_stage,:)
-    jac = this % J(this % current_stage, this % current_stage, :, :)
+    jac = this % J(this % current_step, this % current_stage, :, :)
 
   end subroutine setup_linear_system
 
@@ -833,32 +864,41 @@ contains
     integer :: i
 
     i = this % current_stage
+    
+    if (this % forward) then
 
-    if (this % second_order) then
+       if (this % second_order) then
 
-       ! update qddot          
-       this % QDDOT(i,:) = this % QDDOT(i,:) + sol(:)
+          ! update qddot          
+          this % QDDOT(i,:) = this % QDDOT(i,:) + sol(:)
 
-       ! update qdot
-       this % QDOT(i,:) = this % QDOT(i,:) &
-            & + this % h * this % A(i,i) * sol(:)
+          ! update qdot
+          this % QDOT(i,:) = this % QDOT(i,:) &
+               & + this % h * this % A(i,i) * sol(:)
 
-       ! update q
-       this % Q(i,:) = this % Q(i,:) &
-            & + this % h * this % A(i,i) * this % h * this % A(i,i) &
-            & * sol(:)
+          ! update q
+          this % Q(i,:) = this % Q(i,:) &
+               & + this % h * this % A(i,i) * this % h * this % A(i,i) &
+               & * sol(:)
+
+       else
+
+          ! update qdot(k,i) for i-th stage
+          this % QDOT(i,:) = this % QDOT(i,:) + sol(:)
+
+          ! update q for i-th stage
+          this % Q(i,:) = this % Q(i,:) &
+               & + this % h * this % A(i,i)*sol(:)
+
+       end if
 
     else
 
-       ! update qdot(k,i) for i-th stage
-       this % QDOT(i,:) = this % QDOT(i,:) + sol(:)
-
-       ! update q for i-th stage
-       this % Q(i,:) = this % Q(i,:) &
-            & + this % h * this % A(i,i)*sol(:)
-
+       ! Update the stage lagrange multiplier
+       
+       this % PSI(i,:) = this % PSI(i,:) + sol
+       
     end if
-
 
   end subroutine state_update
 
@@ -902,11 +942,13 @@ contains
   subroutine approx_jacobian(this)
 
     class(DIRK) :: this
-    integer :: i
+    integer :: i, k
     real(8) :: alpha
     external :: DRDQ, DRDQDOT, DRDQDDOT
     
     i = this % current_stage
+    k = this % current_step
+
 !!$    
 !!$    if (this % second_order) then
 !!$
@@ -940,7 +982,7 @@ contains
 !!$    end if
 
     ! check with FD
-    call this % check_jacobian(i, this % J(i,i,:,:))
+    call this % check_jacobian(i, this % J(k,i,:,:))
 
   end subroutine approx_jacobian
 
@@ -1145,7 +1187,33 @@ contains
     deallocate(jtmp1,jtmp2,jtmp)
 
   end subroutine check_jacobian
+  
+  !===================================================================!
+  ! Solve the adjoint equations back in time for the Lagrange
+  ! Multipliers
+  !===================================================================!
+  
+  subroutine adjointSolve(this)
 
+    class(DIRK) :: this
+    integer :: k, j
+
+    ! Set forward mode as FALSE
+    this % forward = .false.
+
+    march_back: do k = this % num_steps, 1, -1
+
+       ! Compute stage adjoint values       
+       call this % newton_solve()
+
+       ! Compute time-step adjoint
+       do j = 1 , this % num_stages
+          this % LAM(k,:) = this % LAM(k,:) + this % PSI(j,:)
+       end do
+
+    end do march_back
+
+  end subroutine adjointSolve
 
   !===================================================================!
   ! Exact solution to the spring mass damper system
