@@ -9,7 +9,7 @@ module precision
   integer, parameter :: sp = REAL32
   integer, parameter :: dp = REAL64
   integer, parameter :: qp = REAL128
-
+  
 end module precision
 
 !=====================================================================!
@@ -37,15 +37,15 @@ module integrator_class
      !----------------------------------------------------------------!
      
      class(physics), pointer :: system => null()
-     integer :: nsvars = 1       ! number of states/equations
+     integer                 :: nsvars = 1 ! number of states/equations
 
      !----------------------------------------------------------------!
      ! Variables for managing time marching
      !----------------------------------------------------------------!
 
-     integer  :: num_steps       ! number of time steps
-     real(dp) :: tinit = 0.0d0, tfinal = 1.0d0
-     real(dp) :: h = 0.1d0      ! default step size
+     integer  :: num_steps                     ! number of time steps
+     real(dp) :: tinit = 0.0d0, tfinal = 1.0d0 ! initial and final times
+     real(dp) :: h = 0.1d0                     ! default step size
 
      !----------------------------------------------------------------!
      ! Nonlinear solution at each stage
@@ -92,7 +92,7 @@ contains
   
   subroutine setPhysicalSystem(this, physical_system)
 
-    class(integrator) :: this
+    class(integrator)      :: this
     class(physics), target :: physical_system
 
     this % system => physical_system
@@ -103,10 +103,10 @@ contains
   ! Manages the amount of print
   !===================================================================!
   
-  subroutine setPrintLevel(this, print_level)
+  subroutine setPrintLevel(this,print_level)
 
     class(integrator) :: this
-    integer :: print_level
+    integer           :: print_level
 
     this % print_level = print_level
 
@@ -117,12 +117,12 @@ contains
   !===================================================================!
 
   subroutine writeSolution(this, filename)
-
-    class(integrator) :: this
+    
+    class(integrator)                       :: this
     character(len=32), OPTIONAL, intent(in) :: filename
-    character(len=7), parameter :: directory = "output/"
-    character(len=39) :: path=""
-    integer   :: k, j, ierr
+    character(len=7), parameter             :: directory = "output/"
+    character(len=39)                       :: path=""
+    integer                                 :: k, j, ierr
     
     path = trim(path)
 
@@ -135,7 +135,7 @@ contains
     open(unit=90, file=trim(path), iostat= ierr)
     
     if (ierr .ne. 0) then
-       write(*,'(">> Opening file ", 39A, " failed")') path
+       write(*,'("  >> Opening file ", 39A, " failed")') path
        return
     end if
 
@@ -167,25 +167,28 @@ contains
 
   subroutine newtonSolve(this, alpha, beta, gamma, t, q, qdot, qddot)
     
-    class(integrator) :: this
+    class(integrator)                     :: this
 
     ! Arguments
-    real(dp), intent(in) :: alpha, beta, gamma
-    real(dp), intent(in) :: t
+    real(dp), intent(in)                  :: alpha, beta, gamma
+    real(dp), intent(in)                  :: t
     real(dp), intent(inout), dimension(:) :: q, qdot, qddot
-
+    
     ! Lapack variables
-    integer, allocatable, dimension(:)   :: ipiv
-    integer ::  info, size
-
+    integer, allocatable, dimension(:)    :: ipiv
+    integer                               ::  info, size
+   
+    ! Norms to tracking progress
+    real(dp)                              :: abs_res_norm
+    real(dp)                              :: rel_res_norm
+    real(dp)                              :: init_norm
+    
     ! Other Local variables
     real(dp), allocatable, dimension(:)   :: res, dq
     real(dp), allocatable, dimension(:,:) :: jac
-    
-    real(dp) :: abs_res_norm, rel_res_norm, init_norm
 
-    integer :: n, k
-    logical :: conv = .false.
+    integer                               :: n, k
+    logical                               :: conv = .false.
 
     ! find the size of the linear system based on the calling object
     size = this % nsvars
@@ -276,18 +279,17 @@ module bdf_integrator
 
   type, extends(integrator) :: BDF
 
-     integer :: max_bdf_order
-
-     real(dp), allocatable, dimension(:)   :: beta, gamm
-     real(dp), dimension(:,:), allocatable :: psi, rhs
+     integer                                :: max_bdf_order
+     real(dp) , dimension(:), allocatable   :: beta, gamm
+     real(dp) , dimension(:,:), allocatable :: psi, rhs
 
    contains
      
      private
 
      procedure, public :: initialize, finalize, integrate     
-     procedure :: approximateStates
-     procedure :: getOrderCoeff
+     procedure         :: approximateStates
+     procedure         :: getOrderCoeff
 
   end type BDF
 
@@ -299,15 +301,15 @@ contains
   
   subroutine initialize(this, nsvars, max_bdf_order, tinit, tfinal, h, second_order)
     
-    class(BDF) :: this
-    integer, OPTIONAL, intent(in) :: max_bdf_order
-    integer, OPTIONAL, intent(in) :: nsvars
-    real(dp), OPTIONAL, intent(in) :: tinit, tfinal
-    real(dp), OPTIONAL, intent(in) :: h
-    logical, OPTIONAL, intent(in) :: second_order
+    class(BDF)                      :: this
+    integer  , OPTIONAL, intent(in) :: max_bdf_order
+    integer  , OPTIONAL, intent(in) :: nsvars
+    real(dp) , OPTIONAL, intent(in) :: tinit, tfinal
+    real(dp) , OPTIONAL, intent(in) :: h
+    logical  , OPTIONAL, intent(in) :: second_order
 
     print *, "======================================"
-    print *, ">>   Backward Difference Formula   << "
+    print *, ">>   Backward Difference Formula    << "
     print *, "======================================"
 
     !-----------------------------------------------------------------!
@@ -317,7 +319,7 @@ contains
     if (present(second_order)) then
        this % second_order = second_order
     end if
-    print '(">> Second order           : ",L1)', this % second_order
+    print '("  >> Second order           : ",L1)', this % second_order
 
     !-----------------------------------------------------------------!
     ! Set the initial and final time
@@ -326,12 +328,12 @@ contains
     if (present(tinit)) then
        this % tinit = tinit
     end if
-    print '(">> Start time             : ",F8.3)', this % tinit
+    print '("  >> Start time             : ",F8.3)', this % tinit
 
     if (present(tfinal)) then
        this % tfinal = tfinal
     end if
-    print '(">> End time               : ",F8.3)', this % tfinal
+    print '("  >> End time               : ",F8.3)', this % tfinal
 
     !-----------------------------------------------------------------!
     ! Set the order of integration
@@ -340,7 +342,7 @@ contains
     if (present(max_bdf_order)) then
        this % max_bdf_order = max_bdf_order
     end if
-    print '(">> Max BDF Order          : ",i4)', this % max_bdf_order
+    print '("  >> Max BDF Order          : ",i4)', this % max_bdf_order
 
     !-----------------------------------------------------------------!
     ! Set the user supplied initial step size
@@ -349,7 +351,7 @@ contains
     if (present(h)) then
        this % h = h 
     end if
-    print '(">> Step size              : ",E9.3)', this % h
+    print '("  >> Step size              : ",E9.3)', this % h
     
     !-----------------------------------------------------------------!
     ! Set the user supplied number of variables
@@ -358,14 +360,14 @@ contains
     if (present(nsvars)) then
        this % nsvars = nsvars 
     end if
-    print '(">> Number of variables    : ",i4)', this % nsvars
+    print '("  >> Number of variables    : ",i4)', this % nsvars
 
     !-----------------------------------------------------------------!
     ! Find the number of time steps required during integration
     !-----------------------------------------------------------------!
 
     this % num_steps = int((this % tfinal - this % tinit)/this % h) + 1 
-    print '(">> Number of steps        : ",i6)', this % num_steps
+    print '("  >> Number of steps        : ",i6)', this % num_steps
 
     !-----------------------------------------------------------------!
     ! Allocate space for the RHS of adjoint equations
@@ -538,11 +540,11 @@ contains
   
   subroutine getOrderCoeff(this, m, coeff, d)
     
-    class(BDF) :: this
-    integer,  intent(in)  :: d
-    integer,  intent(out) :: m
-    real(dp), intent(out) :: coeff(:)
-    integer               :: k
+    class(BDF)              :: this
+    integer  , intent(in)   :: d
+    integer  , intent(out)  :: m
+    real(dp) , intent(out)  :: coeff(:)
+    integer                 :: k
 
     k = this % current_step
 
@@ -776,7 +778,7 @@ contains
     logical, OPTIONAL, intent(in) :: second_order
 
     print *, "======================================"
-    print *, ">> Diagonally-Implicit-Runge-Kutta << "
+    print *, ">> Diagonally-Implicit-Runge-Kutta  <<"
     print *, "======================================"
 
     !-----------------------------------------------------------------!
@@ -786,7 +788,7 @@ contains
     if (present(second_order)) then
        this % second_order = second_order
     end if
-    print '(">> Second order           : ",L1)', this % second_order
+    print '("  >> Second order           : ",L1)', this % second_order
 
     !-----------------------------------------------------------------!
     ! Set the initial and final time
@@ -795,12 +797,12 @@ contains
     if (present(tinit)) then
        this % tinit = tinit
     end if
-    print '(">> Start time             : ",F8.3)', this % tinit
+    print '("  >> Start time             : ",F8.3)', this % tinit
 
     if (present(tfinal)) then
        this % tfinal = tfinal
     end if
-    print '(">> End time               : ",F8.3)', this % tfinal
+    print '("  >> End time               : ",F8.3)', this % tfinal
 
     !-----------------------------------------------------------------!
     ! Set the order of integration
@@ -809,7 +811,7 @@ contains
     if (present(num_stages)) then
        this % num_stages = num_stages
     end if
-    print '(">> Number of stages       : ",i4)', this % num_stages
+    print '("  >> Number of stages       : ",i4)', this % num_stages
 
     !-----------------------------------------------------------------!
     ! Set the user supplied initial step size
@@ -818,7 +820,7 @@ contains
     if (present(h)) then
        this % h = h 
     end if
-    print '(">> Step size              : ",E9.3)', this % h
+    print '("  >> Step size              : ",E9.3)', this % h
     
     !-----------------------------------------------------------------!
     ! Set the user supplied number of variables
@@ -827,14 +829,14 @@ contains
     if (present(nsvars)) then
        this % nsvars = nsvars 
     end if
-    print '(">> Number of variables    : ",i4)', this % nsvars
+    print '("  >> Number of variables    : ",i4)', this % nsvars
 
     !-----------------------------------------------------------------!
     ! Find the number of time steps required during integration
     !-----------------------------------------------------------------!
 
     this % num_steps = int((this % tfinal - this % tinit)/this % h) + 1 
-    print '(">> Number of steps        : ",i6)', this % num_steps
+    print '("  >> Number of steps        : ",i6)', this % num_steps
     
     !-----------------------------------------------------------------!
     ! Allocate space for the tableau
@@ -1127,56 +1129,56 @@ contains
 
        ! Implicit mid-point rule (A-stable)
 
-       this % A(1,1) = half
-       this % B(1)   = one
-       this % C(1)   = half
+       this % A(1,1)    = half
+       this % B(1)      = one
+       this % C(1)      = half
 
-       this % order = 2
+       this % order     = 2
 
 !!$       ! Implicit Euler (Backward Euler) but first order accurate
 !!$       this % A(1,1) = one
 !!$       this % B(1)   = one
 !!$       this % C(1)   = one
-!!$       this % order = 1
+!!$       this % order  = 1
 
 
     else if (this % num_stages .eq. 2) then
 
        ! Crouzeix formula (A-stable)
 
-       this % A(1,1) = half + tmp
-       this % A(2,1) = -one/dsqrt(3.0d0)
-       this % A(2,2) = this % A(1,1)
+       this % A(1,1)    = half + tmp
+       this % A(2,1)    = -one/dsqrt(3.0d0)
+       this % A(2,2)    = this % A(1,1)
 
-       this % B(1)   = half
-       this % B(2)   = half
+       this % B(1)      = half
+       this % B(2)      = half
 
-       this % C(1)   = half + tmp
-       this % C(2)   = half - tmp
+       this % C(1)      = half + tmp
+       this % C(2)      = half - tmp
 
-       this % order = 3
+       this % order     = 3
 
     else if (this % num_stages .eq. 3) then
 
        ! Crouzeix formula (A-stable)
 
-       this % A(1,1) = (one+alpha)*half
-       this % A(2,1) = -half*alpha
-       this % A(3,1) =  one + alpha
+       this % A(1,1)    = (one+alpha)*half
+       this % A(2,1)    = -half*alpha
+       this % A(3,1)    =  one + alpha
 
-       this % A(2,2) = this % A(1,1)
-       this % A(3,2) = -(one + 2.0d0*alpha)
-       this % A(3,3) = this % A(1,1)
+       this % A(2,2)    = this % A(1,1)
+       this % A(3,2)    = -(one + 2.0d0*alpha)
+       this % A(3,3)    = this % A(1,1)
 
-       this % B(1)   = one/(6.0d0*alpha*alpha)
-       this % B(2)   = one - one/(3.0d0*alpha*alpha)
-       this % B(3)   = this % B(1)
+       this % B(1)      = one/(6.0d0*alpha*alpha)
+       this % B(2)      = one - one/(3.0d0*alpha*alpha)
+       this % B(3)      = this % B(1)
 
-       this % C(1) = (one + alpha)*half
-       this % C(2) = half
-       this % C(3) = (one - alpha)*half
+       this % C(1)      = (one + alpha)*half
+       this % C(2)      = half
+       this % C(3)      = (one - alpha)*half
 
-       this % order = 4
+       this % order     = 4
 
     else if (this % num_stages .eq. 4) then
 
@@ -1269,13 +1271,13 @@ contains
   
   subroutine AdjointSolve(this)
 
-    class(DIRK) :: this
-    real(dp), allocatable, dimension(:)  :: res, dq
-    real(dp), allocatable, dimension(:,:):: jac
-    integer, allocatable, dimension(:)   :: ipiv
-    integer :: info, size, k, i
-    logical :: conv = .false.
-    real(dp) :: alpha, beta, gamma
+    class(DIRK)                           :: this
+    real(dp), allocatable, dimension(:)   :: res, dq
+    real(dp), allocatable, dimension(:,:) :: jac
+    integer, allocatable, dimension(:)    :: ipiv
+    integer                               :: info, size, k, i
+    logical                               :: conv = .false.
+    real(dp)                              :: alpha, beta, gamma
 
     k = this % current_step
     i = this % current_stage
@@ -1670,10 +1672,10 @@ contains
   !===================================================================!
 
   subroutine assembleRHS(this, rhs)
-
+ 
     class(DIRK) :: this
-    integer  :: k, i
-    real(dp) :: rhs(:) ! of length nsvars
+    integer     :: k , i
+    real(dp)    :: rhs(:) ! of length nsvars
 
     k = this % current_step
     i = this % current_stage
