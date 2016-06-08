@@ -287,14 +287,81 @@ module bdf_integrator
      
      private
 
+     ! Routines for integration
      procedure, public :: initialize, finalize, integrate     
      procedure         :: approximateStates
      procedure         :: getOrderCoeff
+
+     ! Routines for adjoint gradient
+     procedure         :: adjointSolve, computeTotalDerivative
+     procedure, public :: getAdjointGradient
 
   end type BDF
 
 contains
   
+  !===================================================================!
+  ! Subroutine that integrates backwards in time to compute the
+  ! lagrange multipliers (adjoint variables for the function)
+  !===================================================================!
+  
+  subroutine adjointSolve(this)
+
+    class(BDF)               :: this
+
+  end subroutine adjointSolve
+
+  !===================================================================!
+  ! Compute the total derivative of the function with respect to the
+  ! design variables and return the gradient 
+  !===================================================================!
+
+  subroutine computeTotalDerivative(this, x, dfdx)
+
+    class(BDF)               :: this
+    real(dp) , intent(in)    :: x
+    real(dp) , intent(inout) :: dfdx
+
+  end subroutine computeTotalDerivative
+
+  !===================================================================!
+  ! Public wrapper for all the adjoint gradient related sequence of
+  ! calls
+  !===================================================================!
+  
+  subroutine getAdjointGradient(this, x, dfdx)
+
+    class(BDF)               :: this
+    real(dp) , intent(in)    :: x
+    real(dp) , intent(inout) :: dfdx
+
+    !-----------------------------------------------------------------!
+    ! Set the design variable into the system
+    !-----------------------------------------------------------------!
+    
+    
+    !-----------------------------------------------------------------!
+    ! First integrate forward in time for the set design variable call
+    !-----------------------------------------------------------------!
+    
+    call this % integrate()
+
+    !-----------------------------------------------------------------!
+    ! Integrate backwards to solve for lagrange multipliers for the
+    ! set design variable
+    !-----------------------------------------------------------------!
+
+    call this % adjointSolve()
+
+    !-----------------------------------------------------------------!
+    ! Compute the total derivative of the function with respect to the
+    ! design variables
+    !-----------------------------------------------------------------!
+
+    call this % computeTotalDerivative(x, dfdx)
+
+  end subroutine getAdjointGradient
+
   !===================================================================!
   ! Initialize the BDF datatype and allocate required variables
   !===================================================================!
@@ -770,12 +837,12 @@ contains
   
   subroutine initialize(this, nsvars, num_stages, tinit, tfinal, h, second_order)
     
-    class(RK) :: this
-    integer, OPTIONAL, intent(in) :: num_stages
-    integer, OPTIONAL, intent(in) :: nsvars
-    real(dp), OPTIONAL, intent(in) :: tinit, tfinal
-    real(dp), OPTIONAL, intent(in) :: h
-    logical, OPTIONAL, intent(in) :: second_order
+    class(RK)                       :: this
+    integer  , OPTIONAL, intent(in) :: num_stages
+    integer  , OPTIONAL, intent(in) :: nsvars
+    real(dp) , OPTIONAL, intent(in) :: tinit, tfinal
+    real(dp) , OPTIONAL, intent(in) :: h
+    logical  , OPTIONAL, intent(in) :: second_order
 
     print *, "======================================"
     print *, ">> Diagonally-Implicit-Runge-Kutta  <<"
