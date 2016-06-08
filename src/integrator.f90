@@ -52,7 +52,7 @@ module integrator_class
      !----------------------------------------------------------------!
 
      integer  :: max_newton = 25
-     real(dp) :: atol = 1.0d-12, rtol = 1.0d-10
+     real(dp) :: atol = 1.0d-12, rtol = 1.0d-8
 
      !----------------------------------------------------------------!
      ! Track global time and states
@@ -69,21 +69,49 @@ module integrator_class
 
      logical :: second_order = .false.
      logical :: forward = .true.
-     integer :: print_level = 1
+     integer :: print_level = 0
      integer :: current_step
      logical :: approximate_jacobian = .false.
 
    contains
+     
+     !----------------------------------------------------------------!
+     ! Procedures                                                     !
+     !----------------------------------------------------------------!
 
      procedure :: writeSolution
      procedure :: setPhysicalSystem
      procedure :: newtonSolve   
      procedure :: setPrintLevel
+     procedure :: approximateJacobian
+
+     !----------------------------------------------------------------!
+     ! Important setters
+     !----------------------------------------------------------------!
+     
+     procedure :: setApproximateJacobian
 
   end type integrator
 
 contains
   
+  !===================================================================!
+  ! Setter that can be used to set the method in which jacobian needs
+  ! to be computed. Setting this to .true. would make the code use
+  ! finite differences, this is enabled by default too. If set to
+  ! .false. the expects to provide implementation in assembleJacobian
+  ! in a type that extends PHYSICS.
+  !===================================================================!
+  
+  subroutine setApproximateJacobian(this, approximateJacobian)
+
+    class(integrator) :: this
+    logical :: approximateJacobian
+
+    this % approximate_jacobian = approximateJacobian
+
+  end subroutine setApproximateJacobian
+
   !===================================================================!
   ! Set ANY physical system that extends the type PHYSICS and provides
   ! implementation to the mandatory functions assembleResidual and
@@ -165,42 +193,44 @@ contains
   ! gamma: multiplier for derivative of Residual wrt to qddot
   !===================================================================!
 
-  subroutine newtonSolve(this, alpha, beta, gamma, t, q, qdot, qddot)
+  subroutine newtonSolve( this, alpha, beta, gamma, t, q, qdot, qddot )
     
     class(integrator)                     :: this
 
-    ! Arguments
-    real(dp), intent(in)                  :: alpha, beta, gamma
+ ! Arguments
+    real(dp), intent(inout)                  :: alpha, beta, gamma
     real(dp), intent(in)                  :: t
     real(dp), intent(inout), dimension(:) :: q, qdot, qddot
     
-    ! Lapack variables
+ ! Lapack variables
     integer, allocatable, dimension(:)    :: ipiv
     integer                               ::  info, size
    
-    ! Norms to tracking progress
+ ! Norms to tracking progress
     real(dp)                              :: abs_res_norm
     real(dp)                              :: rel_res_norm
     real(dp)                              :: init_norm
     
-    ! Other Local variables
+ ! Other Local variables
     real(dp), allocatable, dimension(:)   :: res, dq
-    real(dp), allocatable, dimension(:,:) :: jac
+    real(dp), allocatable, dimension(:,:) :: jac, fd_jac
 
     integer                               :: n, k
     logical                               :: conv = .false.
 
-    ! find the size of the linear system based on the calling object
-    size = this % nsvars
-    k = this % current_step
+    real(dp)                              :: jac_err
 
-    if (.not.allocated(ipiv)) allocate(ipiv(size))
-    if (.not.allocated(res)) allocate(res(size))
-    if (.not.allocated(dq)) allocate(dq(size))
-    if (.not.allocated(jac)) allocate(jac(size,size))
-    
-    if ( this % print_level .ne. 0) then
-       write(*,'(/2A5, 2A12)') "STEP", "ITER", "|R|", "|R|/|R1|"
+    ! find the size of the linear system based on the calling object
+    size = this % nsvars; k = this % current_step
+
+    if ( .not. allocated(ipiv)   ) allocate( ipiv(size)        )
+    if ( .not. allocated(res)    ) allocate( res(size)         )
+    if ( .not. allocated(dq)     ) allocate( dq(size)          )
+    if ( .not. allocated(jac)    ) allocate( jac(size,size)    )
+    if ( .not. allocated(fd_jac) ) allocate( fd_jac(size,size) )
+
+    if ( this % print_level .ge. 1 .and. k .eq. 2) then
+       write(*,'(/2A5, 2A12/)') "Step", "Iter", "|R|", "|R|/|R1|"
     end if
     
     newton: do n = 1, this % max_newton
@@ -209,26 +239,48 @@ contains
        call this % system % assembleResidual(res, t, q, qdot, qddot)
 
        ! Get the jacobian matrix
-       call this % system % assembleJacobian(jac, alpha, beta, gamma, &
-            & t, q, qdot, qddot)
-       
-       ! Check the jacobian implementation once at the beginning of integration
-       ! if (this % current_step .eq. 2 .and. this % current_stage .eq. 1 .and. n .eq. 1 ) then
-       !   call this % verifyJacobian(i,this % J(i,i,:,:))
-       ! end if
+       if ( this % approximate_jacobian ) then
+                    
+          ! Compute an approximate Jacobian using finite differences
+          call this % approximateJacobian(jac, alpha, beta, gamma, t, q, qdot, qddot)
 
+       else
+          
+          ! Use the user supplied Jacobian implementation
+          call this % system % assembleJacobian(jac, alpha, beta, gamma, t, q, qdot, qddot)
+          
+          ! Check the Jacobian implementation once at the beginning of integration
+          if ( k .eq. 2 .and. n .eq. 1 ) then
+             
+             ! Compute an approximate Jacobian using finite differences
+             call this % approximateJacobian(fd_jac, alpha, beta, gamma, t, q, qdot, qddot)
+
+             ! Compare the exact and approximate Jacobians and
+             ! complain about the error in Jacobian if there is any
+             jac_err = maxval(abs(fd_jac - jac))
+             if ( jac_err .gt. 1.0d-6) then
+                print *, "WARNING: Possible error in jacobian", jac_err
+             end if
+             
+          end if
+
+       end if
+       
        ! Find norm of the residual
        abs_res_norm = norm2(res)
        if ( n .eq. 1) init_norm = abs_res_norm
        rel_res_norm = abs_res_norm/init_norm
 
-       if ( this % print_level .ne. 0) then
+       if ( this % print_level .eq. 2) then
           write(*, "(2I5,2ES12.2)") k, n, abs_res_norm, rel_res_norm
        end if
 
        ! Check stopping
-       if (abs_res_norm .le. this % atol .or. rel_res_norm .le. this % rtol) then
+       if ((abs_res_norm .le. this % atol) .or. (rel_res_norm .le. this % rtol)) then
           conv = .true.
+          exit newton
+       else if (abs_res_norm .ne. abs_res_norm .or. rel_res_norm .ne. rel_res_norm ) then
+          conv = .false.
           exit newton
        end if
 
@@ -242,9 +294,15 @@ contains
        q     = q     + alpha * dq
        
     end do newton
-    
+
+    if (this % print_level .eq. 1) then 
+       write(*, "(2I5,2ES12.2)") k, n, abs_res_norm, rel_res_norm
+    end if
+
     ! Print warning message if not converged
     if (.not. conv) then
+       write(*,'(/2A5, 2A12)') "STEP", "ITER", "|R|", "|R|/|R1|"
+       write(*, "(2I5,2ES12.2)") k, n, abs_res_norm, rel_res_norm
        stop "Newton Solve Failed"
     end if
 
@@ -252,8 +310,121 @@ contains
     if (allocated(res)) deallocate(res)
     if (allocated(dq)) deallocate(dq)
     if (allocated(jac)) deallocate(jac)
-
+    if (allocated(fd_jac)) deallocate(fd_jac)
+            
   end subroutine newtonSolve
+
+  !===================================================================! 
+  ! Routine that approximates the Jacobian based on finite differences
+  ! [d{R}/d{q}] = alpha*[dR/dq] + beta*[dR/dqdot] + gamma*[dR/dqddot]
+  !===================================================================!
+  
+  subroutine approximateJacobian( this, jac, alpha, beta, gamma, t, q, qdot, qddot )
+
+    class(integrator)                       :: this
+    
+    ! Matrices
+    real(dp), intent(inout), dimension(:,:) :: jac
+    
+    ! Arrays
+    real(dp), intent(in)                    :: t
+    real(dp), intent(in), dimension(:)      :: q, qdot, qddot     ! states
+
+    real(dp), allocatable, dimension(:)     :: pstate             ! perturbed states
+    real(dp), allocatable, dimension(:)     :: R, Rtmp            ! original residual and perturbed residual
+
+    ! Scalars
+    real(dp)                                :: dh = 1.0d-5        ! finite-diff step size
+    real(dp), intent(in)                    :: alpha, beta, gamma ! linearization coefficients
+    integer                                 :: m                  ! loop variables
+
+    !  Zero the supplied jacobian matrix for safety (as we are
+    !  computing everything newly here)
+    jac = 0.0d0
+    
+    ! Allocate required arrays
+    allocate(pstate(this % nsvars)); pstate = 0.0d0;
+    allocate(R(this % nsvars));      R = 0.0d0;
+    allocate(Rtmp(this % nsvars));   Rtmp = 0.0d0;
+
+    ! Make a residual call with original variables
+    call this % system % assembleResidual(R, t, q, qdot, qddot)
+
+    !-----------------------------------------------------------!
+    ! Derivative of R WRT Q: dR/dQ
+    !-----------------------------------------------------------!
+
+    pstate = q
+
+    loop_vars: do m = 1, this % nsvars
+
+       ! Perturb the k-th variable
+       pstate(m) = pstate(m) + dh
+
+       ! Make a residual call with the perturbed variable
+       call this % system % assembleResidual(Rtmp, t, pstate, qdot, qddot)
+
+       ! Unperturb (restore) the k-th variable
+       pstate(m) =  q(m)
+
+       ! Approximate the jacobian with respect to the k-th variable
+       jac(:,m) = jac(:,m) + alpha*(Rtmp-R)/dh
+
+    end do loop_vars
+
+    !-----------------------------------------------------------!
+    ! Derivative of R WRT QDOT: dR/dQDOT
+    !-----------------------------------------------------------!
+
+    pstate = qdot
+
+    do m = 1, this % nsvars
+
+       ! Perturb the k-th variable
+       pstate(m) = pstate(m) + dh
+
+       ! Make a residual call with the perturbed variable
+       call this % system % assembleResidual(Rtmp, t, q, pstate, qddot)
+
+       ! Unperturb (restore) the k-th variable
+       pstate(m) =  qdot(m)
+
+       ! Approximate the jacobian with respect to the k-th variable
+       Jac(:,m) = Jac(:,m) + beta*(Rtmp-R)/dh
+
+    end do
+
+    ! Second order equations have an extra block to add
+    if (this % second_order) then
+
+       !-----------------------------------------------------------!
+       ! Derivative of R WRT QDDOT: dR/dQDDOT
+       !-----------------------------------------------------------!     
+
+       pstate = qddot
+
+       do m = 1, this % nsvars
+
+          ! Perturb the k-th variable
+          pstate(m) = pstate(m) + dh
+
+          ! Make a residual call with the perturbed variable
+          call this % system % assembleResidual(Rtmp, t, q, qdot, pstate)
+
+          ! Unperturb (restore) the k-th variable
+          pstate(m) =  qddot(m)
+
+          ! Approximate the jacobian with respect to the k-th variable
+          Jac(:,m) = Jac(:,m) + gamma*(Rtmp-R)/dh
+
+       end do
+
+    end if ! first or second order
+
+    deallocate(pstate)
+    deallocate(R,Rtmp)
+
+  end subroutine approximateJacobian
 
 end module integrator_class
 
@@ -528,10 +699,14 @@ contains
        call this % approximateStates()
        
        ! Determine the coefficients for linearing the Residual
-       gamma = this % gamm(1)/this % h/this % h
-       beta  = this % beta(1)/this % h
        alpha = 1.0d0
-       
+       beta  = this % beta(1)/this % h
+       if ( this % second_order ) then
+          gamma = this % gamm(1)/this % h/this % h
+       else 
+          gamma = 0.0d0
+       end if
+
        ! Solve the nonlinear system at each step by driving the
        ! residual to zero
        call this % newtonSolve(alpha, beta, gamma, &
@@ -682,8 +857,8 @@ module runge_kutta_integrator
 
   type, abstract, extends(integrator) :: RK
 
-     integer :: num_stages = 1  ! default number of stages
-     integer :: order           ! order of accuracy
+     integer :: num_stages = 1 ! default number of stages
+     integer :: order = 2      ! order of accuracy, only for informatory purposes
      integer :: current_stage = 0
 
      !----------------------------------------------------------------!
@@ -732,13 +907,7 @@ module runge_kutta_integrator
      !----------------------------------------------------------------!
 
      procedure(computeStageStateValues_interface), private, deferred :: ComputeStageStateValues
-     procedure(buthcher_interface), private, deferred :: SetupButcherTableau
-
-     !----------------------------------------------------------------!
-     ! Important setters
-     !----------------------------------------------------------------!
-
-     procedure :: setApproximateJacobian
+     procedure(buthcher_interface), private, deferred                :: SetupButcherTableau
 
   end type RK
 
@@ -752,20 +921,8 @@ module runge_kutta_integrator
 
      private
 
-     !----------------------------------------------------------------!
-     ! Implement/override the abstract class routines
-     !----------------------------------------------------------------!
-
      procedure :: setupButcherTableau => ButcherDIRK
-
-     !----------------------------------------------------------------!
-     ! More specialized procedures
-     !----------------------------------------------------------------!
-
      procedure :: computeStageStateValues
-
-     procedure :: approximateJacobian
-     procedure :: verifyJacobian
 
      !----------------------------------------------------------------!
      ! Adjoint procedures
@@ -794,7 +951,7 @@ module runge_kutta_integrator
        use precision, only : dp
        import RK
        class(RK) :: this
-       real(dp), intent(in), dimension(:,:) :: q
+       real(dp), intent(in), dimension(:,:)           :: q
        real(dp), OPTIONAL, intent(in), dimension(:,:) :: qdot
      end subroutine computeStageStateValues_interface
 
@@ -812,24 +969,6 @@ module runge_kutta_integrator
   end interface
 
 contains
-  
-  !===================================================================!
-  ! Setter that can be used to set the method in which jacobian needs
-  ! to be computed. Setting this to .true. would make the code use
-  ! finite differences, this is enabled by default too. If set to
-  ! .false. the expects to provide implementation in assembleJacobian
-  ! in a type that extends PHYSICS.
-  !===================================================================!
-  
-  subroutine setApproximateJacobian(this, approximateJacobian)
-
-    class(RK) :: this
-    logical :: approximateJacobian
-
-    this % approximate_jacobian = approximateJacobian
-
-  end subroutine setApproximateJacobian
-  
 
   !===================================================================!
   ! Initialize the dirk datatype and construct the tableau
@@ -1252,8 +1391,8 @@ contains
        stop "Four stage DIRK formula does not exist"
 
     else
-
-       !print *, this % num_stages
+       
+       print *, this % num_stages
        stop "DIRK Butcher tableau is not implemented for the requested&
             & order/stages"
 
@@ -1268,11 +1407,11 @@ contains
 
   subroutine computeStageStateValues(this, q, qdot)
 
-    class(DIRK) :: this
-    real(dp), intent(in), dimension(:,:) :: q
+    class(DIRK)                                    :: this
+    real(dp), intent(in), dimension(:,:)           :: q
     real(dp), OPTIONAL, intent(in), dimension(:,:) :: qdot
-    integer :: k, j, m
-    real(dp) :: alpha, beta, gamma
+    integer                                        :: k, j, m
+    real(dp)                                       :: alpha, beta, gamma
 
     k = this % current_step
 
@@ -1288,9 +1427,15 @@ contains
        ! Guess the solution for stage states
 
        if (this % second_order) then
-
+          
           ! guess qddot
-          this % QDDOT(k,j,:) = 1.0d0 
+          if ( k .eq. 2 .and. j .eq. 1) then
+             this % QDDOT(k,j,:) = 1.0d0
+          else if ( k .eq. 2 .and. j .gt. 1) then
+             this % QDDOT(k,j,:) = this % UDDOT(k-1,:)
+          else
+             this % QDDOT(k,j,:) = this % QDDOT(k,j-1,:)
+          end if
 
           ! compute the stage velocities for the guessed QDDOT
           forall(m = 1 : this % nsvars)
@@ -1308,7 +1453,13 @@ contains
        else
 
           ! guess qdot
-          this % QDOT(k,j,:) = 1.0d0 
+          if ( k .eq. 2 .and. j .eq. 1) then
+             this % QDOT(k,j,:) = 1.0d0
+          else if ( k .eq. 2 .and. j .gt. 1) then
+             this % QDOT(k,j,:) = this % UDOT(k-1,:)
+          else
+             this % QDOT(k,j,:) = this % QDOT(k,j-1,:)
+          end if
 
           ! compute the stage states for the guessed 
           forall(m = 1 : this % nsvars)
@@ -1317,17 +1468,22 @@ contains
           end forall
 
        end if
-
+       
        ! solve the non linear stage equations using Newton's method for
        ! the actual stage states 
-      
-       gamma = 1.0d0
-       beta  = this % h * this%A(j,j)
-       alpha = this % h * this%A(j,j)* this % h * this%A(j,j)
-       
+       if (this % second_order) then
+          gamma = 1.0d0
+          beta  = this % h * this%A(j,j)
+          alpha = this % h * this%A(j,j)* this % h * this%A(j,j)
+       else
+          gamma = 0.0d0
+          beta  = 1.0d0
+          alpha = this % h * this%A(j,j)
+       end if
+
        call this % newtonSolve(alpha, beta, gamma, &
             & this % time(k), this % q(k,j,:), this % qdot(k,j,:), this % qddot(k,j,:))
-
+       
     end do
 
   end subroutine computeStageStateValues
@@ -1384,225 +1540,6 @@ contains
 
   end subroutine AdjointSolve
 
-  !===================================================================!
-  ! Computes the stage jacobian and sets into the same instance
-  !          J(i,j) = [ 1 - h A(i,j) DFDQ(T(j),Y(j))]
-  !===================================================================! 
-
-  subroutine approximateJacobian(this)
-
-    class(DIRK) :: this
-    integer :: i
-    real(dp) :: alpha
-
-    i = this % current_stage
-
-    call this % verifyJacobian(i, this % J(i,i,:,:))
-
-  end subroutine approximateJacobian
-
-  !===================================================================! 
-  ! Routine to sanity check the jacobian of the governing equations
-  !===================================================================!
-
-  subroutine verifyJacobian(this, i, exact_jac)
-
-    class(DIRK) :: this
-
-    integer, intent(in) :: i
-    real(dp), intent(inout) :: exact_jac(:,:)
-
-    real(dp), allocatable, dimension(:) :: tmp1, tmp2, qtmp, qdottmp, qddottmp
-    real(dp), allocatable, dimension(:,:) :: jtmp1, jtmp2, jtmp, jtmp3
-    real(dp) :: small = 1.0d-6
-    real(dp) :: alpha, beta, gamma
-    integer :: k, kk
-
-    kk = this % current_step
-
-    allocate(qtmp(this % nsvars)); qtmp = 0.0d0;
-    allocate(qdottmp(this % nsvars)); qdottmp = 0.0d0;
-    allocate(qddottmp(this % nsvars)); qddottmp = 0.0d0;
-
-    allocate(tmp1(this % nsvars)); tmp1 = 0.0d0;
-    allocate(tmp2(this % nsvars)); tmp2 = 0.0d0;
-
-    allocate(jtmp (this % nsvars, this % nsvars)); jtmp = 0.0d0;
-    allocate(jtmp1(this % nsvars, this % nsvars)); jtmp1 = 0.0d0;
-    allocate(jtmp2(this % nsvars, this % nsvars)); jtmp2 = 0.0d0;
-    allocate(jtmp3(this % nsvars, this % nsvars)); jtmp3 = 0.0d0;
-
-    if (this % second_order) then
-
-       ! Original function call
-       call this % system % assembleResidual(tmp2, &
-            & this % T(i), this % Q(kk,i,:), &
-            & this % QDOT(kk,i,:), this % QDDOT(kk,i,:))
-
-       !-----------------------------------------------------------!
-       ! Derivative of R WRT Q
-       !-----------------------------------------------------------!
-
-       qtmp(:) = this % Q(kk,i,:)
-
-       loop_vars: do k = 1, this % nsvars
-
-          ! Perturb the k-th variable
-          qtmp(k) = this % Q(kk,i,k) + small
-
-          call this % system % assembleResidual(tmp1, &
-               & this % T(i), qtmp, &
-               & this % QDOT(kk,i,:), this % QDDOT(kk,i,:))
-
-          ! Unperturb the k-th variable
-          qtmp(k) = this % Q(kk,i,k)
-
-          ! Approximate the jacobian with respect to the k-th variable
-          jtmp1(:,k) = (tmp1-tmp2)/small
-
-       end do loop_vars
-
-       ! Scale/multiply the block with the corresponding coefficient
-       alpha =  this % h * this % A(i,i)* this % h * this % A(i,i)
-       jtmp1 =  alpha*jtmp1
-
-       !-----------------------------------------------------------!
-       ! Derivative of R WRT QDOT
-       !-----------------------------------------------------------!
-
-       qdottmp(:) = this % QDOT(kk,i,:)
-
-       do k = 1, this % nsvars
-
-          ! Perturb the k-th variable
-          qdottmp(k) = this % QDOT(kk,i,k) + small
-
-          call this % system % assembleResidual(tmp1, &
-               & this % T(i), this % Q(kk,i,:), &
-               & qdottmp, this % QDDOT(kk,i,:))
-
-          ! Unperturb the k-th variable
-          qdottmp(k) = this % QDOT(kk,i,k)
-
-          jtmp2(:,k) = (tmp1-tmp2)/small
-
-       end do
-
-       ! Scale/multiply the block with the corresponding coefficient
-       beta = this % h * this % A(i,i)
-       jtmp2 = beta*jtmp2
-
-       !-----------------------------------------------------------!
-       ! Derivative of R WRT QDDOT
-       !-----------------------------------------------------------!
-
-       qddottmp(:) = this % QDDOT(kk,i,:)
-
-       do k = 1, this % nsvars
-
-          ! Perturb the k-th variable
-          qddottmp(k) = this % QDDOT(kk,i,k) + small
-
-          call this % system % assembleResidual(tmp1,&
-               & this % T(i), this % Q(kk,i,:), &
-               & this % QDOT(kk,i,:), qddottmp)
-
-          ! Unperturb the k-th variable
-          qddottmp(k) = this % QDDOT(kk,i,k)
-
-          jtmp3(:,k) = (tmp1-tmp2)/small
-
-       end do
-
-       ! Scale/multiply the block with the corresponding coefficient
-       gamma = 1.0d0
-       jtmp3 = gamma*jtmp3
-
-       ! Add the blocks together
-       jtmp = jtmp3 + jtmp2 + jtmp1 
-
-    else
-
-       ! Original function call
-       call this % system % assembleResidual(tmp2, &
-            & this % T(i), this % Q(kk,i,:), &
-            & this % QDOT(kk,i,:), this % QDDOT(kk,i,:))
-
-       !--------------------------------------------------------------!
-       ! Derivative of R WRT Q
-       !--------------------------------------------------------------!
-
-       qtmp(:) = this % Q(kk,i,:)
-
-       loopvars: do k = 1, this % nsvars
-
-          ! Perturb the k-th variable
-          qtmp(k) = this % Q(kk,i,k) + small
-
-          call this % system % assembleResidual(tmp1, &
-               & this % T(i), qtmp, &
-               & this % QDOT(kk,i,:), this % QDDOT(kk,i,:))
-
-          ! Unperturb the k-th variable
-          qtmp(k) = this % Q(kk,i,k)
-
-          ! Approximate the jacobian with respect to the k-th variable
-          jtmp1(:,k) = (tmp1-tmp2)/small
-
-       end do loopvars
-
-       ! Scale the block with the coefficient
-       beta = this % h * this % A(i,i)
-       jtmp1 =   beta*jtmp1
-
-       !--------------------------------------------------------------!
-       ! Derivative of R WRT QDOT
-       !--------------------------------------------------------------!
-
-       qdottmp(:) = this % QDOT(kk,i,:)
-
-       do k = 1, this % nsvars
-
-          ! Perturb the k-th variable
-          qdottmp(k) = this % qdot(kk,i,k) + small
-
-          call this % system % assembleResidual(tmp1, &
-               & this % T(i), this % Q(kk,i,:), &
-               & qdottmp,this % QDDOT(kk,i,:))
-
-          ! Unperturb the k-th variable
-          qdottmp(k) = this % qdot(kk,i,k)
-
-          jtmp2(:,k) = (tmp1-tmp2)/small
-
-       end do
-
-       ! Sum the jacobian components to get the total derivative
-       jtmp = jtmp2 + jtmp1 
-
-    end if ! first or second order
-
-    ! Store the jacobian for return
-    if (this % approximate_jacobian) then
-
-       exact_jac = jtmp
-
-    else
-
-       ! Complain about the error in Jacobian if there is any
-       if (maxval(abs(exact_jac - jtmp)) .gt. small) then
-          print *, "WARNING: Possible error in jacobian", &
-               & maxval(abs(exact_jac - jtmp))
-       end if
-
-    end if
-
-    deallocate(qtmp,qdottmp)
-    deallocate(tmp1,tmp2)
-    deallocate(jtmp1,jtmp2,jtmp)
-
-  end subroutine verifyJacobian
-  
   !===================================================================!
   ! The derivative of the objective function with respect to the
   ! state.
