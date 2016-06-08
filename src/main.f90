@@ -1,49 +1,43 @@
 !=====================================================================!
-! Program to test rigid body dynamics implemetation
+! Main Program for the landing event simulation
 !=====================================================================!
 
-program test
+program main
 
-  use utils
-  use rigid_body_class, only: rigid_body
-  use multibody_dynamics_class, only: multibody_dynamics
+  use iso_fortran_env, only: dp => real64
+
   use runge_kutta_integrator, only : DIRK
+  use bdf_integrator, only : BDF
+
   use myode_class, only : ODE
 
-  type(DIRK) :: integrator
+  implicit none
 
-!!$  type(multibody_dynamics), target :: falcon ! has equations from
-                                             ! multibody dynamics
+  type(DIRK) :: dirkobj
+  type(BDF)  :: bdfobj
+  type(ODE), target :: myode
 
-  type(ODE), target :: myode    ! has user supplied ODEs,
-                                ! demonstrated with a one
-                                !  DOF spring mass system
-  
-  !-------------------------------------------------------------------!
-  ! Set the physics into the integrator
-  !-------------------------------------------------------------------!
-!!$
-!!$  call integrator % setPhysicalSystem(falcon) ! mandatory
-!!$  call integrator % initialize(tfinal = 10.0d0, num_stages=3, &
-!!$       & h=0.01d0, nvars=12, second_order=.true.) ! all are optional except nvars
-!!$
-!!$  call integrator % integrate()
-!!$  call integrator % write_solution()
-!!$  call integrator % finalize()
+  call dirkobj % setPhysicalSystem(myode)
+  call dirkobj % initialize(tfinal = 25.0d0, num_stages=1, &
+       & h=0.01d0, nsvars=1, second_order=.true.) ! all are optional except nvars
+  call dirkobj % setPrintLevel(0)
+  call dirkobj % integrate()
+  !  call dirkobj % integrateBackward()
+  call dirkobj % writeSolution('dirk.dat')
+  call dirkobj % finalize()
 
-  !-------------------------------------------------------------------!
-  ! Solve an example ODE using the same DIRK scheme
-  !-------------------------------------------------------------------!
-  
-  call integrator % setPhysicalSystem(myode) ! mandatory
-  ! call integrator % setApproximateJacobian(.false.) ! optional
-  call integrator % initialize(tfinal = 10.0d0, num_stages=2, &
-       & h=0.01d0, nvars=7, second_order=.true.) ! all are optional except nvars
+  call bdfobj % setPhysicalSystem(myode)
+  call bdfobj % initialize(tfinal = 25.0d0, max_bdf_order=3, &
+       & h=0.01d0, nsvars=1, second_order=.true.) ! all are optional except nvars
+  call bdfobj % setPrintLevel(0)
+  call bdfobj % integrate()
+  ! call bdfobj % integrateBackward()
+  call bdfobj % writeSolution('bdf.dat')
+  call bdfobj % finalize()
 
-  call integrator % integrate()
-  call integrator % write_solution()
-  call integrator % finalize()
+end program
 
-end program test
+
+
 
 
