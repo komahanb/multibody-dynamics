@@ -43,17 +43,18 @@ LIBS = -lm -llapack
 #---------------------------------------------------------------------#
 # Define all the source files to compile here
 #---------------------------------------------------------------------#
-SRC  :=	 src/physics.f90 src/integrator.f90 \
-	 src/smd.f90 \
-	 src/vanderpol.f90 \
-	 src/utils.f90 src/rotation.f90 src/dynamics.f90 \
+SRC  :=	 src/interface/physics.f90 src/interface/integrator.f90 \
+         src/integrator/runge_kutta.f90 src/integrator/backward_difference.f90 \
+	 src/test/smd.f90 \
+	 src/test/vanderpol.f90 \
+	 src/dynamics/utils.f90 src/dynamics/rotation.f90 src/dynamics/dynamics.f90 \
 	 src/main.f90
 
 #-----------------------------------------------------------------------
 # define the C,C++, Fortran object files 
 #------------------------------------------------------------------------
 
-OBJ = $(patsubst src/%.f90,obj/%.o,$(SRC))
+OBJ = $(patsubst src/%.f90 src/interface/%.f90 src/integrator/%.f90 src/dynamics/%.f90 src/test/%.f90,obj/%.o,$(SRC))
 
 #------------------------------
 # Executable

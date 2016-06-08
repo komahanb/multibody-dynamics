@@ -77,7 +77,7 @@ program main
   call dirkobj % setApproximateJacobian(.false.)
   call dirkobj % initialize(tfinal = 20.0d0, num_stages=3, &
        & h=0.01d0, nsvars=2, second_order=.false.) ! all are optional except nvars
-  call dirkobj % setPrintLevel(1)
+  call dirkobj % setPrintLevel(0)
   call dirkobj % integrate()
   call dirkobj % writeSolution('vpl-dirk.dat')
   call dirkobj % finalize()
@@ -86,7 +86,7 @@ program main
   call bdfobj % setApproximateJacobian(.false.)
   call bdfobj % initialize(tfinal = 20.0d0, max_bdf_order=3, &
        & h=0.1d0, nsvars=2, second_order=.true.) ! all are optional except nvars
-  call bdfobj % setPrintLevel(1)
+  call bdfobj % setPrintLevel(0)
   call bdfobj % integrate()
   call bdfobj % writeSolution('vpl-bdf.dat')
   call bdfobj % finalize()
@@ -99,7 +99,7 @@ program main
   call dirkobj % setApproximateJacobian(.true.)
   call dirkobj % initialize(tinit = 0.0d0, tfinal = 25.0d0, num_stages=3, &
        & h=0.01d0, nsvars=12, second_order=.true.) ! all are optional except nvars
-  call dirkobj % setPrintLevel(1)
+  call dirkobj % setPrintLevel(0)
   call dirkobj % integrate()
   call dirkobj % writeSolution('freefall-dirk.dat')
   call dirkobj % finalize()
@@ -108,7 +108,7 @@ program main
   call bdfobj % setApproximateJacobian(.true.)
   call bdfobj % initialize(tfinal = 5.0d0, max_bdf_order=3, &
        & h=0.01d0, nsvars=12, second_order=.true.) ! all are optional except nvars
-  call bdfobj % setPrintLevel(1)
+  call bdfobj % setPrintLevel(0)
   call bdfobj % integrate()
   call bdfobj % writeSolution('freefall-bdf.dat')
   call bdfobj % finalize()
