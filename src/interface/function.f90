@@ -1,6 +1,6 @@
 !=====================================================================!
-! Module that contains common procedures for any physical system
-! subject to governing equations
+! Module that contains common procedures for any function of interest
+! that the user wishes to implement
 !
 ! Author: Komahan Boopathy (komahan@gatech.edu)
 !=====================================================================!
@@ -15,11 +15,11 @@ module function_class
 
    contains
 
-     procedure(interface_evaluate), deferred :: getValue    ! function value at t, X, U, Udot, Uddot
-     procedure(interface_evaluate), deferred :: getdFdX     ! partial derivative
-     procedure(interface_evaluate), deferred :: getdFdU     ! partial derivative
-     procedure(interface_evaluate), deferred :: getdFdUDot  ! partial derivative
-     procedure(interface_evaluate), deferred :: getdFdUDDot ! partial derivative
+     procedure(interface_evaluate), deferred :: getFunctionValue ! function value at t, X, U, Udot, Uddot
+     procedure(interface_evaluate), deferred :: getdFdX          ! partial derivative
+     procedure(interface_evaluate), deferred :: getdFdU          ! partial derivative
+     procedure(interface_evaluate), deferred :: getdFdUDot       ! partial derivative
+     procedure(interface_evaluate), deferred :: getdFdUDDot      ! partial derivative
 
   end type function
 
