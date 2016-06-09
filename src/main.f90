@@ -18,6 +18,8 @@ program main
   use vanderpol_class               , only : vanderpol
   use aero_elastic_oscillator_class , only : aero_elastic_oscillator
 
+  ! Import functions for derivative calculation
+  use smd_functions_class           , only : kinetic_energy
   implicit none
 
   ! Declare Integrators
@@ -30,24 +32,40 @@ program main
   type(vanderpol)              , target :: vpl        ! Vanderpol equation (2 var)
   type(multibody_dynamics)     , target :: freefall   ! Rigid body dynamics system (12 vars)
   type(aero_elastic_oscillator), target :: oscillator ! Aeroelastic oscillator (2 vars)
+
+  ! Declare functions that are used
+  type(kinetic_energy)         , target :: KE
+
+  ! Design variable array
+  real(dp), dimension(:), allocatable   :: X
   
   !-------------------------------------------------------------------!
   !                 Spring Mass Damper system                         !
   !-------------------------------------------------------------------!
 
-  call smd1obj % initialize()
+  allocate(X(1))
+
+  x(1) = 1.00d0 ! mass
+  x(2) = 0.02d0 ! damping coeff
+  x(3) = 5.00d0 ! stiffness coef
+
+  ! Set the design variable and the function of interest into the
+  ! system object
+  call smd1obj % initialize(x = x, function = KE)
+   
+  ! Solve the system from tinit to tfinal using the integrator
   
   call dirkobj % initialize(system = smd1obj, tfinal = 1.0d0, h=0.01d0, second_order=.true., num_stages=1)
-  call dirkobj % setPrintLevel(0)
-  call dirkobj % integrate()
+  call dirkobj % integrate() 
   call dirkobj % writeSolution('smd-dirk.dat')
   call dirkobj % finalize()
 
   call bdfobj % initialize(system = smd1obj, tfinal = 1.0d0, h=0.01d0, second_order=.true., max_bdf_order=2)
-  call bdfobj % setPrintLevel(0)
   call bdfobj % integrate()
   call bdfobj % writeSolution('smd-bdf.dat')
   call bdfobj % finalize()
+  
+  deallocate(X)
 
   !-------------------------------------------------------------------!
   !        Spring Mass Damper system (2 var second order)             !

@@ -35,7 +35,7 @@ contains
 
   !-------------------------------------------------------------------!
   ! Evaluate the kinetic energy for the supplied state and design
-  ! variables
+  ! variables KE = 0.5 m v^2
   ! -------------------------------------------------------------------!
   
   subroutine getFunctionValue(this, res, time, x, u, udot, uddot)
@@ -45,6 +45,8 @@ contains
     real(8), intent(in)                  :: time
     real(8), intent(in), dimension(:)    :: x, u, udot, uddot
 
+    res = 0.5d0*x(1)*udot(1)**2
+    
   end subroutine getFunctionValue
 
   !-------------------------------------------------------------------!
@@ -57,6 +59,10 @@ contains
     real(8), intent(inout), dimension(:) :: res
     real(8), intent(in)                  :: time
     real(8), intent(in), dimension(:)    :: x, u, udot, uddot
+
+    res(1) = 0.5d0*udot(1)**2 ! wrt to m
+    res(2) = 0.0d0            ! wrt to c
+    res(3) = 0.0d0            ! wrt to k
 
   end subroutine getdFdX
 
@@ -71,6 +77,10 @@ contains
     real(8), intent(in)                  :: time
     real(8), intent(in), dimension(:)    :: x, u, udot, uddot
 
+    res(1) = 0.0d0            ! wrt to u(1)
+    res(2) = 0.0d0            ! wrt to u(2)
+    res(3) = 0.0d0            ! wrt to u(3)
+
   end subroutine getdFdU
 
   !-------------------------------------------------------------------!
@@ -83,6 +93,10 @@ contains
     real(8), intent(inout), dimension(:) :: res
     real(8), intent(in)                  :: time
     real(8), intent(in), dimension(:)    :: x, u, udot, uddot
+
+    res(1) = x(1)*udot(1)     ! wrt to udot(1)
+    res(2) = 0.0d0            ! wrt to udot(2)
+    res(3) = 0.0d0            ! wrt to udot(3)
     
   end subroutine getdFdUDot
   
@@ -96,6 +110,10 @@ contains
     real(8), intent(inout), dimension(:) :: res
     real(8), intent(in)                  :: time
     real(8), intent(in), dimension(:)    :: x, u, udot, uddot
+    
+    res(1) = 0.0d0            ! wrt to uddot(1)
+    res(2) = 0.0d0            ! wrt to uddot(2)
+    res(3) = 0.0d0            ! wrt to uddot(3)
 
   end subroutine getdFdUDDot
 
