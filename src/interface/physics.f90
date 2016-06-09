@@ -6,8 +6,9 @@
 !=====================================================================!
 
 module physics_class
-  
-  use function_class, only : abstract_function
+
+  use iso_fortran_env, only : dp => real64
+  use function_class, only  : abstract_function
 
   implicit none
 
@@ -20,10 +21,15 @@ module physics_class
 
   type, abstract :: physics
      
-     class(abstract_function), pointer :: function
+     class(abstract_function) , pointer  :: function ! function of interest
+     
+     integer                             :: nSVars   ! number of state variables
+     integer                             :: nDVars   ! number of design variables
+     
+     real(dp), dimension(:), allocatable :: X        ! design variable array of length (ndvars)
 
-   contains
-
+   contains  
+     
      procedure(residual_assembly_interface), deferred :: assembleResidual
      procedure(jacobian_assembly_interface), deferred :: assembleJacobian
      procedure(initial_condition_interface), deferred :: getInitialStates
