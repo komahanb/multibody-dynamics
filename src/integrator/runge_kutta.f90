@@ -569,7 +569,7 @@ contains
   ! DIRK
   !===================================================================!
 
-  subroutine computeStageStateValues(this, q, qdot)
+  subroutine computeStageStateValues( this, q, qdot )
 
     class(DIRK)                                    :: this
     real(dp), intent(in), dimension(:,:)           :: q
@@ -593,12 +593,14 @@ contains
        if (this % second_order) then
           
           ! guess qddot
-          if ( k .eq. 2 .and. j .eq. 1) then
+          if (k .eq. 2) then ! initialize with a starting value
              this % QDDOT(k,j,:) = 1.0d0
-          else if ( k .eq. 2 .and. j .gt. 1) then
-             this % QDDOT(k,j,:) = this % UDDOT(k-1,:)
-          else
-             this % QDDOT(k,j,:) = this % QDDOT(k,j-1,:)
+          else 
+             if (j .eq. 1) then ! copy previous global state
+                this % QDDOT(k,j,:) = this % UDDOT(k-1,:)
+             else ! copy previous local state
+                this % QDDOT(k,j,:) = this % QDDOT(k,j-1,:)
+             end if
           end if
 
           ! compute the stage velocities for the guessed QDDOT
@@ -617,12 +619,14 @@ contains
        else
 
           ! guess qdot
-          if ( k .eq. 2 .and. j .eq. 1) then
+          if (k .eq. 2) then ! initialize with a starting value
              this % QDOT(k,j,:) = 1.0d0
-          else if ( k .eq. 2 .and. j .gt. 1) then
-             this % QDOT(k,j,:) = this % UDOT(k-1,:)
-          else
-             this % QDOT(k,j,:) = this % QDOT(k,j-1,:)
+          else 
+             if (j .eq. 1) then ! copy previous global state
+                this % QDOT(k,j,:) = this % UDOT(k-1,:)
+             else ! copy previous local state
+                this % QDOT(k,j,:) = this % QDOT(k,j-1,:)
+             end if
           end if
 
           ! compute the stage states for the guessed 

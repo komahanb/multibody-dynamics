@@ -72,7 +72,7 @@ contains
   ! Note: alpha, beta and gamma are scalars that need to be multiplied
   ! with the partial derivatives DRDQ, DRDQdot and DRDQddot
   ! respectively.
-  ! -------------------------------------------------------------------!
+  !-------------------------------------------------------------------!
 
   subroutine assembleJacobian( this, jac, alpha, beta, gamma, &
        & time, u, udot, uddot )
