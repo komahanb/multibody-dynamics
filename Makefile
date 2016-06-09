@@ -10,9 +10,9 @@ FC = gfortran
 #------------------------------
 # Define any compile-time flags
 #------------------------------
-CC_FLAGS =  -g #-Wall
-CX_FLAGS =  -g #-Wall
-FC_FLAGS =  -g #-fbounds-check -ffree-form -Wall -cpp -dM -Wno-unused
+CC_FLAGS =  #-g #-Wall
+CX_FLAGS =  #-g #-Wall
+FC_FLAGS =  #-fbounds-check -ffree-form -Wall -cpp -dM -Wno-unused
 
 #------------------------------
 # Define the suffixes in use
@@ -47,6 +47,7 @@ SRC  :=	 src/interface/physics.f90 src/interface/integrator.f90 \
          src/integrator/runge_kutta.f90 src/integrator/backward_difference.f90 \
 	 src/test/smd.f90 \
 	 src/test/vanderpol.f90 \
+         src/test/aero_elastic_oscillator.f90 \
 	 src/dynamics/utils.f90 src/dynamics/rotation.f90 src/dynamics/dynamics.f90 \
 	 src/main.f90
 

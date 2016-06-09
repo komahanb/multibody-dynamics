@@ -199,7 +199,7 @@ contains
     integer, allocatable, dimension(:)    :: ipiv
     integer                               ::  info, size
    
- ! Norms to tracking progress
+ ! Norms for tracking progress
     real(dp)                              :: abs_res_norm
     real(dp)                              :: rel_res_norm
     real(dp)                              :: init_norm
@@ -252,6 +252,12 @@ contains
              ! complain about the error in Jacobian if there is any
              jac_err = maxval(abs(fd_jac - jac))
              if ( jac_err .gt. 1.0d-6) then
+                print *, "q     =", q
+                print *, "qdot  =", qdot
+                print *, "qddot =", qddot
+                print *, "a,b,c =", alpha, beta, gamma
+                print *, "J     =", jac
+                print *, "Jhat  =", fd_jac
                 print *, "WARNING: Possible error in jacobian", jac_err
              end if
              
@@ -327,7 +333,7 @@ contains
     real(dp), allocatable, dimension(:)     :: R, Rtmp            ! original residual and perturbed residual
 
     ! Scalars
-    real(dp)                                :: dh = 1.0d-5        ! finite-diff step size
+    real(dp)                                :: dh = 1.0d-6        ! finite-diff step size
     real(dp), intent(in)                    :: alpha, beta, gamma ! linearization coefficients
     integer                                 :: m                  ! loop variables
 
