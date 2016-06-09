@@ -35,15 +35,13 @@ program main
   !                 Spring Mass Damper system                         !
   !-------------------------------------------------------------------!
   
-  call dirkobj % setPhysicalSystem(smd1obj)
-  call dirkobj % initialize(tfinal = 1.0d0, num_stages=1, h=0.01d0, nsvars=1, second_order=.true.)
+  call dirkobj % initialize(system = smd1obj, tfinal = 1.0d0, h=0.01d0, second_order=.true., num_stages=1)
   call dirkobj % setPrintLevel(0)
   call dirkobj % integrate()
   call dirkobj % writeSolution('smd-dirk.dat')
   call dirkobj % finalize()
 
-  call bdfobj % setPhysicalSystem(smd1obj)
-  call bdfobj % initialize(tfinal = 1.0d0, max_bdf_order=3, h=0.01d0, nsvars=1, second_order=.true.)
+  call bdfobj % initialize(system = smd1obj, tfinal = 1.0d0, h=0.01d0, second_order=.true., max_bdf_order=2)
   call bdfobj % setPrintLevel(0)
   call bdfobj % integrate()
   call bdfobj % writeSolution('smd-bdf.dat')
@@ -53,15 +51,13 @@ program main
   !        Spring Mass Damper system (2 var second order)             !
   !-------------------------------------------------------------------!
 
-  call dirkobj % setPhysicalSystem(smd2obj)
-  call dirkobj % initialize(tfinal = 1.0d0, num_stages=1, h=0.01d0, nsvars=2, second_order=.true.)
+  call dirkobj % initialize(system = smd2obj, tfinal = 1.0d0, h=0.01d0, second_order=.true., num_stages=1)
   call dirkobj % setPrintLevel(0)
   call dirkobj % integrate()
   call dirkobj % writeSolution('smd2-dirk.dat')
   call dirkobj % finalize()
 
-  call bdfobj % setPhysicalSystem(smd2obj)
-  call bdfobj % initialize(tfinal = 1.0d0, max_bdf_order=3, h=0.01d0, nsvars=2, second_order=.true.)
+  call bdfobj % initialize(system = smd2obj, tfinal = 1.0d0, h=0.01d0, second_order=.true., max_bdf_order=2)
   call bdfobj % setPrintLevel(0)
   call bdfobj % integrate()
   call bdfobj % writeSolution('smd2-bdf.dat')
@@ -71,18 +67,12 @@ program main
   !                 Vanderpol Equation ( 3 variables)
   !-------------------------------------------------------------------!
 
-  call dirkobj % setPhysicalSystem(vpl)
-  call dirkobj % setApproximateJacobian(.false.)
-  call dirkobj % initialize(tfinal = 20.0d0, num_stages=3, h=0.01d0, nsvars=2, second_order=.false.)
-  call dirkobj % setPrintLevel(0)
+  call dirkobj % initialize(system = vpl, tfinal = 20.0d0, h=0.01d0, second_order=.true., num_stages=3)
   call dirkobj % integrate()
   call dirkobj % writeSolution('vpl-dirk.dat')
   call dirkobj % finalize()
 
-  call bdfobj % setPhysicalSystem(vpl)
-  call bdfobj % setApproximateJacobian(.false.)
-  call bdfobj % initialize(tfinal = 20.0d0, max_bdf_order=3, h=0.1d0, nsvars=2, second_order=.true.)
-  call bdfobj % setPrintLevel(0)
+  call bdfobj % initialize(system = vpl, tfinal = 20.0d0, h=0.01d0, second_order=.true., max_bdf_order=3)
   call bdfobj % integrate()
   call bdfobj % writeSolution('vpl-bdf.dat')
   call bdfobj % finalize()
@@ -91,18 +81,14 @@ program main
   !                 Rigidbody Dynamics (12 variables)                 !
   !-------------------------------------------------------------------!
 
-  call dirkobj % setPhysicalSystem(freefall)
+  call dirkobj % initialize(system = freefall, tfinal = 5.0d0, h=0.01d0, second_order=.true., num_stages=3)
   call dirkobj % setApproximateJacobian(.true.)
-  call dirkobj % initialize(tinit = 0.0d0, tfinal = 25.0d0, num_stages=3, h=0.01d0, nsvars=12, second_order=.true.)
-  call dirkobj % setPrintLevel(0)
   call dirkobj % integrate()
   call dirkobj % writeSolution('freefall-dirk.dat')
   call dirkobj % finalize()
 
-  call bdfobj % setPhysicalSystem(freefall)
+  call bdfobj % initialize(system = freefall, tfinal = 5.0d0, h=0.01d0, second_order=.true., max_bdf_order=3)
   call bdfobj % setApproximateJacobian(.true.)
-  call bdfobj % initialize(tfinal = 5.0d0, max_bdf_order=3, h=0.01d0, nsvars=12, second_order=.true.)
-  call bdfobj % setPrintLevel(0)
   call bdfobj % integrate()
   call bdfobj % writeSolution('freefall-bdf.dat')
   call bdfobj % finalize()
@@ -111,18 +97,12 @@ program main
   !                 Aeroelastic Oscillator (2 variables)              !
   !-------------------------------------------------------------------!
 
-  call dirkobj % setPhysicalSystem(oscillator)
-  call dirkobj % setApproximateJacobian(.false.)
-  call dirkobj % initialize(tinit = 0.0d0, tfinal = 50.0d0, num_stages=3, h=0.001d0, nsvars=2, second_order=.true.)
-  call dirkobj % setPrintLevel(0)
+  call dirkobj % initialize(system = oscillator, tinit = 0.0d0, tfinal = 50.0d0,  h=0.001d0, second_order=.true., num_stages=3)
   call dirkobj % integrate()
   call dirkobj % writeSolution('oscillator-dirk.dat')
   call dirkobj % finalize()
 
-  call bdfobj % setPhysicalSystem(oscillator)
-  call bdfobj % setApproximateJacobian(.false.)
-  call bdfobj % initialize(tfinal = 50.0d0, max_bdf_order=2, h=0.001d0, nsvars=2, second_order=.true.)
-  call bdfobj % setPrintLevel(0)
+  call bdfobj % initialize(system = oscillator, tfinal = 50.0d0, h=0.001d0, second_order=.true., max_bdf_order=2)
   call bdfobj % integrate()
   call bdfobj % writeSolution('oscillator-bdf.dat')
   call bdfobj % finalize()

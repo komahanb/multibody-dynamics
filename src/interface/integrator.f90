@@ -139,11 +139,11 @@ contains
 
   subroutine writeSolution(this, filename)
     
-    class(integrator)                       :: this
-    character(len=32), OPTIONAL, intent(in) :: filename
-    character(len=7), parameter             :: directory = "output/"
-    character(len=39)                       :: path=""
-    integer                                 :: k, j, ierr
+    class(integrator)                      :: this
+    character(len=*), OPTIONAL, intent(in) :: filename
+    character(len=7), parameter            :: directory = "output/"
+    character(len=32)                      :: path = ""
+    integer                                :: k, j, ierr
     
     path = trim(path)
 

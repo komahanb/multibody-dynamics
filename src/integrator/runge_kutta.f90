@@ -9,6 +9,7 @@ module runge_kutta_integrator
 
   use iso_fortran_env , only : dp => real64
   use integrator_class, only : integrator
+  use physics_class,    only : physics
 
   implicit none
 
@@ -138,11 +139,11 @@ contains
   ! Initialize the dirk datatype and construct the tableau
   !===================================================================!
   
-  subroutine initialize(this, nsvars, num_stages, tinit, tfinal, h, second_order)
+  subroutine initialize(this, system, tinit, tfinal, h, second_order, num_stages)
     
     class(RK)                       :: this
+    class(physics), target :: system
     integer  , OPTIONAL, intent(in) :: num_stages
-    integer  , OPTIONAL, intent(in) :: nsvars
     real(dp) , OPTIONAL, intent(in) :: tinit, tfinal
     real(dp) , OPTIONAL, intent(in) :: h
     logical  , OPTIONAL, intent(in) :: second_order
@@ -150,6 +151,18 @@ contains
     print *, "======================================"
     print *, ">> Diagonally-Implicit-Runge-Kutta  <<"
     print *, "======================================"
+
+    !-----------------------------------------------------------------!
+    ! Set the physical system in to the integrator                    !
+    !-----------------------------------------------------------------!
+    
+    call this % setPhysicalSystem(system)
+
+    !-----------------------------------------------------------------!
+    ! Fetch the number of state variables from the system object
+    !-----------------------------------------------------------------!
+    this % nsvars = system % num_state_vars
+    print '("  >> Number of variables    : ",i4)', this % nsvars
 
     !-----------------------------------------------------------------!
     ! Set the order of the governing equations
@@ -191,15 +204,6 @@ contains
        this % h = h 
     end if
     print '("  >> Step size              : ",E9.3)', this % h
-    
-    !-----------------------------------------------------------------!
-    ! Set the user supplied number of variables
-    !-----------------------------------------------------------------!
-
-    if (present(nsvars)) then
-       this % nsvars = nsvars 
-    end if
-    print '("  >> Number of variables    : ",i4)', this % nsvars
 
     !-----------------------------------------------------------------!
     ! Find the number of time steps required during integration

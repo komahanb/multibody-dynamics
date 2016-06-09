@@ -21,19 +21,19 @@ module physics_class
 
   type, abstract :: physics
      
-     class(abstract_function) , pointer  :: function ! function of interest
-     
-     integer                             :: nSVars   ! number of state variables
-     integer                             :: nDVars   ! number of design variables
-     
-     real(dp), dimension(:), allocatable :: X        ! design variable array of length (ndvars)
-
+     class(abstract_function) , pointer  :: function        ! function of interest
+     real(dp), dimension(:), allocatable :: X               ! design variable array of length (ndvars)
+     integer                             :: num_state_vars  ! number of state variables
+     integer                             :: num_design_vars ! number of design variables
+    
    contains  
      
      procedure(residual_assembly_interface), deferred :: assembleResidual
      procedure(jacobian_assembly_interface), deferred :: assembleJacobian
      procedure(initial_condition_interface), deferred :: getInitialStates
 
+     procedure :: setFunction
+     
   end type physics
 
   interface
@@ -71,7 +71,7 @@ module physics_class
      end subroutine jacobian_assembly_interface
      
      !----------------------------------------------------------------!
-     ! Interface for supplying the initial condition to the integrator
+     ! Interface for supplying the initial condition to the integrator!
      !----------------------------------------------------------------!
      
      subroutine initial_condition_interface(this, time, u, udot)
@@ -85,5 +85,20 @@ module physics_class
      end subroutine initial_condition_interface
 
   end interface
+
+contains
+  
+  !===================================================================!
+  ! Set the function created into the system                          !
+  !===================================================================!
+  
+  subroutine setFunction(this, func)
+    
+    class(physics)                   :: this
+    class(abstract_function), target :: func
+
+    this % function => func
+
+  end subroutine setFunction
 
 end module physics_class
