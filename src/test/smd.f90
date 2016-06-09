@@ -5,8 +5,11 @@
 
 module spring_mass_damper_class
 
-  use physics_class, only : physics
-  
+  use iso_fortran_env , only : dp => real64
+
+  use physics_class,  only : physics
+  use function_class, only : abstract_function
+
   implicit none
   
   private
@@ -26,11 +29,17 @@ module spring_mass_damper_class
      real(8) :: c = 0.02d0
      real(8) :: k = 5.0d0
 
+     integer :: num_state_vars  = 1 ! number of state variables
+     integer :: num_design_vars = 0 ! number of design variables
+
    contains
 
+     procedure :: initialize
+     procedure :: setDesignVars
      procedure :: assembleResidual
      procedure :: assembleJacobian
      procedure :: getInitialStates
+     procedure :: getNumStateVars
 
   end type smd1
 
@@ -43,15 +52,61 @@ module spring_mass_damper_class
      ! Define constants and other parameters needed for residual and
      ! jacobian assembly here
 
+     integer :: num_state_vars  = 2 ! number of state variables
+     integer :: num_design_vars = 0 ! number of design variables
+
    contains
 
+     procedure :: initialize       => initialize2
+     procedure :: setDesignVars    => setDesignVars2
      procedure :: assembleResidual => assembleResidual2
      procedure :: assembleJacobian => assembleJacobian2
      procedure :: getInitialStates => getInitialStates2
+     procedure :: getNumStateVars  => getNumStateVars2
 
   end type smd2
 
 contains
+
+  !-------------------------------------------------------------------!
+  ! Constructor for the spring mass damper system 
+  !-------------------------------------------------------------------!
+  
+  subroutine initialize(this, x, function)
+
+    class(smd1)                                 :: this
+    class(abstract_function), target, OPTIONAL  :: function
+    real(8), intent(in), dimension(:), OPTIONAl :: x
+
+    ! Set the number of state variables
+    this % num_state_vars = 1
+
+    if (present(x)) then
+       this % num_design_vars = size(x)
+       call this % setDesignVars(x)
+    end if
+
+  end subroutine initialize
+
+  !===================================================================!
+  ! Sets the design variables into the system
+  !===================================================================!
+  
+  subroutine setDesignVars(this, x)
+
+    class(smd1)                        :: this
+    real(8), intent(in), dimension(:)  :: x
+       
+    ! Overwrite the values to supplied ones
+    if (this % num_design_vars .eq. 1) then 
+       this % m = x(1)
+    else if (this % num_design_vars .eq. 2) then
+       this % m = x(1); this % c = x(2);
+    else if (this % num_design_vars .eq. 3) then
+       this % m = x(1); this % c = x(2); this % K = x(3);          
+    end if
+
+  end subroutine setDesignVars
 
   !-------------------------------------------------------------------!
   ! Residual assembly at each time step. This is a mandary function
@@ -102,7 +157,7 @@ contains
     jac(1,1) = gamma * this % m + beta * this % c + alpha * this % k
 
   end subroutine assembleJacobian
-
+ 
   !---------------------------------------------------------------------!
   ! Sets the initial condition for use in the integator. If first order
   ! system just set initial Q, if a second order system set initial Q
@@ -119,6 +174,50 @@ contains
     u(1) = 1.0d0
 
   end subroutine getInitialStates
+  
+  !===================================================================!
+  ! Return the number of state variables
+  !===================================================================!
+  
+  function getNumStateVars(this)
+
+    class(smd1) :: this
+    integer     :: getNumStateVars
+
+    getNumStateVars = this % num_state_vars
+
+  end function getNumStateVars
+
+  !-------------------------------------------------------------------!
+  ! Constructor for the spring mass damper system 
+  !-------------------------------------------------------------------!
+  
+  subroutine initialize2(this, x, function)
+
+    class(smd2)                                 :: this
+    class(abstract_function), target, OPTIONAL  :: function
+    real(8), intent(in), dimension(:), OPTIONAl :: x
+
+    ! Set the number of state variables
+    this % num_state_vars = 2
+
+    if (present(x)) then
+       this % num_design_vars = size(x)
+       call this % setDesignVars(x)
+    end if
+
+  end subroutine initialize2
+
+  !===================================================================!
+  ! Sets the design variables into the system
+  !===================================================================!
+  
+  subroutine setDesignVars2(this, x)
+
+    class(smd2)                        :: this
+    real(8), intent(in), dimension(:)  :: x
+
+  end subroutine setDesignVars2
 
   !-------------------------------------------------------------------!
   ! Residual assembly at each time step. This is a mandary function
@@ -222,6 +321,19 @@ contains
     u(2) = 2.0d0
 
   end subroutine getInitialStates2
+  
+  !===================================================================!
+  ! Return the number of state variables
+  !===================================================================!
+  
+  function getNumStateVars2(this)
+
+    class(smd2) :: this
+    integer     :: getNumStateVars2
+
+    getNumStateVars2 = this % num_state_vars
+
+  end function getNumStateVars2
   
 end module spring_mass_damper_class
 

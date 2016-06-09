@@ -8,8 +8,10 @@
 module aero_elastic_oscillator_class
   
   use iso_fortran_env , only : dp => real64
-  use physics_class   , only : physics
-  
+
+  use physics_class,  only : physics
+  use function_class, only : abstract_function
+
   implicit none
 
   private
@@ -26,17 +28,63 @@ module aero_elastic_oscillator_class
      ! jacobian assembly here
 
      real(dp) :: Q = 8.0d0 ! reduced dynamic pressure
-     
+
+     integer  :: num_state_vars  = 1
+     integer  :: num_design_vars = 0
+
    contains
 
+     procedure :: initialize
+     procedure :: setDesignVars
      procedure :: assembleResidual
      procedure :: assembleJacobian
      procedure :: getInitialStates
-     
+     procedure :: getNumStateVars
+
   end type aero_elastic_oscillator
 
 contains
   
+  !---------------------------------------------------------------------!
+  ! Constructor for the aero elastic oscillator
+  !---------------------------------------------------------------------!
+  
+  subroutine initialize(this, x, function)
+
+    class(aero_elastic_oscillator)              :: this
+    class(abstract_function), target, OPTIONAL  :: function
+    real(8), intent(in), dimension(:), OPTIONAl :: x
+
+    ! Set the number of state variables
+    this % num_state_vars = 2
+
+    if (present(x)) then
+       this % num_design_vars = size(x)
+       call this % setDesignVars(x)
+    end if
+
+  end subroutine initialize
+
+  !===================================================================!
+  ! Sets the design variables into the system
+  !===================================================================!
+  
+  subroutine setDesignVars(this, x)
+
+    class(aero_elastic_oscillator)     :: this
+    real(8), intent(in), dimension(:)  :: x
+
+    ! Overwrite the values to supplied ones
+    if (this % num_design_vars .eq. 1) then 
+
+    else if (this % num_design_vars .eq. 2) then
+
+    else if (this % num_design_vars .eq. 3) then
+
+    end if
+
+  end subroutine setDesignVars
+
   !-------------------------------------------------------------------!
   ! Residual assembly at each time step. 
   ! u(1) is the plunging state of the oscillator
@@ -151,5 +199,18 @@ contains
     
   end subroutine getInitialStates
  
+  !===================================================================!
+  ! Return the number of state variables
+  !===================================================================!
+  
+  function getNumStateVars(this)
+
+    class(aero_elastic_oscillator) :: this
+    integer          :: getNumStateVars
+
+    getNumStateVars = this % num_state_vars
+
+  end function getNumStateVars
+
 end Module aero_elastic_oscillator_class
 

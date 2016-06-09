@@ -5,7 +5,10 @@
 
 Module vanderpol_class
 
-  use physics_class, only : physics
+  use iso_fortran_env , only : dp => real64
+
+  use physics_class,  only : physics
+  use function_class, only : abstract_function
   
   implicit none
 
@@ -16,22 +19,69 @@ Module vanderpol_class
   !-------------------------------------------------------------------!
   ! Type that implements vanderpol equations in first order form
   !-------------------------------------------------------------------!
-
+  
   type, extends(physics) :: vanderpol
 
      ! Define constants and other parameters needed for residual and
      ! jacobian assembly here
-     
+
+     integer  :: num_state_vars  = 2
+     integer  :: num_design_vars = 0
+
    contains
 
+     procedure :: initialize
+     procedure :: setDesignVars
      procedure :: assembleResidual
      procedure :: assembleJacobian
      procedure :: getInitialStates
-     
+     procedure :: getNumStateVars
+
   end type vanderpol
 
 contains
   
+  !---------------------------------------------------------------------!
+  ! Constructor for the vanderpol system
+  !---------------------------------------------------------------------!
+
+  subroutine initialize(this, x, function)
+
+    class(vanderpol)                            :: this
+    class(abstract_function), target, OPTIONAL  :: function
+    real(8), intent(in), dimension(:), OPTIONAl :: x
+
+
+    ! Set the number of state variables
+    this % num_state_vars = 2
+
+    if (present(x)) then
+       this % num_design_vars = size(x)
+       call this % setDesignVars(x)
+    end if
+
+  end subroutine initialize
+
+  !===================================================================!
+  ! Sets the design variables into the system
+  !===================================================================!
+  
+  subroutine setDesignVars(this, x)
+
+    class(vanderpol)                   :: this
+    real(8), intent(in), dimension(:)  :: x
+
+    ! Overwrite the values to supplied ones
+    if (this % num_design_vars .eq. 1) then 
+
+    else if (this % num_design_vars .eq. 2) then
+
+    else if (this % num_design_vars .eq. 3) then
+
+    end if
+
+  end subroutine setDesignVars
+
   !-------------------------------------------------------------------!
   ! Residual assembly at each time step. This is a mandary function
   ! that the user needs to implement to use the integration
@@ -126,6 +176,19 @@ contains
     u(2) = 0.0d0
 
   end subroutine getInitialStates
+
+  !===================================================================!
+  ! Return the number of state variables
+  !===================================================================!
+  
+  function getNumStateVars(this)
+
+    class(vanderpol) :: this
+    integer          :: getNumStateVars
+
+    getNumStateVars = this % num_state_vars
+
+  end function getNumStateVars
 
 End Module vanderpol_class
 

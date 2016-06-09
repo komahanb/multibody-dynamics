@@ -131,8 +131,9 @@ contains
     !-----------------------------------------------------------------!
     ! Fetch the number of state variables from the system object
     !-----------------------------------------------------------------!
-    this % nsvars = system % num_state_vars
+    this % nsvars = system % getNumStateVars()
     print '("  >> Number of variables    : ",i4)', this % nsvars
+    if (.not.(this % nsvars .gt. 0)) stop ">> Error: Zero state variable. Stopping."
 
     !-----------------------------------------------------------------!
     ! Set the order of the governing equations

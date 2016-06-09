@@ -34,6 +34,8 @@ program main
   !-------------------------------------------------------------------!
   !                 Spring Mass Damper system                         !
   !-------------------------------------------------------------------!
+
+  call smd1obj % initialize()
   
   call dirkobj % initialize(system = smd1obj, tfinal = 1.0d0, h=0.01d0, second_order=.true., num_stages=1)
   call dirkobj % setPrintLevel(0)
@@ -51,6 +53,8 @@ program main
   !        Spring Mass Damper system (2 var second order)             !
   !-------------------------------------------------------------------!
 
+  call smd2obj % initialize()
+
   call dirkobj % initialize(system = smd2obj, tfinal = 1.0d0, h=0.01d0, second_order=.true., num_stages=1)
   call dirkobj % setPrintLevel(0)
   call dirkobj % integrate()
@@ -66,6 +70,8 @@ program main
   !-------------------------------------------------------------------!
   !                 Vanderpol Equation ( 3 variables)
   !-------------------------------------------------------------------!
+  
+  call vpl % initialize()
 
   call dirkobj % initialize(system = vpl, tfinal = 20.0d0, h=0.01d0, second_order=.true., num_stages=3)
   call dirkobj % integrate()
@@ -80,6 +86,8 @@ program main
   !-------------------------------------------------------------------!
   !                 Rigidbody Dynamics (12 variables)                 !
   !-------------------------------------------------------------------!
+
+  call freefall % initialize()
 
   call dirkobj % initialize(system = freefall, tfinal = 5.0d0, h=0.01d0, second_order=.true., num_stages=3)
   call dirkobj % setApproximateJacobian(.true.)
@@ -97,6 +105,8 @@ program main
   !                 Aeroelastic Oscillator (2 variables)              !
   !-------------------------------------------------------------------!
 
+  call oscillator % initialize()
+
   call dirkobj % initialize(system = oscillator, tinit = 0.0d0, tfinal = 50.0d0,  h=0.001d0, second_order=.true., num_stages=3)
   call dirkobj % integrate()
   call dirkobj % writeSolution('oscillator-dirk.dat')
@@ -107,4 +117,4 @@ program main
   call bdfobj % writeSolution('oscillator-bdf.dat')
   call bdfobj % finalize()
 
-end program
+end program main

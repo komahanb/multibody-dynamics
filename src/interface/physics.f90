@@ -21,10 +21,7 @@ module physics_class
 
   type, abstract :: physics
      
-     class(abstract_function) , pointer  :: function        ! function of interest
-     real(dp), dimension(:), allocatable :: X               ! design variable array of length (ndvars)
-     integer                             :: num_state_vars  ! number of state variables
-     integer                             :: num_design_vars ! number of design variables
+     class(abstract_function) , pointer  :: function ! function of interest
     
    contains  
      
@@ -32,12 +29,39 @@ module physics_class
      procedure(jacobian_assembly_interface), deferred :: assembleJacobian
      procedure(initial_condition_interface), deferred :: getInitialStates
 
+     procedure(InterfaceInitialize), deferred      :: initialize
+     procedure(InterfaceSetDesignVars), deferred   :: setDesignVars
+     procedure(InterfaceGetNumStateVars), deferred :: getNumStateVars
+
      procedure :: setFunction
      
   end type physics
-
+  
   interface
+     
+     !----------------------------------------------------------------!
+     ! Interface for initialization tasks
+     !----------------------------------------------------------------!
+     
+     subroutine InterfaceInitialize(this,  x, function)
+       import physics
+       import abstract_function
+       class(physics) :: this
+       class(abstract_function), target, OPTIONAL  :: function
+       real(8), intent(in), dimension(:), OPTIONAl :: x
+     end subroutine InterfaceInitialize
 
+     !----------------------------------------------------------------!
+     ! User implementation of how design variables are mapped to the
+     ! local paramters
+     ! ----------------------------------------------------------------!
+     
+     subroutine InterfaceSetDesignVars(this, x)
+       import physics
+       class(physics) :: this
+       real(8), intent(in), dimension(:) :: x
+     end subroutine InterfaceSetDesignVars
+     
      !----------------------------------------------------------------!
      ! Interface for residual assembly at each time step
      !----------------------------------------------------------------!
@@ -83,6 +107,16 @@ module physics_class
        real(8), intent(inout), dimension(:) :: u, udot
 
      end subroutine initial_condition_interface
+
+     !----------------------------------------------------------------!
+     ! Return the number of state variables
+     !----------------------------------------------------------------!
+     
+     function InterfaceGetNumStateVars(this)
+       import physics
+       class(physics) :: this
+       integer :: InterfaceGetNumStateVars
+     end function InterfaceGetNumStateVars
 
   end interface
 

@@ -301,6 +301,9 @@ module multibody_dynamics_class
        & norm, array, dp
 
   use rigid_body_class, only : rigid_body
+  
+  use physics_class,  only : physics
+  use function_class, only : abstract_function
 
   implicit none
 
@@ -314,17 +317,54 @@ module multibody_dynamics_class
   
   type, extends(physics) :: multibody_dynamics
      
-     type(rigid_body) :: body
-     
+     integer          :: num_state_vars
+     integer          :: num_design_vars    
+     integer          :: num_bodies
+     type(rigid_body) :: body ! might wanna create an array of bodies
+
    contains
      
+     procedure :: initialize
+     procedure :: setDesignVars
      procedure :: assembleResidual
      procedure :: assembleJacobian
      procedure :: getInitialStates
+     procedure :: getNumStateVars
 
   end type multibody_dynamics
   
 contains
+
+  !---------------------------------------------------------------------!
+  ! Constructor for the aero elastic oscillator
+  !---------------------------------------------------------------------!
+  
+  subroutine initialize(this, x, function)
+
+    class(multibody_dynamics)                   :: this
+    class(abstract_function), target, OPTIONAL  :: function
+    real(8), intent(in), dimension(:), OPTIONAl :: x
+
+    ! Set the number of state variables
+    this % num_state_vars = 12
+
+    if (present(x)) then
+       this % num_design_vars = size(x)
+       call this % setDesignVars(x)
+    end if
+
+  end subroutine initialize
+
+  !===================================================================!
+  ! Sets the design variables into the system
+  !===================================================================!
+
+  subroutine setDesignVars(this, x)
+
+    class(multibody_dynamics)         :: this
+    real(8), intent(in), dimension(:) :: x
+
+  end subroutine setDesignVars
 
   !-------------------------------------------------------------------!
   ! Residual assembly at each time step
@@ -391,5 +431,18 @@ contains
     call this % body % set(1.0d0, u, udot)
 
   end subroutine getInitialStates
+  
+  !===================================================================!
+  ! Return the number of state variables
+  !===================================================================!
+  
+  function getNumStateVars(this)
 
+    class(multibody_dynamics) :: this
+    integer                   :: getNumStateVars
+    
+    getNumStateVars = this % num_state_vars
+
+  end function getNumStateVars
+  
 end module multibody_dynamics_class
