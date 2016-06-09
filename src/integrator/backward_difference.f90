@@ -24,11 +24,11 @@ module bdf_integrator
 
      integer                                :: max_bdf_order
      real(dp) , dimension(:), allocatable   :: beta, gamm
-     real(dp) , dimension(:,:), allocatable :: psi, rhs
+     real(dp) , dimension(:,:), allocatable :: psi
 
    contains
      
-     private
+     private 
 
      ! Routines for integration
      procedure, public :: initialize, finalize, integrate     
@@ -36,23 +36,54 @@ module bdf_integrator
      procedure         :: getOrderCoeff
 
      ! Routines for adjoint gradient
-     procedure         :: adjointSolve, computeTotalDerivative
+     procedure         :: computeTotalDerivative
+     procedure         :: marchBackwards
      procedure, public :: getAdjointGradient
+     procedure, public :: assembleRHS
 
   end type BDF
 
 contains
-  
-  !===================================================================!
-  ! Subroutine that integrates backwards in time to compute the
-  ! lagrange multipliers (adjoint variables for the function)
-  !===================================================================!
-  
-  subroutine adjointSolve(this)
 
-    class(BDF)               :: this
+  !===================================================================!
+  ! Subroutine that marches backwards in time to compute the lagrange
+  ! multipliers (adjoint variables for the function)
+  ! ===================================================================!
+  
+  subroutine marchBackwards(this)
 
-  end subroutine adjointSolve
+    class(BDF) :: this
+    integer    :: k, dummy
+    real(dp)   :: alpha, beta, gamma
+    
+    do k = this % num_steps, 2, -1
+
+       !--------------------------------------------------------------!
+       ! Determine the linearization coefficients for the Jacobian
+       !--------------------------------------------------------------!
+       
+       call this % getOrderCoeff(dummy, this % beta, 1)
+       call this % getOrderCoeff(dummy, this % gamm, 2)
+       
+       alpha = 1.0d0       
+       beta  = this % beta(1)/this % h
+       
+       if ( this % second_order ) then
+          gamma = this % gamm(1)/this % h/this % h
+       else 
+          gamma = 0.0d0
+       end if
+
+       !--------------------------------------------------------------!
+       ! Solve the adjoint equation at each step
+       !--------------------------------------------------------------!
+
+       call this % adjointSolve(this % psi(k,:), alpha, beta, gamma,&
+            & this % time(k), this % u(k,:), this % udot(k,:), this % uddot(k,:))
+
+    end do
+
+  end subroutine marchBackwards
 
   !===================================================================!
   ! Compute the total derivative of the function with respect to the
@@ -94,8 +125,8 @@ contains
     ! set design variable
     !-----------------------------------------------------------------!
 
-    call this % adjointSolve()
-
+    call this % marchBackwards()
+    
     !-----------------------------------------------------------------!
     ! Compute the total derivative of the function with respect to the
     ! design variables
@@ -187,9 +218,6 @@ contains
     ! Allocate space for the RHS of adjoint equations
     !-----------------------------------------------------------------!
 
-    allocate(this % RHS(this % num_steps, this % nsvars))
-    this % RHS = 0.0d0
-
     allocate(this % psi(this % num_steps, this % nsvars))
     this % psi = 0.0d0
 
@@ -238,7 +266,6 @@ contains
     if(allocated(this % U)) deallocate(this % U)
     if(allocated(this % time)) deallocate(this % time)
 
-    if(allocated(this % RHS)) deallocate(this % RHS)
     if(allocated(this % psi)) deallocate(this % psi)
 
     if(allocated(this % beta)) deallocate(this % beta)
@@ -407,5 +434,19 @@ contains
     end if
 
   end subroutine getOrderCoeff
+
+  !===================================================================!
+  ! Function that puts together the right hand side of the adjoint
+  ! equation into the supplied rhs vector.
+  !===================================================================!
+  
+  subroutine assembleRHS(this, rhs)
+
+    class(BDF)                            :: this
+    real(dp), dimension(:), intent(inout) :: rhs
+    
+    stop"not implemented"
+
+  end subroutine assembleRHS
 
 end module bdf_integrator

@@ -44,13 +44,10 @@ module runge_kutta_integrator
      real(dp), dimension(:,:,:), allocatable :: QDDOT
 
      !----------------------------------------------------------------!
-     ! The stage residual and jacobian
+     ! The lagrange multipliers
      !----------------------------------------------------------------!
-
-     real(dp), dimension(:,:), allocatable     :: R ! stage residual
-     real(dp), dimension(:,:,:,:), allocatable :: J ! stage jacobian
-
-     real(dp), dimension(:,:,:), allocatable   :: psi, rhs
+     
+     real(dp), dimension(:,:,:), allocatable   :: psi
 
    contains
 
@@ -93,13 +90,12 @@ module runge_kutta_integrator
      ! Adjoint procedures
      !----------------------------------------------------------------!
 
-     procedure, public :: IntegrateBackward
-     procedure, private :: AdjointSolve
-     procedure, private :: AssembleRHS
+     procedure, public  :: assembleRHS
+     procedure          :: marchBackwards
      procedure, private :: AddFunctionDependency
      procedure, private :: AddTimeDependency
      procedure, private :: AddStageDependency
-
+     
   end type DIRK
 
   !===================================================================!
@@ -243,22 +239,9 @@ contains
     this % QDDOT = 0.0d0
 
     !-----------------------------------------------------------------!
-    ! Allocate space for the stage residual and jacobian
+    ! Allocate space for the lagrange multipliers
     !-----------------------------------------------------------------!
-
-    allocate(this % R(this % num_stages, this % nsvars))
-    this % R = 0.0d0
-
-    allocate(this % J(this % num_stages, this % num_stages, this % nsvars, this % nsvars))
-    this % J = 0.0d0
-
-    !-----------------------------------------------------------------!
-    ! Allocate space for the RHS of adjoint equations
-    !-----------------------------------------------------------------!
-
-    allocate(this % RHS(this % num_steps, this % num_stages, this % nsvars))
-    this % RHS = 0.0d0
-
+    
     allocate(this % psi(this % num_steps, this % num_stages, this % nsvars))
     this % psi = 0.0d0
 
@@ -336,17 +319,12 @@ contains
     if(allocated(this % Q)) deallocate(this % Q)
     if(allocated(this % T)) deallocate(this % T)
 
-    ! Clear the stage residual and jacobian
-    if(allocated(this % R)) deallocate(this % R)
-    if(allocated(this % J)) deallocate(this % J)
-
     ! Clear global states and time
     if(allocated(this % UDDOT)) deallocate(this % UDDOT)
     if(allocated(this % UDOT)) deallocate(this % UDOT)
     if(allocated(this % U)) deallocate(this % U)
     if(allocated(this % time)) deallocate(this % time)
 
-    if(allocated(this % RHS)) deallocate(this % RHS)
     if(allocated(this % psi)) deallocate(this % psi)
 
   end subroutine finalize
@@ -385,56 +363,63 @@ contains
   ! adjoint variables
   !===================================================================!
   
-  subroutine IntegrateBackward(this)
-    
+  subroutine marchBackwards(this)
+
     class(DIRK) :: this
-    integer :: k, i
-    integer :: ndvars
+    integer     :: k, i
+    real(dp)    :: alpha, beta, gamma
 
-    real(dp), allocatable, dimension(:) :: dfdx, dLdx, tmp
-    real(dp), allocatable, dimension(:,:) :: dRdx
-
-    allocate(dfdx(ndvars))
-    allocate(dLdx(ndvars))
-    allocate(dRdx(this%nsvars,ndvars))
-    allocate(tmp(ndvars))
-
-    do k = this % num_steps, 1, -1
-
+    do k = this % num_steps, 2, -1
+       
        this % current_step = k
-
+       
        do i = this % num_stages, 1, -1
 
           this % current_stage = i
+          
+          !--------------------------------------------------------------!
+          ! Determine the linearization coefficients for the Jacobian
+          !--------------------------------------------------------------!
+          
+          if (this % second_order) then
+             gamma = 1.0d0
+             beta  = this % h * this%A(i,i)
+             alpha = this % h * this%A(i,i)* this % h * this%A(i,i)
+          else
+             gamma = 0.0d0
+             beta  = 1.0d0
+             alpha = this % h * this%A(i,i)
+          end if
+          
+          !--------------------------------------------------------------!
+          ! Solve the adjoint equation at each step
+          !--------------------------------------------------------------!
 
-          call this % AdjointSolve()
-
+          call this % adjointSolve(this % psi(k,i,:), alpha, beta, gamma,&
+               & this % t(i), this % q(k,i,:), this % qdot(k,i,:), this % qddot(k,i,:))
+          
        end do
 
     end do
 
-    ! Compute the total derivative
-    tmp = 0.0d0
-    do k = 1, this % num_steps
-       tmp = tmp + matmul(this%psi(k,i,:), dRdx)
-    end do
-
-    ! call addDVSens
-    dLdx = dfdx + tmp
-
-    ! Write the adjoint variables 
-    open(unit=90, file='output/adjoint.dat')
-    do k = 1, this % num_steps
-       write(90, *)  this % time(k), this % psi(k,1,:), this % psi(k,2,:), this % psi(k,3,:)
-    end do
-    close(90)
+!!$
+!!$    ! Compute the total derivative
+!!$    tmp = 0.0d0
+!!$    do k = 1, this % num_steps
+!!$       tmp = tmp + matmul(this%psi(k,i,:), dRdx)
+!!$    end do
+!!$
+!!$    ! call addDVSens
+!!$    dLdx = dfdx + tmp
+!!$
+!!$    ! Write the adjoint variables 
+!!$    open(unit=90, file='output/adjoint.dat')
+!!$    do k = 1, this % num_steps
+!!$       write(90, *)  this % time(k), this % psi(k,1,:), this % psi(k,2,:), this % psi(k,3,:)
+!!$    end do
+!!$    close(90)
     
-    deallocate(dfdx)
-    deallocate(dLdx)
-    deallocate(dRdx)
-    deallocate(tmp)
-
-  end subroutine IntegrateBackward
+  end subroutine marchBackwards
 
   !===================================================================!
   ! Update the states based on RK Formulae
@@ -660,58 +645,6 @@ contains
     end do
 
   end subroutine computeStageStateValues
-  
-  !===================================================================!
-  ! Solve the linear adjoint equation at each stage and time step
-  !===================================================================!
-  
-  subroutine AdjointSolve(this)
-
-    class(DIRK)                           :: this
-    real(dp), allocatable, dimension(:)   :: res, dq
-    real(dp), allocatable, dimension(:,:) :: jac
-    integer, allocatable, dimension(:)    :: ipiv
-    integer                               :: info, size, k, i
-    logical                               :: conv = .false.
-    real(dp)                              :: alpha, beta, gamma
-
-    k = this % current_step
-    i = this % current_stage
-
-    ! find the size of the linear system based on the calling object
-    size = this % nsvars
-
-    if (.not.allocated(ipiv)) allocate(ipiv(size))
-    if (.not.allocated(res)) allocate(res(size))
-    if (.not.allocated(dq)) allocate(dq(size))
-    if (.not.allocated(jac)) allocate(jac(size,size))
-
-    ! Get the residual of the function
-    call this % assembleRHS(this % RHS(k,i,:))
-
-    ! Get the jacobian matrix
-    alpha = this % h * this % A(i,i)* this % h * this % A(i,i)
-    beta  = this % h * this % A(i,i)
-    gamma = 1.0d0
-    call this % system % assembleJacobian(this % J(i, i,:,:), alpha, beta, gamma, &
-         & this % T(i), this % Q(k,i,:), this % QDOT(k,i,:), this % QDDOT(k,i,:))
-
-    ! Setup linear system in lapack format
-    res = this % rhs(k,i,:)
-    jac = transpose(this % J(i,i,:,:))
-
-    ! Call lapack to solve the stage values system
-    dq = -res
-    call DGESV(size, 1, jac, size, IPIV, dq, size, INFO)
-
-    this % psi(k,i,:) = dq
-
-    if (allocated(ipiv)) deallocate(ipiv)
-    if (allocated(res)) deallocate(res)
-    if (allocated(dq)) deallocate(dq)
-    if (allocated(jac)) deallocate(jac)
-
-  end subroutine AdjointSolve
 
   !===================================================================!
   ! The derivative of the objective function with respect to the
@@ -850,13 +783,9 @@ contains
 
   subroutine assembleRHS(this, rhs)
  
-    class(DIRK) :: this
-    integer     :: k , i
-    real(dp)    :: rhs(:) ! of length nsvars
-
-    k = this % current_step
-    i = this % current_stage
-    
+    class(DIRK)                           :: this
+    real(dp), dimension(:), intent(inout) :: rhs
+   
     ! Add the contributions from the objective function
     call this % AddFunctionDependency(rhs)
     call this % AddTimeDependency(rhs)

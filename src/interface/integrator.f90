@@ -84,7 +84,32 @@ module integrator_class
      
      procedure :: setApproximateJacobian
 
+     !----------------------------------------------------------------!
+     ! Adjoint Procedures                                                     !
+     !----------------------------------------------------------------!
+
+     procedure(InterfaceAssembleRHS), deferred :: assembleRHS
+     procedure :: adjointSolve
+
   end type integrator
+
+  interface
+     
+     !===================================================================!
+     ! Interface routine to assemble the RHS of the adjoint systen
+     !===================================================================!
+     
+     subroutine InterfaceAssembleRHS(this, rhs)
+       
+       use iso_fortran_env , only : dp => real64
+       import integrator
+
+       class(integrator)                     :: this
+       real(dp), dimension(:), intent(inout) :: rhs
+
+     end subroutine InterfaceAssembleRHS
+
+  end interface
 
 contains
   
@@ -191,7 +216,7 @@ contains
     class(integrator)                     :: this
 
  ! Arguments
-    real(dp), intent(inout)                  :: alpha, beta, gamma
+    real(dp), intent(in)                  :: alpha, beta, gamma
     real(dp), intent(in)                  :: t
     real(dp), intent(inout), dimension(:) :: q, qdot, qddot
     
@@ -424,5 +449,56 @@ contains
     deallocate(R,Rtmp)
 
   end subroutine approximateJacobian
+
+  !====================================================================!
+  ! Common routine to solve the adjoint linear system at each time
+  ! step and/or stage
+  !=====================================================================!
+  
+  subroutine adjointSolve(this, psi, alpha, beta, gamma, t, q, qdot, qddot)
+    
+    class(integrator) :: this
+
+ ! Arguments
+    real(dp), intent(in)                  :: alpha, beta, gamma
+    real(dp), intent(in)                  :: t
+    real(dp), intent(inout), dimension(:) :: q, qdot, qddot
+    real(dp), intent(inout), dimension(:) :: psi
+
+ ! Lapack variables
+    integer, allocatable, dimension(:)    :: ipiv
+    integer                               :: info, size
+       
+ ! Other Local variables
+    real(dp), allocatable, dimension(:)   :: rhs
+    real(dp), allocatable, dimension(:,:) :: jac
+
+    ! find the size of the linear system based on the calling object
+    size = this % nsvars
+    
+    if (.not.allocated(ipiv)) allocate(ipiv(size))
+    if (.not.allocated(rhs)) allocate(rhs(size))
+    if (.not.allocated(jac)) allocate(jac(size,size))
+
+    ! Assemble the residual of the function
+    call this % assembleRHS(rhs)
+
+    ! Assemble the jacobian matrix
+    call this % system % assembleJacobian(jac, alpha, beta, gamma, t, q, qdot, qddot)
+
+    ! Transpose the system
+    jac = transpose(jac)
+    
+    ! Call lapack to solve the stage values system
+    call DGESV(size, 1, jac, size, IPIV, rhs, size, INFO)
+
+    ! Store into the output array
+    psi = rhs
+    
+    if (allocated(ipiv)) deallocate(ipiv)
+    if (allocated(rhs)) deallocate(rhs)
+    if (allocated(jac)) deallocate(jac)
+    
+  end subroutine adjointSolve
 
 end module integrator_class

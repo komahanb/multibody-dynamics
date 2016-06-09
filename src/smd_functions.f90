@@ -9,7 +9,6 @@ module smd_functions_class
   use iso_fortran_env, only : dp => real64
   use function_class, only  : abstract_function
 
-
   implicit none
 
   private
