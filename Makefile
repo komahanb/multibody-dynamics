@@ -43,7 +43,7 @@ LIBS = -lm -llapack
 #---------------------------------------------------------------------#
 # Define all the source files to compile here
 #---------------------------------------------------------------------#
-SRC  :=	 src/interface/physics.f90 src/interface/integrator.f90 \
+SRC  :=	 src/interface/function.f90 src/interface/physics.f90 src/interface/integrator.f90 \
          src/integrator/runge_kutta.f90 src/integrator/backward_difference.f90 \
 	 src/test/smd.f90 \
 	 src/test/vanderpol.f90 \

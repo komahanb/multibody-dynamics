@@ -6,12 +6,21 @@
 !=====================================================================!
 
 module physics_class
+  
+  use function_class, only : abstract_function
 
+  implicit none
+
+  private
+  public :: physics
+  
   !-------------------------------------------------------------------!
   ! Type that models any physical phenomenon
   !-------------------------------------------------------------------!
 
   type, abstract :: physics
+     
+     class(abstract_function), pointer :: function
 
    contains
 
