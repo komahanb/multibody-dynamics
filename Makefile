@@ -45,7 +45,7 @@ LIBS = -lm -llapack
 #---------------------------------------------------------------------#
 SRC  :=	 src/interface/function.f90 src/interface/physics.f90 src/interface/integrator.f90 \
          src/integrator/runge_kutta.f90 src/integrator/backward_difference.f90 \
-	 src/test/smd.f90 \
+	 src/test/smd.f90 src/smd_functions.f90 \
 	 src/test/vanderpol.f90 \
          src/test/aero_elastic_oscillator.f90 \
 	 src/dynamics/utils.f90 src/dynamics/rotation.f90 src/dynamics/dynamics.f90 \
