@@ -57,13 +57,15 @@ contains
     real(dp)   :: alpha, beta, gamma
     
     do k = this % num_steps, 2, -1
-
+       
+       this % current_step = k
+       
        !--------------------------------------------------------------!
        ! Determine the linearization coefficients for the Jacobian
        !--------------------------------------------------------------!
        
-       call this % getOrderCoeff(dummy, this % beta, 1)
-       call this % getOrderCoeff(dummy, this % gamm, 2)
+       call this % getOrderCoeff(dummy, this % beta, 1, k)
+       call this % getOrderCoeff(dummy, this % gamm, 2, k)
        
        alpha = 1.0d0       
        beta  = this % beta(1)/this % h
@@ -80,6 +82,8 @@ contains
 
        call this % adjointSolve(this % psi(k,:), alpha, beta, gamma, &
             & this % time(k), this % u(k,:), this % udot(k,:), this % uddot(k,:))
+       
+       print *, this % psi(k,:), k
 
     end do
 
@@ -342,7 +346,7 @@ contains
     ! Approximate UDOT using BDF
     !-----------------------------------------------------------------!
    
-    call this % getOrderCoeff(m, this % beta, 1)
+    call this % getOrderCoeff(m, this % beta, 1, k)
 
     do i = 1, m + 1
        this % udot(k,:) = this % udot(k,:) &
@@ -353,7 +357,7 @@ contains
     ! Approximate UDDOT using BDF
     !-----------------------------------------------------------------!
     
-    call this % getOrderCoeff(m, this % gamm, 2)
+    call this % getOrderCoeff(m, this % gamm, 2, k)
 
     if ( m .eq. 0) then
 
@@ -384,15 +388,13 @@ contains
   ! coeff: the array of coefficients
   !-------------------------------------------------------------------!
   
-  subroutine getOrderCoeff(this, m, coeff, d)
+  subroutine getOrderCoeff(this, m, coeff, d, k)
     
     class(BDF)              :: this
     integer  , intent(in)   :: d
     integer  , intent(out)  :: m
     real(dp) , intent(out)  :: coeff(:)
-    integer                 :: k
-
-    k = this % current_step
+    integer  , intent(in)   :: k
 
     m = (k-1)/d ! k = md + 1
     if ( m .gt. this % max_bdf_order ) m = this % max_bdf_order
@@ -456,61 +458,63 @@ contains
     ! Zero the RHS first
     rhs = 0.0d0
     
-    print *, "adding function contribution"
-    print *, rhs
-    print *, scale
-    print *, this % time(k)
-    print *, this % system % x 
-    print *, this % u (k,:)
-    print *, this % udot(k,:)
-    print *, this % uddot(k,:)
-
     !-----------------------------------------------------------------!
     ! Add function contribution
     !-----------------------------------------------------------------!
-
+    
     scale = 1.0d0
     call this % system % func % addDFdU(rhs, scale, this % time(k), &
          & this % system % x, this % u(k,:), this % udot(k,:), this % uddot(k,:))
-    
-    call this % getOrderCoeff(m1, this % beta, 1)
+
+    call this % getOrderCoeff(m1, this % beta, 1, k )
     do i = 1, m1 + 1
-       scale = this % beta(i)/this % h
-       call this % system % func % addDFdUDot(rhs, scale, this % time(k), &
-            & this % system % x, this % u(k,:), this % udot(k,:), this % uddot(k,:))
+       if ( k+i-1 .le. this % num_steps) then
+          call this % getOrderCoeff(m1, this % beta, 1, k+i-1 )
+          scale = this % beta(i)/this % h
+          call this % system % func % addDFdUDot(rhs, scale, this % time(k+i-1), &
+               & this % system % x, this % u(k+i-1,:), this % udot(k+i-1,:), this % uddot(k+i-1,:))
+       end if
     end do
-    
-    call this % getOrderCoeff(m2, this % gamm, 2)
+
+    call this % getOrderCoeff(m2, this % gamm, 2, k)
     do i = 1, 2*m2 + 1
-       scale = this % gamm(i)/this % h/this % h
-       call this % system % func % addDFdUDDot(rhs, scale, this % time(k), &
-            & this % system % x, this % u(k,:), this % udot(k,:), this % uddot(k,:))
+       if ( k+i-1 .le. this % num_steps) then
+          call this % getOrderCoeff(m2, this % gamm, 2, k+i-1)
+          scale = this % gamm(i)/this % h/this % h
+          call this % system % func % addDFdUDDot(rhs, scale, this % time(k+i-1), &
+               & this % system % x, this % u(k+i-1,:), this % udot(k+i-1,:), this % uddot(k+i-1,:))
+       end if
     end do
-    
-    print *, "adding res contribution", m1, m2
 
     !-----------------------------------------------------------------!
     ! Add residual contribution
     !-----------------------------------------------------------------!
-    
+
+    call this % getOrderCoeff(m1, this % beta, 1, k)    
     do i = 2, m1 + 1
-       if ( k+i .le. this % num_steps) then
+       if ( k+i-1 .le. this % num_steps) then
+          call this % getOrderCoeff(m1, this % beta, 1, k+i-1)
           scale = this % beta(i)/this % h
-          call this % system % assembleJacobian(jac, 0.0d0, scale, 0.0d0, &
-               & this % time(k), this % u(k,:), this % UDOT(k,:), this % UDDOT(k,:))
-          rhs = rhs + matmul(transpose(jac), this % psi(k+i,:))
+          call this % system % assembleJacobian(jac, 0.0d0, 1.0d0, 0.0d0, &
+               & this % time(k+i-1), this % u(k+i-1,:), this % udot(k+i-1,:), this % uddot(k+i-1,:))
+          rhs = rhs + scale*matmul( transpose(jac), this % psi(k+i-1,:) )
        end if
     end do
 
+    call this % getOrderCoeff(m2, this % gamm, 2, k)
     do i = 2, 2*m2 + 1
-       if ( k+i .le. this % num_steps) then
+       if ( k+i-1 .le. this % num_steps) then
+          call this % getOrderCoeff(m2, this % gamm, 2, k+i-1)
           scale = this % gamm(i)/this % h/this % h
-          call this % system % assembleJacobian(jac, 0.0d0, 0.0d0, scale, &
-               & this % time(k), this % u(k,:), this % UDOT(k,:), this % UDDOT(k,:))
-          rhs = rhs + matmul(transpose(jac), this % psi(k+i,:))
+          call this % system % assembleJacobian(jac, 0.0d0, 0.0d0, 1.0d0, &
+               & this % time(k+i-1), this % u(k+i-1,:), this % udot(k+i-1,:), this % uddot(k+i-1,:))
+          rhs = rhs + scale*matmul( transpose(jac), this % psi(k+i-1,:) )
        end if
     end do
 
+    ! Negate the RHS
+    rhs = -rhs
+    
     if(allocated(jac)) deallocate(jac)
 
   end subroutine assembleRHS

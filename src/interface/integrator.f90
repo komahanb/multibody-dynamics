@@ -495,7 +495,7 @@ contains
 
     ! Store into the output array
     psi = rhs
-    
+
     if (allocated(ipiv)) deallocate(ipiv)
     if (allocated(rhs)) deallocate(rhs)
     if (allocated(jac)) deallocate(jac)
