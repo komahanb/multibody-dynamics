@@ -30,9 +30,10 @@ module physics_class
      procedure(jacobian_assembly_interface), deferred :: assembleJacobian
      procedure(initial_condition_interface), deferred :: getInitialStates
 
-     procedure(InterfaceInitialize), deferred      :: initialize
-     procedure(InterfaceSetDesignVars), deferred   :: setDesignVars
-     procedure(InterfaceGetNumStateVars), deferred :: getNumStateVars
+     procedure(InterfaceInitialize), deferred        :: initialize
+     procedure(InterfaceSetDesignVars), deferred     :: setDesignVars
+     procedure(InterfaceGetNumStateVars), deferred   :: getNumStateVars
+     procedure(InterfaceGetResidualDVSens), deferred :: getResidualDVSens
 
      procedure :: setFunction
      
@@ -40,6 +41,23 @@ module physics_class
   
   interface
      
+     !----------------------------------------------------------------!
+     ! Interface for evaluating the gradient of Residual with respect
+     ! to X
+     !----------------------------------------------------------------!
+     
+     subroutine InterfaceGetResidualDVSens(this, jac, scale, time, x, u, udot, uddot)
+
+       import physics
+       
+       class(physics)                         :: this
+       real(8), intent(inout), dimension(:,:) :: jac
+       real(8), intent(in)                    :: time
+       real(8), intent(in), dimension(:)      :: x, u, udot, uddot
+       real(8)                                :: scale
+
+     end subroutine InterfaceGetResidualDVSens
+
      !----------------------------------------------------------------!
      ! Interface for initialization tasks
      !----------------------------------------------------------------!

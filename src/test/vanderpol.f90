@@ -36,6 +36,7 @@ Module vanderpol_class
      procedure :: assembleJacobian
      procedure :: getInitialStates
      procedure :: getNumStateVars
+     procedure :: getResidualDVSens
 
   end type vanderpol
 
@@ -190,5 +191,22 @@ contains
 
   end function getNumStateVars
 
-End Module vanderpol_class
+  !-------------------------------------------------------------------!
+  ! Routine for evaluating the gradient of Residual with respect
+  ! to the design X
+  !-------------------------------------------------------------------!
+  
+  subroutine getResidualDVSens(this, jac, scale, time, x, u, udot, uddot)
+
+    class(vanderpol)                       :: this
+    real(8), intent(inout), dimension(:,:) :: jac
+    real(8), intent(in)                    :: time
+    real(8), intent(in), dimension(:)      :: x, u, udot, uddot
+    real(8)                                :: scale
+
+    stop"Not implemented"
+
+  end subroutine getResidualDVSens
+
+end module vanderpol_class
 

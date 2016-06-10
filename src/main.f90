@@ -37,13 +37,13 @@ program main
   type(kinetic_energy)         , target :: KE
 
   ! Design variable array
-  real(dp), dimension(:), allocatable   :: X
+  real(dp), dimension(:), allocatable   :: X, dfdx
   
   !-------------------------------------------------------------------!
   !                 Spring Mass Damper system                         !
   !-------------------------------------------------------------------!
 
-  allocate(X(3))
+  allocate(X(3), dfdx(3))
 
   x(1) = 1.00d0 ! mass
   x(2) = 0.02d0 ! damping coeff
@@ -60,9 +60,11 @@ program main
   call dirkobj % writeSolution('smd-dirk.dat')
   call dirkobj % finalize()
 
+  bdfobj % ndvars = 3
   call bdfobj % initialize(system = smd1obj, tfinal = 1.0d0, h=0.01d0, second_order=.true., max_bdf_order=3)
   call bdfobj % integrate()
-  call bdfobj % marchBackwards()
+  call bdfobj % getAdjointGradient(dfdx)
+  print*, "dfdx=", dfdx
   call bdfobj % writeSolution('smd-bdf.dat')
   call bdfobj % finalize()
   

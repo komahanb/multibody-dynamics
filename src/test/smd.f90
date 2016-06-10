@@ -40,6 +40,7 @@ module spring_mass_damper_class
      procedure :: assembleJacobian
      procedure :: getInitialStates
      procedure :: getNumStateVars
+     procedure :: getResidualDVSens
 
   end type smd1
 
@@ -63,7 +64,8 @@ module spring_mass_damper_class
      procedure :: assembleJacobian => assembleJacobian2
      procedure :: getInitialStates => getInitialStates2
      procedure :: getNumStateVars  => getNumStateVars2
-
+     procedure :: getResidualDVSens => getResidualDVSens2
+     
   end type smd2
 
 contains
@@ -195,6 +197,25 @@ contains
     getNumStateVars = this % num_state_vars
 
   end function getNumStateVars
+
+  !----------------------------------------------------------------!
+  ! Routine for evaluating the gradient of Residual with respect
+  ! to the design X
+  !----------------------------------------------------------------!
+  
+  subroutine getResidualDVSens(this, jac, scale, time, x, u, udot, uddot)
+
+    class(smd1)                            :: this
+    real(8), intent(inout), dimension(:,:) :: jac
+    real(8), intent(in)                    :: time
+    real(8), intent(in), dimension(:)      :: x, u, udot, uddot
+    real(8)                                :: scale
+
+    jac(1,1) = uddot(1)
+    jac(1,2) = 0.0d0
+    jac(1,3) = 0.0d0
+
+  end subroutine getResidualDVSens
 
   !-------------------------------------------------------------------!
   ! Constructor for the spring mass damper system 
@@ -346,6 +367,21 @@ contains
     getNumStateVars2 = this % num_state_vars
 
   end function getNumStateVars2
+  
+  !-------------------------------------------------------------------!
+  ! Routine for evaluating the gradient of Residual with respect
+  ! to the design X
+  !-------------------------------------------------------------------!
+  
+  subroutine getResidualDVSens2(this, jac, scale, time, x, u, udot, uddot)
+
+    class(smd2)                            :: this
+    real(8), intent(inout), dimension(:,:) :: jac
+    real(8), intent(in)                    :: time
+    real(8), intent(in), dimension(:)      :: x, u, udot, uddot
+    real(8)                                :: scale
+    stop"Not implemented"
+  end subroutine getResidualDVSens2
   
 end module spring_mass_damper_class
 

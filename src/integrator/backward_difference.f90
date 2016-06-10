@@ -25,6 +25,7 @@ module bdf_integrator
      integer                                :: max_bdf_order
      real(dp) , dimension(:), allocatable   :: beta, gamm
      real(dp) , dimension(:,:), allocatable :: psi
+     integer :: ndvars
 
    contains
      
@@ -94,11 +95,30 @@ contains
   ! design variables and return the gradient 
   !===================================================================!
 
-  subroutine computeTotalDerivative(this, x, dfdx)
+  subroutine computeTotalDerivative(this, dfdx)
+    
+    class(BDF)                               :: this
+    real(dp) , dimension(:), intent(inout)   :: dfdx
+    real(dp) , dimension(:,:), allocatable   :: dRdX
+    integer                                  :: k
+    
+    allocate(dRdX(this % nsvars, this % ndvars))
+    dfdx = 0.0d0
 
-    class(BDF)               :: this
-    real(dp) , intent(in)    :: x
-    real(dp) , intent(inout) :: dfdx
+    ! compute dfdx
+    do k = 2, this % num_steps
+       call this % system % func % addDfdx(dfdx, 1.0d0, this % time(k), &
+            & this % system % x, this % u(k,:), this % udot(k,:), this % uddot(k,:) )
+    end do
+
+    ! Compute the total derivative
+    do k = 2, this % num_steps
+       call this % system % getResidualDVSens(dRdX, 1.0d0, this % time(k), &
+            & this % system % x, this % u(k,:), this % udot(k,:), this % uddot(k,:))
+       dfdx = dfdx + matmul(this % psi(k,:), dRdX) ! check order
+    end do
+
+    deallocate(dRdX)
 
   end subroutine computeTotalDerivative
 
@@ -107,22 +127,10 @@ contains
   ! calls
   !===================================================================!
   
-  subroutine getAdjointGradient(this, x, dfdx)
+  subroutine getAdjointGradient(this, dfdx)
 
-    class(BDF)               :: this
-    real(dp) , intent(in)    :: x
-    real(dp) , intent(inout) :: dfdx
-
-    !-----------------------------------------------------------------!
-    ! Set the design variable into the system
-    !-----------------------------------------------------------------!
-    
-    
-    !-----------------------------------------------------------------!
-    ! First integrate forward in time for the set design variable call
-    !-----------------------------------------------------------------!
-    
-    call this % integrate()
+    class(BDF)                             :: this
+    real(dp) , dimension(:), intent(inout) :: dfdx
 
     !-----------------------------------------------------------------!
     ! Integrate backwards to solve for lagrange multipliers for the
@@ -136,7 +144,7 @@ contains
     ! design variables
     !-----------------------------------------------------------------!
 
-    call this % computeTotalDerivative(x, dfdx)
+    call this % computeTotalDerivative(dfdx)
 
   end subroutine getAdjointGradient
 
@@ -147,7 +155,7 @@ contains
   subroutine initialize(this, system, tinit, tfinal, h, second_order, max_bdf_order)
     
     class(BDF)                      :: this
-    class(physics), target           :: system
+    class(physics), target          :: system
     integer  , OPTIONAL, intent(in) :: max_bdf_order
     real(dp) , OPTIONAL, intent(in) :: tinit, tfinal
     real(dp) , OPTIONAL, intent(in) :: h
@@ -451,7 +459,7 @@ contains
     real(dp)                              :: scale = 0.0d0
     real(dp), allocatable, dimension(:,:) :: jac
 
-    allocate(jac(this%nsvars,this%nsvars))
+    allocate(jac(this%nsvars,this%ndvars))
 
     k = this % current_step
     
@@ -503,7 +511,7 @@ contains
 
     call this % getOrderCoeff(m2, this % gamm, 2, k)
     do i = 2, 2*m2 + 1
-       if ( k+i-1 .le. this % num_steps) then
+        if ( k+i-1 .le. this % num_steps) then
           call this % getOrderCoeff(m2, this % gamm, 2, k+i-1)
           scale = this % gamm(i)/this % h/this % h
           call this % system % assembleJacobian(jac, 0.0d0, 0.0d0, 1.0d0, &

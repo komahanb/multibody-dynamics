@@ -79,6 +79,8 @@ contains
     real(8)                              :: scale
 
     res(1) = res(1) + scale*0.0d0            ! wrt to u(1)
+    res(2) = res(2) + scale*0.0d0            ! wrt to u(1)
+    res(3) = res(3) + scale*0.0d0            ! wrt to u(1)
     
   end subroutine addDfdU
 
@@ -93,8 +95,10 @@ contains
     real(8), intent(in)                  :: time
     real(8), intent(in), dimension(:)    :: x, u, udot, uddot
     real(8)                              :: scale
-
+    
     res(1) = res(1) + scale*x(1)*udot(1) ! wrt to udot(1)
+    res(2) = res(2) + scale*0.0d0        ! wrt to udot(1)
+    res(3) = res(3) + scale*0.0d0        ! wrt to udot(1)
 
   end subroutine addDFdUDot
   
@@ -111,6 +115,8 @@ contains
     real(8)                              :: scale
 
     res(1) = res(1) + scale*0.0d0            ! wrt to uddot(1)
+    res(2) = res(2) + scale*0.0d0
+    res(3) = res(3) + scale*0.0d0
 
   end subroutine addDfdUDDot
 
