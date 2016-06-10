@@ -37,7 +37,7 @@ module bdf_integrator
 
      ! Routines for adjoint gradient
      procedure         :: computeTotalDerivative
-     procedure         :: marchBackwards
+     procedure, public :: marchBackwards
      procedure, public :: getAdjointGradient
      procedure, public :: assembleRHS
 
@@ -78,7 +78,7 @@ contains
        ! Solve the adjoint equation at each step
        !--------------------------------------------------------------!
 
-       call this % adjointSolve(this % psi(k,:), alpha, beta, gamma,&
+       call this % adjointSolve(this % psi(k,:), alpha, beta, gamma, &
             & this % time(k), this % u(k,:), this % udot(k,:), this % uddot(k,:))
 
     end do
@@ -162,6 +162,7 @@ contains
     !-----------------------------------------------------------------!
     ! Fetch the number of state variables from the system object
     !-----------------------------------------------------------------!
+
     this % nsvars = system % getNumStateVars()
     print '("  >> Number of variables    : ",i4)', this % nsvars
     if (.not.(this % nsvars .gt. 0)) stop ">> Error: Zero state variable. Stopping."
@@ -444,8 +445,73 @@ contains
 
     class(BDF)                            :: this
     real(dp), dimension(:), intent(inout) :: rhs
+    integer                               :: k, i, m1, m2
+    real(dp)                              :: scale = 0.0d0
+    real(dp), allocatable, dimension(:,:) :: jac
+
+    allocate(jac(this%nsvars,this%nsvars))
+
+    k = this % current_step
     
-    stop"not implemented"
+    ! Zero the RHS first
+    rhs = 0.0d0
+    
+    print *, "adding function contribution"
+    print *, rhs
+    print *, scale
+    print *, this % time(k)
+    print *, this % system % x 
+    print *, this % u (k,:)
+    print *, this % udot(k,:)
+    print *, this % uddot(k,:)
+
+    !-----------------------------------------------------------------!
+    ! Add function contribution
+    !-----------------------------------------------------------------!
+
+    scale = 1.0d0
+    call this % system % func % addDFdU(rhs, scale, this % time(k), &
+         & this % system % x, this % u(k,:), this % udot(k,:), this % uddot(k,:))
+    
+    call this % getOrderCoeff(m1, this % beta, 1)
+    do i = 1, m1 + 1
+       scale = this % beta(i)/this % h
+       call this % system % func % addDFdUDot(rhs, scale, this % time(k), &
+            & this % system % x, this % u(k,:), this % udot(k,:), this % uddot(k,:))
+    end do
+    
+    call this % getOrderCoeff(m2, this % gamm, 2)
+    do i = 1, 2*m2 + 1
+       scale = this % gamm(i)/this % h/this % h
+       call this % system % func % addDFdUDDot(rhs, scale, this % time(k), &
+            & this % system % x, this % u(k,:), this % udot(k,:), this % uddot(k,:))
+    end do
+    
+    print *, "adding res contribution", m1, m2
+
+    !-----------------------------------------------------------------!
+    ! Add residual contribution
+    !-----------------------------------------------------------------!
+    
+    do i = 2, m1 + 1
+       if ( k+i .le. this % num_steps) then
+          scale = this % beta(i)/this % h
+          call this % system % assembleJacobian(jac, 0.0d0, scale, 0.0d0, &
+               & this % time(k), this % u(k,:), this % UDOT(k,:), this % UDDOT(k,:))
+          rhs = rhs + matmul(transpose(jac), this % psi(k+i,:))
+       end if
+    end do
+
+    do i = 2, 2*m2 + 1
+       if ( k+i .le. this % num_steps) then
+          scale = this % gamm(i)/this % h/this % h
+          call this % system % assembleJacobian(jac, 0.0d0, 0.0d0, scale, &
+               & this % time(k), this % u(k,:), this % UDOT(k,:), this % UDDOT(k,:))
+          rhs = rhs + matmul(transpose(jac), this % psi(k+i,:))
+       end if
+    end do
+
+    if(allocated(jac)) deallocate(jac)
 
   end subroutine assembleRHS
 

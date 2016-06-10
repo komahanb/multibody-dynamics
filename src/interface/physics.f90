@@ -21,7 +21,8 @@ module physics_class
 
   type, abstract :: physics
      
-     class(abstract_function) , pointer  :: function ! function of interest
+     class(abstract_function) , pointer  :: func ! function of interest
+     real(dp), dimension(:), allocatable :: x
     
    contains  
      
@@ -131,7 +132,7 @@ contains
     class(physics)                   :: this
     class(abstract_function), target :: func
 
-    this % function => func
+    this % func => func
 
   end subroutine setFunction
 

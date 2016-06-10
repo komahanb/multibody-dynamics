@@ -4,7 +4,8 @@
 !
 ! (1) nonlinear solution process, 
 ! (2) approximating derivatives, 
-! (3) writing solution to files.
+! (3) writing solution to files,
+! (4) adjoint system solution
 !
 ! Author: Komahan Boopathy (komahan@gatech.edu)
 !=====================================================================!
@@ -276,7 +277,7 @@ contains
              ! Compare the exact and approximate Jacobians and
              ! complain about the error in Jacobian if there is any
              jac_err = maxval(abs(fd_jac - jac))
-             if ( jac_err .gt. 1.0d-6) then
+             if ( jac_err .gt. 1.0d-3) then
                 print *, "q     =", q
                 print *, "qdot  =", qdot
                 print *, "qddot =", qddot

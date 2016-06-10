@@ -27,33 +27,49 @@ module function_class
   !-------------------------------------------------------------------!
   
   type, abstract :: abstract_function
-
+    
    contains
 
      procedure(interface_evaluate), deferred :: getFunctionValue ! function value at t, X, U, Udot, Uddot
-     procedure(interface_evaluate), deferred :: getdFdX          ! partial derivative
-     procedure(interface_evaluate), deferred :: getdFdU          ! partial derivative
-     procedure(interface_evaluate), deferred :: getdFdUDot       ! partial derivative
-     procedure(interface_evaluate), deferred :: getdFdUDDot      ! partial derivative
+     procedure(interface_gradient), deferred :: addDFdX          ! partial derivative
+     procedure(interface_gradient), deferred :: addDFdU          ! partial derivative
+     procedure(interface_gradient), deferred :: addDFdUDot       ! partial derivative
+     procedure(interface_gradient), deferred :: addDFdUDDot      ! partial derivative
 
   end type abstract_function
 
   interface
 
      !----------------------------------------------------------------!
-     ! Interface for evaluating the function for t, X, U, Udot, Uddot
+     ! Interface for evaluating the function for t, U, Udot, Uddot
      !----------------------------------------------------------------!
 
      subroutine interface_evaluate(this, res, time, x, u, udot, uddot)
 
        import abstract_function
 
-       class(abstract_function) :: this
+       class(abstract_function)             :: this
        real(8), intent(inout), dimension(:) :: res
-       real(8), intent(in) :: time
-       real(8), intent(in), dimension(:) :: x, u, udot, uddot
+       real(8), intent(in)                  :: time
+       real(8), intent(in), dimension(:)    :: x, u, udot, uddot
        
      end subroutine interface_evaluate
+
+     !----------------------------------------------------------------!
+     ! Interface for evaluating the gradient for t, x, U, Udot, Uddot
+     !----------------------------------------------------------------!
+     
+     subroutine interface_gradient(this, res, scale, time, x, u, udot, uddot)
+
+       import abstract_function
+
+       class(abstract_function)             :: this
+       real(8), intent(inout), dimension(:) :: res
+       real(8), intent(in)                  :: time
+       real(8), intent(in), dimension(:)    :: x, u, udot, uddot
+       real(8)                              :: scale
+
+     end subroutine interface_gradient
 
   end interface
   

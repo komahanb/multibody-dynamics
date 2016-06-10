@@ -12,7 +12,7 @@ FC = gfortran
 #------------------------------
 CC_FLAGS =  #-g #-Wall
 CX_FLAGS =  #-g #-Wall
-FC_FLAGS =  #-fbounds-check -ffree-form -Wall -cpp -dM -Wno-unused
+FC_FLAGS =  -g #-fbounds-check -ffree-form -Wall -cpp -dM -Wno-unused
 
 #------------------------------
 # Define the suffixes in use

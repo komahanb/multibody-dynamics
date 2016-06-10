@@ -81,9 +81,17 @@ contains
     ! Set the number of state variables
     this % num_state_vars = 1
 
+    if (present(function)) call this % setFunction(function)
+
     if (present(x)) then
+
        this % num_design_vars = size(x)
+
+       allocate(this % x(this % num_design_vars))
+       this % x = x
+
        call this % setDesignVars(x)
+       
     end if
 
   end subroutine initialize
@@ -96,7 +104,7 @@ contains
 
     class(smd1)                        :: this
     real(8), intent(in), dimension(:)  :: x
-       
+   
     ! Overwrite the values to supplied ones
     if (this % num_design_vars .eq. 1) then 
        this % m = x(1)
@@ -203,6 +211,10 @@ contains
 
     if (present(x)) then
        this % num_design_vars = size(x)
+
+       allocate(this % x(this % num_design_vars))
+       this % x = x
+
        call this % setDesignVars(x)
     end if
 

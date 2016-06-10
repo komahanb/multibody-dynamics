@@ -43,7 +43,7 @@ program main
   !                 Spring Mass Damper system                         !
   !-------------------------------------------------------------------!
 
-  allocate(X(1))
+  allocate(X(3))
 
   x(1) = 1.00d0 ! mass
   x(2) = 0.02d0 ! damping coeff
@@ -51,7 +51,7 @@ program main
 
   ! Set the design variable and the function of interest into the
   ! system object
-  call smd1obj % initialize(x = x, function = KE)
+  call smd1obj % initialize(x, KE)
    
   ! Solve the system from tinit to tfinal using the integrator
   
@@ -60,8 +60,9 @@ program main
   call dirkobj % writeSolution('smd-dirk.dat')
   call dirkobj % finalize()
 
-  call bdfobj % initialize(system = smd1obj, tfinal = 1.0d0, h=0.01d0, second_order=.true., max_bdf_order=2)
+  call bdfobj % initialize(system = smd1obj, tfinal = 1.0d0, h=0.01d0, second_order=.true., max_bdf_order=3)
   call bdfobj % integrate()
+  call bdfobj % marchBackwards()
   call bdfobj % writeSolution('smd-bdf.dat')
   call bdfobj % finalize()
   

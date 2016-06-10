@@ -23,10 +23,10 @@ module smd_functions_class
    contains  
 
      procedure :: getFunctionValue ! function value at t, X, U, Udot, Uddot
-     procedure :: getdFdX          ! partial derivative
-     procedure :: getdFdU          ! partial derivative
-     procedure :: getdFdUDot       ! partial derivative
-     procedure :: getdFdUDDot      ! partial derivative
+     procedure :: addDFdX          ! partial derivative
+     procedure :: addDFdU          ! partial derivative
+     procedure :: addDFdUDot       ! partial derivative
+     procedure :: addDFdUDDot      ! partial derivative
 
   end type kinetic_energy
 
@@ -52,68 +52,72 @@ contains
   ! Evaluate  dF/dX
   ! -------------------------------------------------------------------!
 
-  subroutine getdFdX(this, res, time, x, u, udot, uddot)
+  subroutine addDfdX(this, res, scale, time, x, u, udot, uddot)
 
     class(kinetic_energy)                :: this
     real(8), intent(inout), dimension(:) :: res
     real(8), intent(in)                  :: time
     real(8), intent(in), dimension(:)    :: x, u, udot, uddot
+    real(8)                              :: scale
 
-    res(1) = 0.5d0*udot(1)**2 ! wrt to m
-    res(2) = 0.0d0            ! wrt to c
-    res(3) = 0.0d0            ! wrt to k
+    res(1) = res(1) + scale*0.5d0*udot(1)**2 ! wrt to m
+    res(2) = res(2) + scale*0.0d0            ! wrt to c
+    res(3) = res(3) + scale*0.0d0            ! wrt to k
 
-  end subroutine getdFdX
-
+  end subroutine addDfdX
+  
   !-------------------------------------------------------------------!
   ! Evaluate  dF/dU
   ! -------------------------------------------------------------------!
 
-  subroutine getdFdU(this, res, time, x, u, udot, uddot)
+  subroutine addDfdU(this, res, scale, time, x, u, udot, uddot)
 
     class(kinetic_energy)                :: this
     real(8), intent(inout), dimension(:) :: res
     real(8), intent(in)                  :: time
     real(8), intent(in), dimension(:)    :: x, u, udot, uddot
+    real(8)                              :: scale
 
-    res(1) = 0.0d0            ! wrt to u(1)
-    res(2) = 0.0d0            ! wrt to u(2)
-    res(3) = 0.0d0            ! wrt to u(3)
+    res(1) = res(1) + scale*0.0d0            ! wrt to u(1)
+    res(2) = res(2) + scale*0.0d0            ! wrt to u(2)
+    res(3) = res(3) + scale*0.0d0            ! wrt to u(3)
 
-  end subroutine getdFdU
+  end subroutine addDfdU
 
   !-------------------------------------------------------------------!
   ! Evaluate  dF/dUdot
   ! -------------------------------------------------------------------!
 
-  subroutine getdFdUDot(this, res, time, x, u, udot, uddot)
+  subroutine addDfdUDot(this, res, scale, time, x, u, udot, uddot)
 
     class(kinetic_energy)                :: this
     real(8), intent(inout), dimension(:) :: res
     real(8), intent(in)                  :: time
     real(8), intent(in), dimension(:)    :: x, u, udot, uddot
+    real(8)                              :: scale
 
-    res(1) = x(1)*udot(1)     ! wrt to udot(1)
-    res(2) = 0.0d0            ! wrt to udot(2)
-    res(3) = 0.0d0            ! wrt to udot(3)
+    res(1) = res(1) + scale*x(1)*udot(1)     ! wrt to udot(1)
+    res(2) = res(2) + scale*0.0d0            ! wrt to udot(2)
+    res(3) = res(3) + scale*0.0d0            ! wrt to udot(3)
     
-  end subroutine getdFdUDot
+  end subroutine addDFdUDot
   
   !-------------------------------------------------------------------!
   ! Evaluate  dF/dUDDot
   ! -------------------------------------------------------------------!
 
-  subroutine getdFdUDDot(this, res, time, x, u, udot, uddot)
+  subroutine addDfdUDDot(this, res, scale, time, x, u, udot, uddot)
 
     class(kinetic_energy)                :: this
     real(8), intent(inout), dimension(:) :: res
     real(8), intent(in)                  :: time
     real(8), intent(in), dimension(:)    :: x, u, udot, uddot
-    
-    res(1) = 0.0d0            ! wrt to uddot(1)
-    res(2) = 0.0d0            ! wrt to uddot(2)
-    res(3) = 0.0d0            ! wrt to uddot(3)
+    real(8)                              :: scale
 
-  end subroutine getdFdUDDot
+    res(1) = res(1) + scale*0.0d0            ! wrt to uddot(1)
+    res(2) = res(2) + scale*0.0d0            ! wrt to uddot(2)
+    res(3) = res(3) + scale*0.0d0            ! wrt to uddot(3)
+
+  end subroutine addDfdUDDot
 
 end module smd_functions_class
