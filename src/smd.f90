@@ -231,12 +231,14 @@ contains
     this % num_state_vars = 2
 
     if (present(x)) then
+
        this % num_design_vars = size(x)
 
        allocate(this % x(this % num_design_vars))
        this % x = x
 
        call this % setDesignVars(x)
+
     end if
 
   end subroutine initialize2
