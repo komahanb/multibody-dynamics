@@ -25,17 +25,18 @@ module physics_class
      real(dp), dimension(:), allocatable :: x
     
    contains  
+
+     procedure :: setFunction
+     procedure :: finalize
      
      procedure(residual_assembly_interface), deferred :: assembleResidual
      procedure(jacobian_assembly_interface), deferred :: assembleJacobian
      procedure(initial_condition_interface), deferred :: getInitialStates
-
+     
      procedure(InterfaceInitialize), deferred        :: initialize
      procedure(InterfaceSetDesignVars), deferred     :: setDesignVars
      procedure(InterfaceGetNumStateVars), deferred   :: getNumStateVars
      procedure(InterfaceGetResidualDVSens), deferred :: getResidualDVSens
-
-     procedure :: setFunction
      
   end type physics
   
@@ -146,12 +147,25 @@ contains
   !===================================================================!
   
   subroutine setFunction(this, func)
-    
+
     class(physics)                   :: this
     class(abstract_function), target :: func
 
     this % func => func
 
   end subroutine setFunction
+
+  !===================================================================!
+  ! Finalize the allocated variables
+  !===================================================================!
+
+  subroutine finalize(this)
+
+    class(physics) :: this
+
+    if ( allocated(this % x) ) deallocate(this % x)
+
+  end subroutine finalize
+
 
 end module physics_class

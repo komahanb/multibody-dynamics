@@ -91,7 +91,7 @@ contains
 
        allocate(this % x(this % num_design_vars))
        this % x = x
-
+       
        call this % setDesignVars(x)
        
     end if
@@ -382,8 +382,10 @@ contains
     real(8), intent(in)                    :: time
     real(8), intent(in), dimension(:)      :: x, u, udot, uddot
     real(8)                                :: scale
+    
     stop"Not implemented"
+
   end subroutine getResidualDVSens2
-  
+
 end module spring_mass_damper_class
 

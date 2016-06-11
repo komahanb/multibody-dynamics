@@ -49,8 +49,7 @@ program main
   x(2) = 0.02d0 ! damping coeff
   x(3) = 5.00d0 ! stiffness coef
 
-  ! Set the design variable and the function of interest into the
-  ! system object
+  ! Call the system constructor
   call smd1obj % initialize(x, KE)
    
   ! Solve the system from tinit to tfinal using the integrator
@@ -68,14 +67,16 @@ program main
   call bdfobj % writeSolution('smd-bdf.dat')
   call bdfobj % finalize()
   
-  deallocate(X)
+  ! Call the system destructor
+  call smd1obj % finalize()
 
-  stop
-
+  deallocate(X, dfdx)
+  
   !-------------------------------------------------------------------!
   !        Spring Mass Damper system (2 var second order)             !
   !-------------------------------------------------------------------!
 
+  ! Call the system constructor
   call smd2obj % initialize()
 
   call dirkobj % initialize(system = smd2obj, tfinal = 1.0d0, h=0.01d0, second_order=.true., num_stages=1)
@@ -84,16 +85,20 @@ program main
   call dirkobj % writeSolution('smd2-dirk.dat')
   call dirkobj % finalize()
 
-  call bdfobj % initialize(system = smd2obj, tfinal = 1.0d0, h=0.01d0, second_order=.true., max_bdf_order=2)
+  call bdfobj % initialize(system = smd2obj, tfinal = 1.0d0, h=0.01d0, second_order=.true., max_bdf_order=1)
   call bdfobj % setPrintLevel(0)
   call bdfobj % integrate()
   call bdfobj % writeSolution('smd2-bdf.dat')
   call bdfobj % finalize()
 
+! Call the system destructor
+  call smd2obj % finalize()
+
   !-------------------------------------------------------------------!
   !                 Vanderpol Equation ( 3 variables)
   !-------------------------------------------------------------------!
   
+  ! Call the system constructor
   call vpl % initialize()
 
   call dirkobj % initialize(system = vpl, tfinal = 20.0d0, h=0.01d0, second_order=.true., num_stages=3)
@@ -101,43 +106,54 @@ program main
   call dirkobj % writeSolution('vpl-dirk.dat')
   call dirkobj % finalize()
 
-  call bdfobj % initialize(system = vpl, tfinal = 20.0d0, h=0.01d0, second_order=.true., max_bdf_order=3)
+  call bdfobj % initialize(system = vpl, tfinal = 20.0d0, h=0.01d0, second_order=.true., max_bdf_order=2)
   call bdfobj % integrate()
   call bdfobj % writeSolution('vpl-bdf.dat')
   call bdfobj % finalize()
+
+  ! Call the system destructor
+  call vpl % finalize()
 
   !-------------------------------------------------------------------!
   !                 Rigidbody Dynamics (12 variables)                 !
   !-------------------------------------------------------------------!
 
+  ! Call the system constructor
   call freefall % initialize()
 
-  call dirkobj % initialize(system = freefall, tfinal = 5.0d0, h=0.01d0, second_order=.true., num_stages=3)
+  call dirkobj % initialize(system = freefall, tfinal = 1.0d0, h=0.01d0, second_order=.true., num_stages=3)
   call dirkobj % setApproximateJacobian(.true.)
   call dirkobj % integrate()
   call dirkobj % writeSolution('freefall-dirk.dat')
   call dirkobj % finalize()
 
-  call bdfobj % initialize(system = freefall, tfinal = 5.0d0, h=0.01d0, second_order=.true., max_bdf_order=3)
+  call bdfobj % initialize(system = freefall, tfinal = 1.0d0, h=0.01d0, second_order=.true., max_bdf_order=3)
   call bdfobj % setApproximateJacobian(.true.)
   call bdfobj % integrate()
   call bdfobj % writeSolution('freefall-bdf.dat')
   call bdfobj % finalize()
 
+  ! Call the system destructor
+  call freefall % finalize()
+
   !-------------------------------------------------------------------!
   !                 Aeroelastic Oscillator (2 variables)              !
   !-------------------------------------------------------------------!
 
+  ! Call the system constructor
   call oscillator % initialize()
 
-  call dirkobj % initialize(system = oscillator, tinit = 0.0d0, tfinal = 50.0d0,  h=0.001d0, second_order=.true., num_stages=3)
+  call dirkobj % initialize(system = oscillator, tinit = 0.0d0, tfinal = 50.0d0,  h=0.01d0, second_order=.true., num_stages=3)
   call dirkobj % integrate()
   call dirkobj % writeSolution('oscillator-dirk.dat')
   call dirkobj % finalize()
 
-  call bdfobj % initialize(system = oscillator, tfinal = 50.0d0, h=0.001d0, second_order=.true., max_bdf_order=2)
+  call bdfobj % initialize(system = oscillator, tfinal = 50.0d0, h=0.01d0, second_order=.true., max_bdf_order=3)
   call bdfobj % integrate()
   call bdfobj % writeSolution('oscillator-bdf.dat')
   call bdfobj % finalize()
+
+  ! Call the system destructor
+  call oscillator % finalize()
 
 end program main

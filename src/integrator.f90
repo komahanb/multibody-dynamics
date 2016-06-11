@@ -89,7 +89,7 @@ module integrator_class
      ! Adjoint Procedures                                                     !
      !----------------------------------------------------------------!
 
-     procedure(InterfaceAssembleRHS), deferred :: assembleRHS
+     procedure(InterfaceAssembleRHS), private, deferred :: assembleRHS
      procedure :: adjointSolve
 
   end type integrator

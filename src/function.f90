@@ -38,18 +38,18 @@ module function_class
 
   end type abstract_function
 
-  interface
+  abstract interface
 
      !----------------------------------------------------------------!
      ! Interface for evaluating the function for t, U, Udot, Uddot
      !----------------------------------------------------------------!
 
-     subroutine interface_evaluate(this, res, time, x, u, udot, uddot)
+     subroutine interface_evaluate(this, f, time, x, u, udot, uddot)
 
        import abstract_function
 
        class(abstract_function)             :: this
-       real(8), intent(inout), dimension(:) :: res
+       real(8), intent(inout), dimension(:) :: f
        real(8), intent(in)                  :: time
        real(8), intent(in), dimension(:)    :: x, u, udot, uddot
        
