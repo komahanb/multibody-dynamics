@@ -89,13 +89,14 @@ module runge_kutta_integrator
      !----------------------------------------------------------------!
      ! Adjoint procedures
      !----------------------------------------------------------------!
+     procedure, public  :: marchBackwards
+     procedure, private :: assembleRHS
+     procedure, private :: computeTotalDerivative
 
-     procedure, public  :: assembleRHS
-     procedure          :: marchBackwards
      procedure, private :: AddFunctionDependency
      procedure, private :: AddTimeDependency
      procedure, private :: AddStageDependency
-     
+
   end type DIRK
 
   !===================================================================!
@@ -420,6 +421,56 @@ contains
 !!$    close(90)
     
   end subroutine marchBackwards
+
+  !===================================================================!
+  ! Compute the total derivative of the function with respect to the
+  ! design variables and return the gradient 
+  !===================================================================!
+  
+  subroutine computeTotalDerivative( this, dfdx )
+    
+    class(DIRK)                              :: this
+    real(dp) , dimension(:), intent(inout)   :: dfdx
+    real(dp) , dimension(:,:), allocatable   :: dRdX
+    integer                                  :: k
+    
+!!$    allocate(dRdX(this % nsvars, this % ndvars))
+!!$    dfdx = 0.0d0
+!!$    
+!!$    !-----------------------------------------------------------------!
+!!$    ! Compute dfdx
+!!$    !-----------------------------------------------------------------!
+!!$
+!!$    do k = 2, this % num_steps
+!!$       call this % system % func % addDfdx(dfdx, 1.0d0, this % time(k), &
+!!$            & this % system % x, this % u(k,:), this % udot(k,:), this % uddot(k,:) )
+!!$    end do
+!!$
+!!$    !-----------------------------------------------------------------!
+!!$    ! Compute the total derivative
+!!$    !-----------------------------------------------------------------!
+!!$
+!!$    do k = 2, this % num_steps
+!!$       call this % system % getResidualDVSens(dRdX, 1.0d0, this % time(k), &
+!!$            & this % system % x, this % u(k,:), this % udot(k,:), this % uddot(k,:))
+!!$       dfdx = dfdx + matmul(this % psi(k,:), dRdX) ! check order
+!!$    end do
+!!$    
+!!$    !-----------------------------------------------------------------!
+!!$    ! Special logic for initial condition (use the adjoint variable
+!!$    ! for the second time step)
+!!$    !-----------------------------------------------------------------!
+!!$    
+!!$    call this % system % func % addDfdx(dfdx, 1.0d0, this % time(1), &
+!!$         & this % system % x, this % u(1,:), this % udot(1,:), this % uddot(2,:) )
+!!$    
+!!$    call this % system % getResidualDVSens(dRdX, 1.0d0, this % time(1), &
+!!$         & this % system % x, this % u(1,:), this % udot(1,:), this % uddot(2,:))
+!!$    dfdx = dfdx + matmul(this % psi(2,:), dRdX)
+!!$    
+!!$    deallocate(dRdX)
+
+  end subroutine computeTotalDerivative
 
   !===================================================================!
   ! Update the states based on RK Formulae

@@ -65,10 +65,9 @@ module bdf_integrator
 
  ! Routines for adjoint gradient
 
-     procedure, private :: marchBackwards
+     procedure, public  :: marchBackwards
      procedure, private :: assembleRHS
      procedure, private :: computeTotalDerivative
-     procedure, public  :: getAdjointGradient
 
 ! Overridden procedure
      procedure :: writeSolution => writeSolutionAdjoint
@@ -226,7 +225,7 @@ contains
   
   subroutine marchBackwards( this )
 
-    class(BDF), intent(inout) :: this
+    class(BDF)                :: this
     integer                   :: k, m
     real(dp)                  :: alpha, beta, gamma
     
@@ -302,32 +301,6 @@ contains
     deallocate(dRdX)
 
   end subroutine computeTotalDerivative
-
-  !===================================================================!
-  ! Public wrapper for all the adjoint gradient related sequence of
-  ! calls
-  !===================================================================!
-  
-  subroutine getAdjointGradient( this, dfdx )
-
-    class(BDF)                             :: this
-    real(dp) , dimension(:), intent(inout) :: dfdx
-
-    !-----------------------------------------------------------------!
-    ! Integrate backwards to solve for lagrange multipliers for the
-    ! set design variable
-    !-----------------------------------------------------------------!
-
-    call this % marchBackwards()
-    
-    !-----------------------------------------------------------------!
-    ! Compute the total derivative of the function with respect to the
-    ! design variables
-    !-----------------------------------------------------------------!
-
-    call this % computeTotalDerivative(dfdx)
-
-  end subroutine getAdjointGradient
 
   !===================================================================!
   ! Initialize the BDF datatype and allocate required variables

@@ -89,8 +89,11 @@ module integrator_class
      ! Adjoint Procedures                                                     !
      !----------------------------------------------------------------!
 
-     procedure(InterfaceAssembleRHS), private, deferred :: assembleRHS
-     procedure :: adjointSolve
+     procedure(InterfaceAssembleRHS)    , private, deferred :: assembleRHS
+     procedure(InterfaceTotalDerivative), private, deferred :: computeTotalDerivative
+     procedure(InterfaceMarch), public, deferred :: integrate, marchBackwards
+
+     procedure :: adjointSolve, getAdjointGradient
 
   end type integrator
 
@@ -109,6 +112,29 @@ module integrator_class
        real(dp), dimension(:), intent(inout) :: rhs
 
      end subroutine InterfaceAssembleRHS
+     
+     !===================================================================!
+     ! Interface routine to assemble the RHS of the adjoint systen
+     !===================================================================!
+     
+     subroutine InterfaceTotalDerivative(this, dfdx)
+
+       use iso_fortran_env , only : dp => real64
+       import integrator
+
+       class(integrator)                     :: this
+       real(dp), dimension(:), intent(inout) :: dfdx
+       
+     end subroutine InterfaceTotalDerivative
+
+     !===================================================================!
+     ! Interface routine to assemble the RHS of the adjoint systen
+     !===================================================================!
+
+     subroutine InterfaceMarch(this)
+       import integrator
+       class(integrator)                     :: this
+     end subroutine InterfaceMarch
 
   end interface
 
@@ -501,5 +527,37 @@ contains
     if (allocated(jac)) deallocate(jac)
     
   end subroutine adjointSolve
+
+  !===================================================================!
+  ! Public wrapper for all the adjoint gradient related sequence of
+  ! calls
+  !===================================================================!
+  
+  subroutine getAdjointGradient( this, dfdx )
+
+    class(integrator)                      :: this
+    real(dp) , dimension(:), intent(inout) :: dfdx
+
+    !-----------------------------------------------------------------!
+    ! Integrate forward in time to solve for the state variables
+    !-----------------------------------------------------------------!
+
+    call this % integrate()
+
+    !-----------------------------------------------------------------!
+    ! Integrate backwards to solve for lagrange multipliers for the
+    ! set design variable
+    !-----------------------------------------------------------------!
+
+    call this % marchBackwards()
+
+    !-----------------------------------------------------------------!
+    ! Compute the total derivative of the function with respect to the
+    ! design variables
+    !-----------------------------------------------------------------!
+
+    call this % computeTotalDerivative(dfdx)
+
+  end subroutine getAdjointGradient
 
 end module integrator_class
