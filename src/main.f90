@@ -12,11 +12,11 @@ program main
   use bdf_integrator                , only : BDF
   
   ! Import Physics
-  use rigid_body_class              , only : rigid_body
-  use multibody_dynamics_class      , only : multibody_dynamics
+!!$  use rigid_body_class              , only : rigid_body
+!!$  use multibody_dynamics_class      , only : multibody_dynamics
   use spring_mass_damper_class      , only : smd1, smd2
-  use vanderpol_class               , only : vanderpol
-  use aero_elastic_oscillator_class , only : aero_elastic_oscillator
+!!$  use vanderpol_class               , only : vanderpol
+!!$  use aero_elastic_oscillator_class , only : aero_elastic_oscillator
 
   ! Import functions for derivative calculation
   use smd_functions_class           , only : kinetic_energy
@@ -29,131 +29,47 @@ program main
   ! Declare Physics for testing
   type(smd1)                   , target :: smd1obj    ! Spring-mass-damper test ODE (1 var)
   type(smd2)                   , target :: smd2obj    ! Spring-mass-damper test ODE (2 var)
-  type(vanderpol)              , target :: vpl        ! Vanderpol equation (2 var)
-  type(multibody_dynamics)     , target :: freefall   ! Rigid body dynamics system (12 vars)
-  type(aero_elastic_oscillator), target :: oscillator ! Aeroelastic oscillator (2 vars)
+!!$  type(vanderpol)              , target :: vpl        ! Vanderpol equation (2 var)
+!!$  type(multibody_dynamics)     , target :: freefall   ! Rigid body dynamics system (12 vars)
+!!$  type(aero_elastic_oscillator), target :: oscillator ! Aeroelastic oscillator (2 vars)
 
   ! Declare functions that are used
   type(kinetic_energy)         , target :: KE
 
   ! Design variable array
-  real(dp), dimension(:), allocatable   :: X, dfdx
+  real(dp), dimension(:), allocatable :: x, dfdx, dfdxtmp
+  real(dp)                            :: fval, ftmp, dh = 1.0d-6
   
   !-------------------------------------------------------------------!
   !                 Spring Mass Damper system                         !
   !-------------------------------------------------------------------!
-
-  allocate(X(3), dfdx(3))
-
-  x(1) = 1.00d0 ! mass
-  x(2) = 0.02d0 ! damping coeff
-  x(3) = 5.00d0 ! stiffness coef
-
-  ! Call the system constructor
-  call smd1obj % initialize(x, KE)
-   
-  ! Solve the system from tinit to tfinal using the integrator
   
-  call dirkobj % initialize(system = smd1obj, tfinal = 1.0d0, h=0.01d0, second_order=.true., num_stages=2)
-  call dirkobj % integrate() 
-  call dirkobj % writeSolution('smd-dirk.dat')
-  call dirkobj % finalize()
+  allocate(X(3), dfdx(3), dfdxtmp(3))
 
-  bdfobj % ndvars = 3
-  call bdfobj % initialize(system = smd1obj, tfinal = 1.0d0, h=0.01d0, second_order=.true., max_bdf_order=3)
-  call bdfobj % integrate()
-  call bdfobj % getAdjointGradient(dfdx)
-  print*, "dfdx=", dfdx
-  call bdfobj % writeSolution('smd-bdf.dat')
+  x(1) = 1.00d0 + dh    ! mass
+  x(2) = 0.02d0    ! damping coeff
+  x(3) = 5.00d0    ! stiffness coef
+
+  ! Initialize the system
+  call smd1obj % initialize(num_state_vars = 1, num_design_vars = 3)
+
+  bdfobj =  BDF(system = smd1obj, tfinal = 1.0d0, h=0.01d0) 
+
+  call bdfobj % evalFuncGrad(num_func=1, func = KE,  num_dv = 3, x = x, &
+       & fvals = fval, dfdx= dfdx)
+
+  call bdfobj % evalFDFuncGrad(num_func=1, func = KE,  num_dv = 3, x = x, &
+       & fvals = fval, dfdx= dfdxtmp, dh=1.0d-6)
+
   call bdfobj % finalize()
-  
-  ! Call the system destructor
+
+  print*, "fval         =", fval
+  print*, "Adjoint dfdx =", dfdx
+  print*, "FD      dfdx =", dfdxtmp
+
+  ! Finalize the system
   call smd1obj % finalize()
 
-  deallocate(X, dfdx)
-  
-  !-------------------------------------------------------------------!
-  !        Spring Mass Damper system (2 var second order)             !
-  !-------------------------------------------------------------------!
+  deallocate(X, dfdx, dfdxtmp)
 
-  ! Call the system constructor
-  call smd2obj % initialize()
-
-  call dirkobj % initialize(system = smd2obj, tfinal = 1.0d0, h=0.01d0, second_order=.true., num_stages=1)
-  call dirkobj % setPrintLevel(0)
-  call dirkobj % integrate()
-  call dirkobj % writeSolution('smd2-dirk.dat')
-  call dirkobj % finalize()
-
-  call bdfobj % initialize(system = smd2obj, tfinal = 1.0d0, h=0.01d0, second_order=.true., max_bdf_order=1)
-  call bdfobj % setPrintLevel(0)
-  call bdfobj % integrate()
-  call bdfobj % writeSolution('smd2-bdf.dat')
-  call bdfobj % finalize()
-
-! Call the system destructor
-  call smd2obj % finalize()
-
-  !-------------------------------------------------------------------!
-  !                 Vanderpol Equation ( 3 variables)
-  !-------------------------------------------------------------------!
-  
-  ! Call the system constructor
-  call vpl % initialize()
-
-  call dirkobj % initialize(system = vpl, tfinal = 20.0d0, h=0.01d0, second_order=.true., num_stages=3)
-  call dirkobj % integrate()
-  call dirkobj % writeSolution('vpl-dirk.dat')
-  call dirkobj % finalize()
-
-  call bdfobj % initialize(system = vpl, tfinal = 20.0d0, h=0.01d0, second_order=.true., max_bdf_order=2)
-  call bdfobj % integrate()
-  call bdfobj % writeSolution('vpl-bdf.dat')
-  call bdfobj % finalize()
-
-  ! Call the system destructor
-  call vpl % finalize()
-
-  !-------------------------------------------------------------------!
-  !                 Rigidbody Dynamics (12 variables)                 !
-  !-------------------------------------------------------------------!
-
-  ! Call the system constructor
-  call freefall % initialize()
-
-  call dirkobj % initialize(system = freefall, tfinal = 1.0d0, h=0.01d0, second_order=.true., num_stages=3)
-  call dirkobj % setApproximateJacobian(.true.)
-  call dirkobj % integrate()
-  call dirkobj % writeSolution('freefall-dirk.dat')
-  call dirkobj % finalize()
-
-  call bdfobj % initialize(system = freefall, tfinal = 1.0d0, h=0.01d0, second_order=.true., max_bdf_order=3)
-  call bdfobj % setApproximateJacobian(.true.)
-  call bdfobj % integrate()
-  call bdfobj % writeSolution('freefall-bdf.dat')
-  call bdfobj % finalize()
-
-  ! Call the system destructor
-  call freefall % finalize()
-
-  !-------------------------------------------------------------------!
-  !                 Aeroelastic Oscillator (2 variables)              !
-  !-------------------------------------------------------------------!
-
-  ! Call the system constructor
-  call oscillator % initialize()
-
-  call dirkobj % initialize(system = oscillator, tinit = 0.0d0, tfinal = 50.0d0,  h=0.01d0, second_order=.true., num_stages=3)
-  call dirkobj % integrate()
-  call dirkobj % writeSolution('oscillator-dirk.dat')
-  call dirkobj % finalize()
-
-  call bdfobj % initialize(system = oscillator, tfinal = 50.0d0, h=0.01d0, second_order=.true., max_bdf_order=3)
-  call bdfobj % integrate()
-  call bdfobj % writeSolution('oscillator-bdf.dat')
-  call bdfobj % finalize()
-
-  ! Call the system destructor
-  call oscillator % finalize()
-
-end program main
+end program

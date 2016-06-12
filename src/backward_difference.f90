@@ -1,6 +1,6 @@
 !=====================================================================!
 ! Backward Difference Formula Integration Module for first and second
-! order systems.
+! order systems with adjoint derivative capabilities.
 !
 ! Author: Komahan Boopathy (komahan@gatech.edu)
 !=====================================================================! 
@@ -51,15 +51,15 @@ module bdf_integrator
   type, extends(integrator) :: BDF
 
 ! BDF variables
-     integer                                :: max_bdf_order
+     integer                                :: max_bdf_order = 3
      type(bdf_coeff)                        :: coeff
-     integer                                :: ndvars
+
      real(dp) , dimension(:,:), allocatable :: psi
 
    contains
 
  ! Routines for integration
-     procedure, public  :: initialize, finalize, integrate     
+     procedure, public  :: finalize, integrate     
      procedure, private :: approximateStates
      procedure, private :: getLinearCoeff
 
@@ -68,11 +68,16 @@ module bdf_integrator
      procedure, public  :: marchBackwards
      procedure, private :: assembleRHS
      procedure, private :: computeTotalDerivative
+     procedure, public  :: evalFunc
 
 ! Overridden procedure
      procedure :: writeSolution => writeSolutionAdjoint
 
   end type BDF
+  
+  interface BDF
+     module procedure initialize
+  end interface BDF
 
 contains
   
@@ -87,7 +92,9 @@ contains
     real(dp), intent(inout)   :: alpha, beta, gamma
     
     alpha = this % coeff % alpha
+
     beta  = this % coeff % beta(this % coeff % getOrder(k,1), 1)/this % h
+    
     if ( this % second_order ) then
        gamma = this % coeff % gamma(this % coeff % getOrder(k, 2), 1)/this % h/this % h
     else 
@@ -103,7 +110,7 @@ contains
   type(bdf_coeff) function construct_bdf_coeff( max_order ) result( this )
 
     integer, intent(in), OPTIONAL :: max_order
-   
+    
     if( present(max_order) ) then
        this % max_order = max_order
     end if
@@ -167,7 +174,7 @@ contains
   ! degree d
   !===================================================================!
   
-  pure integer function getOrder( this, k, d )
+  pure integer function getOrder(this, k, d )
 
     class(bdf_coeff), intent(in)    :: this
     integer, intent(in)             :: k, d
@@ -246,7 +253,7 @@ contains
        call this % adjointSolve(this % psi(k,:), alpha, beta, gamma, &
             & this % time(k), this % u(k,:), this % udot(k,:), this % uddot(k,:))
        
-       print *, this % psi(k,:), k
+       ! print *, this % psi(k,:), k
 
     end do
 
@@ -259,12 +266,14 @@ contains
   
   subroutine computeTotalDerivative( this, dfdx )
     
-    class(BDF)                               :: this
-    real(dp) , dimension(:), intent(inout)   :: dfdx
-    real(dp) , dimension(:,:), allocatable   :: dRdX
-    integer                                  :: k
+    class(BDF)                                         :: this
+    real(dp) , dimension(:), intent(inout)             :: dfdx
+    real(dp) , dimension(this % nSVars, this % nDVars) :: dRdX
+    real(dp)                                           :: scale
+    integer                                            :: k
     
-    allocate(dRdX(this % nsvars, this % ndvars))
+    scale = this % h
+    
     dfdx = 0.0d0
     
     !-----------------------------------------------------------------!
@@ -272,33 +281,32 @@ contains
     !-----------------------------------------------------------------!
 
     do k = 2, this % num_steps
-       call this % system % func % addDfdx(dfdx, 1.0d0, this % time(k), &
+       call this % system % func % addDfdx(dfdx, scale, this % time(k), &
             & this % system % x, this % u(k,:), this % udot(k,:), this % uddot(k,:) )
     end do
 
+    ! Initial condition
+    call this % system % func % addDfdx(dfdx, scale, this % time(1), &
+         & this % system % x, this % u(1,:), this % udot(1,:), this % uddot(2,:) )
+    
     !-----------------------------------------------------------------!
     ! Compute the total derivative
     !-----------------------------------------------------------------!
 
     do k = 2, this % num_steps
-       call this % system % getResidualDVSens(dRdX, 1.0d0, this % time(k), &
+       call this % system % getResidualDVSens(dRdX, scale, this % time(k), &
             & this % system % x, this % u(k,:), this % udot(k,:), this % uddot(k,:))
        dfdx = dfdx + matmul(this % psi(k,:), dRdX) ! check order
     end do
-    
-    !-----------------------------------------------------------------!
-    ! Special logic for initial condition (use the adjoint variable
-    ! for the second time step)
-    !-----------------------------------------------------------------!
-    
-    call this % system % func % addDfdx(dfdx, 1.0d0, this % time(1), &
-         & this % system % x, this % u(1,:), this % udot(1,:), this % uddot(2,:) )
-    
-    call this % system % getResidualDVSens(dRdX, 1.0d0, this % time(1), &
+
+    ! Add constraint contribution
+    call this % system % getResidualDVSens(dRdX, scale, this % time(1), &
          & this % system % x, this % u(1,:), this % udot(1,:), this % uddot(2,:))
     dfdx = dfdx + matmul(this % psi(2,:), dRdX)
-    
-    deallocate(dRdX)
+
+    ! Finally multiply by the scalar
+    !   dfdx = this %  * dfdx
+    print*, "Check scaling of dfdx"
 
   end subroutine computeTotalDerivative
 
@@ -306,9 +314,8 @@ contains
   ! Initialize the BDF datatype and allocate required variables
   !===================================================================!
   
-  subroutine initialize( this, system, tinit, tfinal, h, second_order, max_bdf_order ) 
-    
-    class(BDF)                      :: this
+  type(bdf) function initialize(system, tinit, tfinal, h, second_order, max_bdf_order )  result (this)
+   
     class(physics), target          :: system
     integer  , OPTIONAL, intent(in) :: max_bdf_order
     real(dp) , OPTIONAL, intent(in) :: tinit, tfinal
@@ -416,7 +423,7 @@ contains
     ! Set the start time
     this % time(1) = this % tinit
 
-  end subroutine initialize
+  end function initialize
 
   !===================================================================!
   ! Deallocate the allocated variables
@@ -598,10 +605,34 @@ contains
     end do
     
     ! Negate the RHS
-    rhs = -rhs
+    rhs = - rhs
     
     if(allocated(jac)) deallocate(jac)
     
   end subroutine assembleRHS
+
+  !===================================================================!
+  ! Evaluating the function of interest
+  !===================================================================!
+
+  subroutine evalFunc(this, x, fval)
+
+    class(BDF)                            :: this
+    real(dp), dimension(:), intent(in)    :: x
+    real(dp), intent(inout)               :: fval
+    integer                               :: k
+    real(dp), dimension(this % num_steps) :: ftmp
+    
+    print*, "Evaluating function of interest"
+    
+    do concurrent(k = 1 : this % num_steps)
+       call this % system % func % getFunctionValue(ftmp(k), this % time(k), &
+            & x, this % U(k,:), this % UDOT(k,:), this % UDDOT(k,:))
+    end do
+    
+    ! fval = sum(ftmp)/dble(this % num_steps)
+    fval = this % h * sum(ftmp)
+   
+  end subroutine evalFunc
 
 end module bdf_integrator

@@ -46,10 +46,12 @@ LIBS = -lm -llapack
 SRC  :=	 src/function.f90 src/physics.f90 src/integrator.f90 \
          src/runge_kutta.f90 src/backward_difference.f90 \
 	 src/smd.f90 src/smd_functions.f90 \
-	 src/vanderpol.f90 \
+	 src/main.f90
+
+
+#	 src/vanderpol.f90 \
          src/aero_elastic_oscillator.f90 \
 	 src/utils.f90 src/rotation.f90 src/dynamics.f90 \
-	 src/main.f90
 
 #-----------------------------------------------------------------------
 # define the C,C++, Fortran object files 

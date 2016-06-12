@@ -96,6 +96,7 @@ module runge_kutta_integrator
      procedure, private :: AddFunctionDependency
      procedure, private :: AddTimeDependency
      procedure, private :: AddStageDependency
+     procedure, public  :: evalFunc
 
   end type DIRK
 
@@ -396,29 +397,12 @@ contains
           ! Solve the adjoint equation at each step
           !--------------------------------------------------------------!
 
-          call this % adjointSolve(this % psi(k,i,:), alpha, beta, gamma,&
+          call this % adjointSolve(this % psi(k,i,:), alpha, beta, gamma, &
                & this % t(i), this % q(k,i,:), this % qdot(k,i,:), this % qddot(k,i,:))
           
        end do
 
     end do
-
-!!$
-!!$    ! Compute the total derivative
-!!$    tmp = 0.0d0
-!!$    do k = 1, this % num_steps
-!!$       tmp = tmp + matmul(this%psi(k,i,:), dRdx)
-!!$    end do
-!!$
-!!$    ! call addDVSens
-!!$    dLdx = dfdx + tmp
-!!$
-!!$    ! Write the adjoint variables 
-!!$    open(unit=90, file='output/adjoint.dat')
-!!$    do k = 1, this % num_steps
-!!$       write(90, *)  this % time(k), this % psi(k,1,:), this % psi(k,2,:), this % psi(k,3,:)
-!!$    end do
-!!$    close(90)
     
   end subroutine marchBackwards
 
@@ -432,43 +416,48 @@ contains
     class(DIRK)                              :: this
     real(dp) , dimension(:), intent(inout)   :: dfdx
     real(dp) , dimension(:,:), allocatable   :: dRdX
-    integer                                  :: k
+    integer                                  :: k, j
+
+    allocate(dRdX(this % nSVars, this % nDVars))
     
-!!$    allocate(dRdX(this % nsvars, this % ndvars))
-!!$    dfdx = 0.0d0
-!!$    
-!!$    !-----------------------------------------------------------------!
-!!$    ! Compute dfdx
-!!$    !-----------------------------------------------------------------!
-!!$
-!!$    do k = 2, this % num_steps
-!!$       call this % system % func % addDfdx(dfdx, 1.0d0, this % time(k), &
-!!$            & this % system % x, this % u(k,:), this % udot(k,:), this % uddot(k,:) )
-!!$    end do
-!!$
-!!$    !-----------------------------------------------------------------!
-!!$    ! Compute the total derivative
-!!$    !-----------------------------------------------------------------!
-!!$
-!!$    do k = 2, this % num_steps
-!!$       call this % system % getResidualDVSens(dRdX, 1.0d0, this % time(k), &
-!!$            & this % system % x, this % u(k,:), this % udot(k,:), this % uddot(k,:))
-!!$       dfdx = dfdx + matmul(this % psi(k,:), dRdX) ! check order
-!!$    end do
-!!$    
-!!$    !-----------------------------------------------------------------!
-!!$    ! Special logic for initial condition (use the adjoint variable
-!!$    ! for the second time step)
-!!$    !-----------------------------------------------------------------!
-!!$    
+    dfdx = 0.0d0
+    
+    !-----------------------------------------------------------------!
+    ! Compute dfdx
+    !-----------------------------------------------------------------!
+    
+    do k = 2, this % num_steps
+       do j = 1, this % num_stages
+          call this % system % func % addDFDX(dfdx, 1.0d0, this % T(k), &
+               & this % system % x, this % Q(k,j,:), this % QDOT(k,j,:), this % QDDOT(k,j,:) )
+       end do
+    end do
+
+    !-----------------------------------------------------------------!
+    ! Compute the total derivative
+    !-----------------------------------------------------------------!
+
+    do k = 2, this % num_steps
+       do j = 1, this % num_stages
+          call this % system % getResidualDVSens(dRdX, 1.0d0, this % T(k), &
+               & this % system % x, this % Q(k,j,:), this % QDOT(k,j,:), this % QDDOT(k,j,:))
+          dfdx = dfdx + matmul(this % psi(k,j,:), dRdX) ! check order
+       end do
+    end do
+
+    !-----------------------------------------------------------------!
+    ! Special logic for initial condition (use the adjoint variable
+    ! for the second time step)
+    !-----------------------------------------------------------------!
+    
 !!$    call this % system % func % addDfdx(dfdx, 1.0d0, this % time(1), &
 !!$         & this % system % x, this % u(1,:), this % udot(1,:), this % uddot(2,:) )
 !!$    
 !!$    call this % system % getResidualDVSens(dRdX, 1.0d0, this % time(1), &
 !!$         & this % system % x, this % u(1,:), this % udot(1,:), this % uddot(2,:))
 !!$    dfdx = dfdx + matmul(this % psi(2,:), dRdX)
-!!$    
-!!$    deallocate(dRdX)
+    
+    deallocate(dRdX)
 
   end subroutine computeTotalDerivative
 
@@ -843,5 +832,19 @@ contains
     call this % AddStageDependency(rhs)
 
   end subroutine assembleRHS
+
+  !===================================================================!
+  ! Evaluating the function of interest
+  !===================================================================!
+  
+  subroutine evalFunc(this, x, fval)
+    
+    class(DIRK)                        :: this
+    real(dp), dimension(:), intent(in) :: x
+    real(dp), intent(inout)            :: fval
+    
+    print*, "Evaluating function of interest"
+
+  end subroutine evalFunc
 
 end module runge_kutta_integrator

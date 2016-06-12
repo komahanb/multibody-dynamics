@@ -37,10 +37,10 @@ contains
   ! variables KE = 0.5 m v^2
   ! -------------------------------------------------------------------!
   
-  subroutine getFunctionValue(this, f, time, x, u, udot, uddot)
+  pure subroutine getFunctionValue(this, f, time, x, u, udot, uddot)
     
-    class(kinetic_energy)                :: this
-    real(8), intent(inout), dimension(:) :: f
+    class(kinetic_energy), intent(inout) :: this
+    real(8), intent(inout)               :: f
     real(8), intent(in)                  :: time
     real(8), intent(in), dimension(:)    :: x, u, udot, uddot
 

@@ -29,17 +29,11 @@ module spring_mass_damper_class
      real(8) :: c = 0.02d0
      real(8) :: k = 5.0d0
 
-     integer :: num_state_vars  = 1 ! number of state variables
-     integer :: num_design_vars = 0 ! number of design variables
-
    contains
-
-     procedure :: initialize
-     procedure :: setDesignVars
+     procedure :: mapDesignVars
      procedure :: assembleResidual
      procedure :: assembleJacobian
      procedure :: getInitialStates
-     procedure :: getNumStateVars
      procedure :: getResidualDVSens
 
   end type smd1
@@ -53,70 +47,99 @@ module spring_mass_damper_class
      ! Define constants and other parameters needed for residual and
      ! jacobian assembly here
 
-     integer :: num_state_vars  = 2 ! number of state variables
-     integer :: num_design_vars = 0 ! number of design variables
-
    contains
 
-     procedure :: initialize       => initialize2
-     procedure :: setDesignVars    => setDesignVars2
+     procedure :: mapDesignVars    => mapDesignVars2
      procedure :: assembleResidual => assembleResidual2
      procedure :: assembleJacobian => assembleJacobian2
      procedure :: getInitialStates => getInitialStates2
-     procedure :: getNumStateVars  => getNumStateVars2
      procedure :: getResidualDVSens => getResidualDVSens2
      
   end type smd2
 
 contains
-
+  
   !-------------------------------------------------------------------!
-  ! Constructor for the spring mass damper system 
+  ! Map the the design variables into the class variables
   !-------------------------------------------------------------------!
   
-  subroutine initialize(this, x, function)
+  subroutine mapDesignVars(this)
 
-    class(smd1)                                 :: this
-    class(abstract_function), target, OPTIONAL  :: function
-    real(8), intent(in), dimension(:), OPTIONAl :: x
+    class(smd1) :: this
+        
+    this % M = this % x(1)
+    this % C = this % x(2)
+    this % K = this % x(3)
 
-    ! Set the number of state variables
-    this % num_state_vars = 1
+    print*, this % x
 
-    if (present(function)) call this % setFunction(function)
+  end subroutine mapDesignVars
 
-    if (present(x)) then
+!!$
+!!$  !-------------------------------------------------------------------!
+!!$  ! Constructor for the spring mass damper system 
+!!$  !-------------------------------------------------------------------!
+!!$  
+!!$  subroutine initialize(this, x, function)
+!!$
+!!$    class(smd1)                                 :: this
+!!$    class(abstract_function), target, OPTIONAL  :: function
+!!$    real(8), intent(in), dimension(:), OPTIONAl :: x
+!!$
+!!$    ! Set the number of state variables
+!!$    this % num_state_vars = 1
+!!$
+!!$    if (present(function)) call this % setFunction(function)
+!!$
+!!$    if (present(x)) then
+!!$
+!!$       this % num_design_vars = size(x)
+!!$
+!!$       allocate(this % x(this % num_design_vars))
+!!$       this % x = x
+!!$       
+!!$       call this % setDesignVars(x)
+!!$       
+!!$    end if
+!!$
+!!$  end subroutine initialize
 
-       this % num_design_vars = size(x)
+!!$  !===================================================================!
+!!$  ! Sets the design variables into the system
+!!$  !===================================================================!
+!!$  
+!!$  subroutine setDesignVars(this, num_dvs, x)
+!!$
+!!$    class(smd1)                        :: this
+!!$    real(8), intent(in), dimension(:)  :: x
+!!$   
+!!$    ! Overwrite the values to supplied ones
+!!$    if (this % num_design_vars .eq. 1) then 
+!!$       this % m = x(1)
+!!$    else if (this % num_design_vars .eq. 2) then
+!!$       this % m = x(1); this % c = x(2);
+!!$    else if (this % num_design_vars .eq. 3) then
+!!$       this % m = x(1); this % c = x(2); this % K = x(3);          
+!!$    end if
+!!$
+!!$  end subroutine setDesignVars
+ 
+  !---------------------------------------------------------------------!
+  ! Sets the initial condition for use in the integator. If first order
+  ! system just set initial Q, if a second order system set initial Q
+  ! and udot
+  !---------------------------------------------------------------------!
 
-       allocate(this % x(this % num_design_vars))
-       this % x = x
-       
-       call this % setDesignVars(x)
-       
-    end if
+  subroutine getInitialStates(this, time, u, udot)
 
-  end subroutine initialize
+    class(smd1) :: this
 
-  !===================================================================!
-  ! Sets the design variables into the system
-  !===================================================================!
-  
-  subroutine setDesignVars(this, x)
+    real(8), intent(in) :: time
+    real(8), intent(inout), dimension(:) :: u, udot
 
-    class(smd1)                        :: this
-    real(8), intent(in), dimension(:)  :: x
-   
-    ! Overwrite the values to supplied ones
-    if (this % num_design_vars .eq. 1) then 
-       this % m = x(1)
-    else if (this % num_design_vars .eq. 2) then
-       this % m = x(1); this % c = x(2);
-    else if (this % num_design_vars .eq. 3) then
-       this % m = x(1); this % c = x(2); this % K = x(3);          
-    end if
+    u(1) = 1.0d0
 
-  end subroutine setDesignVars
+  end subroutine getInitialStates
 
   !-------------------------------------------------------------------!
   ! Residual assembly at each time step. This is a mandary function
@@ -167,36 +190,6 @@ contains
     jac(1,1) = gamma * this % m + beta * this % c + alpha * this % k
 
   end subroutine assembleJacobian
- 
-  !---------------------------------------------------------------------!
-  ! Sets the initial condition for use in the integator. If first order
-  ! system just set initial Q, if a second order system set initial Q
-  ! and udot
-  !---------------------------------------------------------------------!
-
-  subroutine getInitialStates(this, time, u, udot)
-
-    class(smd1) :: this
-
-    real(8), intent(in) :: time
-    real(8), intent(inout), dimension(:) :: u, udot
-
-    u(1) = 1.0d0
-
-  end subroutine getInitialStates
-  
-  !===================================================================!
-  ! Return the number of state variables
-  !===================================================================!
-  
-  function getNumStateVars(this)
-
-    class(smd1) :: this
-    integer     :: getNumStateVars
-
-    getNumStateVars = this % num_state_vars
-
-  end function getNumStateVars
 
   !----------------------------------------------------------------!
   ! Routine for evaluating the gradient of Residual with respect
@@ -211,48 +204,31 @@ contains
     real(8), intent(in), dimension(:)      :: x, u, udot, uddot
     real(8)                                :: scale
 
+    jac = 0.0d0 
+
     jac(1,1) = uddot(1)
-    jac(1,2) = 0.0d0
-    jac(1,3) = 0.0d0
+    jac(1,2) = udot(1)
+    jac(1,3) = u(1)
 
   end subroutine getResidualDVSens
 
-  !-------------------------------------------------------------------!
-  ! Constructor for the spring mass damper system 
-  !-------------------------------------------------------------------!
-  
-  subroutine initialize2(this, x, function)
+  !---------------------------------------------------------------------!
+  ! Sets the initial condition for use in the integator. If first order
+  ! system just set initial Q, if a second order system set initial Q
+  ! and udot
+  !---------------------------------------------------------------------!
 
-    class(smd2)                                 :: this
-    class(abstract_function), target, OPTIONAL  :: function
-    real(8), intent(in), dimension(:), OPTIONAl :: x
+  subroutine getInitialStates2(this, time, u, udot)
 
-    ! Set the number of state variables
-    this % num_state_vars = 2
+    class(smd2) :: this
 
-    if (present(x)) then
+    real(8), intent(in) :: time
+    real(8), intent(inout), dimension(:) :: u, udot
 
-       this % num_design_vars = size(x)
+    u(1) = 1.0d0
+    u(2) = 2.0d0
 
-       allocate(this % x(this % num_design_vars))
-       this % x = x
-
-       call this % setDesignVars(x)
-
-    end if
-
-  end subroutine initialize2
-
-  !===================================================================!
-  ! Sets the design variables into the system
-  !===================================================================!
-  
-  subroutine setDesignVars2(this, x)
-
-    class(smd2)                        :: this
-    real(8), intent(in), dimension(:)  :: x
-
-  end subroutine setDesignVars2
+  end subroutine getInitialStates2
 
   !-------------------------------------------------------------------!
   ! Residual assembly at each time step. This is a mandary function
@@ -338,38 +314,7 @@ contains
     JAC(2,2) = JAC(2,2) + gamma*1.0d0
 
   end subroutine assembleJacobian2
-
-  !---------------------------------------------------------------------!
-  ! Sets the initial condition for use in the integator. If first order
-  ! system just set initial Q, if a second order system set initial Q
-  ! and udot
-  !---------------------------------------------------------------------!
-
-  subroutine getInitialStates2(this, time, u, udot)
-
-    class(smd2) :: this
-
-    real(8), intent(in) :: time
-    real(8), intent(inout), dimension(:) :: u, udot
-
-    u(1) = 1.0d0
-    u(2) = 2.0d0
-
-  end subroutine getInitialStates2
-  
-  !===================================================================!
-  ! Return the number of state variables
-  !===================================================================!
-  
-  function getNumStateVars2(this)
-
-    class(smd2) :: this
-    integer     :: getNumStateVars2
-
-    getNumStateVars2 = this % num_state_vars
-
-  end function getNumStateVars2
-  
+    
   !-------------------------------------------------------------------!
   ! Routine for evaluating the gradient of Residual with respect
   ! to the design X
@@ -386,6 +331,19 @@ contains
     stop"Not implemented"
 
   end subroutine getResidualDVSens2
+
+  
+  !-------------------------------------------------------------------!
+  ! Map the the design variables into the class variables
+  !-------------------------------------------------------------------!
+  
+  subroutine mapDesignVars2(this)
+
+    class(smd2) :: this
+        
+    print *, "dummy impl"
+
+  end subroutine mapDesignVars2
 
 end module spring_mass_damper_class
 

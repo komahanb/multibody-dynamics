@@ -20,24 +20,30 @@ module physics_class
   !-------------------------------------------------------------------!
 
   type, abstract :: physics
-     
-     class(abstract_function) , pointer  :: func ! function of interest
+
+     integer                             :: num_design_vars = 0 
+     integer                             :: num_state_vars  = 0 
      real(dp), dimension(:), allocatable :: x
-    
+     class(abstract_function), pointer   :: func => null() ! function of interest
+     
    contains  
 
+     ! Constructor and destructor
+     procedure :: initialize, finalize
+
+     ! Setters
      procedure :: setFunction
-     procedure :: finalize
-     
+     procedure :: setDesignVars
+     procedure :: getNumStateVars
+
+     ! Deferred procedures
+     procedure(initial_condition_interface), deferred :: getInitialStates     
      procedure(residual_assembly_interface), deferred :: assembleResidual
      procedure(jacobian_assembly_interface), deferred :: assembleJacobian
-     procedure(initial_condition_interface), deferred :: getInitialStates
-     
-     procedure(InterfaceInitialize), deferred        :: initialize
-     procedure(InterfaceSetDesignVars), deferred     :: setDesignVars
-     procedure(InterfaceGetNumStateVars), deferred   :: getNumStateVars
-     procedure(InterfaceGetResidualDVSens), deferred :: getResidualDVSens
-     
+ 
+     procedure(InterfaceGetResidualDVSens), deferred  :: getResidualDVSens
+     procedure(InterfaceMapDesignVars), deferred  :: mapDesignVars
+
   end type physics
   
   interface
@@ -70,18 +76,7 @@ module physics_class
        class(abstract_function), target, OPTIONAL  :: function
        real(8), intent(in), dimension(:), OPTIONAl :: x
      end subroutine InterfaceInitialize
-
-     !----------------------------------------------------------------!
-     ! User implementation of how design variables are mapped to the
-     ! local paramters
-     ! ----------------------------------------------------------------!
-     
-     subroutine InterfaceSetDesignVars(this, x)
-       import physics
-       class(physics) :: this
-       real(8), intent(in), dimension(:) :: x
-     end subroutine InterfaceSetDesignVars
-     
+    
      !----------------------------------------------------------------!
      ! Interface for residual assembly at each time step
      !----------------------------------------------------------------!
@@ -137,23 +132,38 @@ module physics_class
        class(physics) :: this
        integer :: InterfaceGetNumStateVars
      end function InterfaceGetNumStateVars
+     
+     !-------------------------------------------------------------------!
+     ! Map the the design variables into the class variables
+     !-------------------------------------------------------------------!
+     
+     subroutine InterfaceMapDesignVars(this)
+       import physics
+       class(physics) :: this
+     end subroutine InterfaceMapDesignVars
 
   end interface
 
 contains
-  
+
   !===================================================================!
-  ! Set the function created into the system                          !
+  ! Initialize the system
   !===================================================================!
-  
-  subroutine setFunction(this, func)
 
-    class(physics)                   :: this
-    class(abstract_function), target :: func
+  subroutine initialize(this, num_state_vars, num_design_vars)
 
-    this % func => func
+    class(physics)      :: this
+    integer, intent(in) :: num_state_vars
+    integer, intent(in), OPTIONAL :: num_design_vars
+    
+    this % num_state_vars  = num_state_vars
+    
+    if (present(num_design_vars)) then
+       this % num_design_vars = num_design_vars
+       allocate(this % x(this % num_design_vars))
+    end if
 
-  end subroutine setFunction
+  end subroutine initialize
 
   !===================================================================!
   ! Finalize the allocated variables
@@ -162,10 +172,55 @@ contains
   subroutine finalize(this)
 
     class(physics) :: this
-
+    
     if ( allocated(this % x) ) deallocate(this % x)
+
+    print*, "Yet to deassociate the function"
 
   end subroutine finalize
 
+  !-------------------------------------------------------------------!
+  ! Set the design varaibles
+  !-------------------------------------------------------------------!
+  
+  subroutine setDesignVars(this, num_dvs, x)
+    
+    class(physics)                    :: this
+    real(8), intent(in), dimension(:) :: x
+    integer, intent(in)               :: num_dvs
+    
+    if (this % num_design_vars .ne. size(x)) stop "Error in num_design_vars"
+
+    this % x = x
+
+    call this % mapDesignVars()
+    !print*,"How to map the variables to class variables?"
+
+  end subroutine setDesignVars
+    
+  !===================================================================!
+  ! Set the function created into the system                          !
+  !===================================================================!
+  
+  subroutine setFunction(this, func)
+
+    class(physics)                   :: this
+    class(abstract_function), target :: func
+    
+    this % func => func
+    
+  end subroutine setFunction
+  
+  !===================================================================!
+  ! Return the number of state variables
+  !===================================================================!
+  
+  integer function getNumStateVars(this)
+
+    class(physics) :: this
+
+    getNumStateVars = this % num_state_vars
+
+  end function getNumStateVars
 
 end module physics_class

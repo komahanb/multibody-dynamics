@@ -14,7 +14,8 @@ module integrator_class
   
   use iso_fortran_env, only : dp => real64
   use physics_class  , only : physics
-  
+  use function_class , only : abstract_function
+
   implicit none
 
   private
@@ -31,13 +32,14 @@ module integrator_class
      !----------------------------------------------------------------!
      
      class(physics), pointer :: system => null()
-     integer                 :: nsvars = 1 ! number of states/equations
+     integer                 :: nsvars = 0 ! number of states/equations
+     integer                 :: ndvars = 0 ! number of design variables
 
      !----------------------------------------------------------------!
      ! Variables for managing time marching
      !----------------------------------------------------------------!
 
-     integer  :: num_steps                     ! number of time steps
+     integer  :: num_steps = 0                 ! number of time steps
      real(dp) :: tinit = 0.0d0, tfinal = 1.0d0 ! initial and final times
      real(dp) :: h = 0.1d0                     ! default step size
 
@@ -46,7 +48,7 @@ module integrator_class
      !----------------------------------------------------------------!
 
      integer  :: max_newton = 25
-     real(dp) :: atol = 1.0d-12, rtol = 1.0d-10
+     real(dp) :: atol = 1.0d-14, rtol = 1.0d-12
 
      !----------------------------------------------------------------!
      ! Track global time and states
@@ -61,7 +63,7 @@ module integrator_class
      ! Miscellaneous variables
      !----------------------------------------------------------------!
 
-     logical :: second_order = .false.
+     logical :: second_order = .true.
      logical :: forward = .true.
      integer :: print_level = 0
      integer :: current_step
@@ -91,9 +93,11 @@ module integrator_class
 
      procedure(InterfaceAssembleRHS)    , private, deferred :: assembleRHS
      procedure(InterfaceTotalDerivative), private, deferred :: computeTotalDerivative
-     procedure(InterfaceMarch), public, deferred :: integrate, marchBackwards
-
-     procedure :: adjointSolve, getAdjointGradient
+     procedure(InterfaceMarch), public, deferred            :: integrate, marchBackwards
+     procedure(InterfaceEvalFunc), deferred                 :: evalFunc
+     procedure                                              :: adjointSolve
+     procedure                                              :: evalFuncGrad
+     procedure                                              :: evalFDFuncGrad
 
   end type integrator
 
@@ -136,7 +140,23 @@ module integrator_class
        class(integrator)                     :: this
      end subroutine InterfaceMarch
 
+     !===================================================================!
+     ! Interface for evaluating the function of interest
+     !===================================================================!
+     
+     subroutine InterfaceEvalFunc(this, x, fval)
+
+       use iso_fortran_env , only : dp => real64
+       import integrator
+
+       class(integrator)                  :: this
+       real(dp), dimension(:), intent(in) :: x
+       real(dp), intent(inout)            :: fval
+
+     end subroutine InterfaceEvalFunc
+
   end interface
+
 
 contains
   
@@ -533,10 +553,96 @@ contains
   ! calls
   !===================================================================!
   
-  subroutine getAdjointGradient( this, dfdx )
+  subroutine evalFuncGrad( this, num_func, func, &
+       & num_dv, x, fvals, dfdx )
+    
+    class(integrator)                                :: this
+    class(abstract_function)       , target          :: func
+    real(dp), dimension(:), intent(in)               :: x
+    integer, intent(in)                              :: num_func, num_dv
+    real(dp), dimension(:), intent(inout), OPTIONAL  :: dfdx
+    real(dp), intent(inout), OPTIONAL                :: fvals
 
-    class(integrator)                      :: this
-    real(dp) , dimension(:), intent(inout) :: dfdx
+   
+    !-----------------------------------------------------------------!
+    ! Set the objective function into the system
+    !-----------------------------------------------------------------!
+
+    call this % system % setFunction(func)
+
+    !-----------------------------------------------------------------!
+    ! Set the number of variables, design variables into the system
+    !-----------------------------------------------------------------!
+
+    call this % system % setDesignVars(num_dv, x)
+    this % nDVars = num_dv
+    
+    !-----------------------------------------------------------------!
+    ! Integrate forward in time to solve for the state variables
+    !-----------------------------------------------------------------!
+
+    call this % integrate()
+
+    !-----------------------------------------------------------------!
+    ! Compute the objective/ constraint function value
+    !-----------------------------------------------------------------!
+    
+    if (present(fvals)) then 
+       
+       call this % evalFunc(x, fvals)
+       
+    end if
+    
+    if (present(dfdx)) then 
+
+       !-----------------------------------------------------------------!
+       ! Integrate backwards to solve for lagrange multipliers for the
+       ! set design variable
+       !-----------------------------------------------------------------!
+
+       call this % marchBackwards()
+
+       !-----------------------------------------------------------------!
+       ! Compute the total derivative of the function with respect to the
+       ! design variables
+       !-----------------------------------------------------------------!
+
+       call this % computeTotalDerivative(dfdx)
+
+    end if
+
+  end subroutine evalFuncGrad
+
+  !===================================================================!
+  ! Compute the gradient of the function with respect to design
+  ! variables
+  !===================================================================!
+  
+  subroutine evalFDFuncGrad( this, num_func, func, &
+       & num_dv, x, fvals, dfdx, dh )
+
+    class(integrator)                                :: this
+    class(abstract_function)       , target          :: func
+    integer, intent(in)                              :: num_func, num_dv
+    real(dp), dimension(:), intent(inout)            :: x
+    real(dp), dimension(:), intent(inout)            :: dfdx
+    real(dp), intent(inout)                          :: fvals
+    real(dp), intent(in)                             :: dh
+    real(dp)                                         :: fvals_tmp, xtmp
+    integer                                          :: m
+
+    !-----------------------------------------------------------------!
+    ! Set the objective function into the system
+    !-----------------------------------------------------------------!
+
+    call this % system % setFunction(func)
+
+    !-----------------------------------------------------------------!
+    ! Set the number of variables, design variables into the system
+    !-----------------------------------------------------------------!
+
+    call this % system % setDesignVars(num_dv, x)
+    this % nDVars = num_dv
 
     !-----------------------------------------------------------------!
     ! Integrate forward in time to solve for the state variables
@@ -545,19 +651,33 @@ contains
     call this % integrate()
 
     !-----------------------------------------------------------------!
-    ! Integrate backwards to solve for lagrange multipliers for the
-    ! set design variable
+    ! Compute the objective/ constraint function value
     !-----------------------------------------------------------------!
 
-    call this % marchBackwards()
+    call this % evalFunc(x, fvals)
 
-    !-----------------------------------------------------------------!
-    ! Compute the total derivative of the function with respect to the
-    ! design variables
-    !-----------------------------------------------------------------!
+    do m = 1, this % ndvars
 
-    call this % computeTotalDerivative(dfdx)
+       ! Store the original x value
+       xtmp = x(m)
 
-  end subroutine getAdjointGradient
+       ! Perturb the variable       
+       x(m) = x(m) + dh
+
+       call this % system % setDesignVars(num_dv, x)
+       call this % integrate()
+       call this % evalFunc(x, fvals_tmp)
+
+       ! Restore x
+       x(m) = xtmp
+
+       ! Find the FD derivative
+       dfdx(m) = (fvals_tmp-fvals)/dh
+
+       print*, "debug:", fvals, fvals_tmp, dh
+       
+    end do
+
+  end subroutine evalFDFuncGrad
 
 end module integrator_class
