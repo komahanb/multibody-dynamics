@@ -50,22 +50,22 @@ program main
   x(2) = 0.02d0    ! damping coeff
   x(3) = 5.00d0    ! stiffness coef
 
-!!$  ! Initialize the system
-!!$  call smd1obj % initialize(num_state_vars = 1, num_design_vars = 3)
-!!$
-!!$  bdfobj =  BDF(system = smd1obj, tfinal = 1.0d0, h=0.01d0) 
-!!$
-!!$  call bdfobj % evalFuncGrad(num_func=1, func = KE,  num_dv = 3, x = x, &
-!!$       & fvals = fval, dfdx= dfdx)
-!!$
-!!$  call bdfobj % evalFDFuncGrad(num_func=1, func = KE,  num_dv = 3, x = x, &
-!!$       & fvals = fval, dfdx= dfdxtmp, dh=1.0d-6)
-!!$
-!!$  call bdfobj % finalize()
-!!$
-!!$  print*, "fval         =", fval
-!!$  print*, "Adjoint dfdx =", dfdx
-!!$  print*, "FD      dfdx =", dfdxtmp
+  ! Initialize the system
+  call smd1obj % initialize(num_state_vars = 1, num_design_vars = 3)
+
+  bdfobj =  BDF(system = smd1obj, tfinal = 1.0d0, h=0.01d0) 
+
+  call bdfobj % evalFuncGrad(num_func=1, func = KE,  num_dv = 3, x = x, &
+       & fvals = fval, dfdx= dfdx)
+ 
+  call bdfobj % evalFDFuncGrad(num_func=1, func = KE,  num_dv = 3, x = x, &
+       & fvals = fval, dfdx= dfdxtmp, dh=1.0d-6)
+
+  call bdfobj % finalize()
+
+  print*, "fval         =", fval
+  print*, "Adjoint dfdx =", dfdx
+  print*, "FD      dfdx =", dfdxtmp
 
   ! Finalize the system
   call smd1obj % finalize()

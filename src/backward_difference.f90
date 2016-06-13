@@ -422,6 +422,12 @@ contains
     real(dp)   :: alpha, beta, gamma
     integer    :: k
 
+    ! Set states to zeror
+    this % U     = 0.0d0
+    this % UDOT  = 0.0d0
+    this % UDDOT = 0.0d0
+    this % time  = 0.0d0
+
     ! Set the initial condition
     call this % system % getInitialStates(this % time(1), &
          & this % u(1,:), this % udot(1,:))
@@ -431,7 +437,7 @@ contains
     ! March in time
     time: do k = 2, this % num_steps
 
-       this % current_step = this % current_step + 1
+       this % current_step =  k
        
        ! Increment the time (states are already advanced after the
        ! Newton solve)
@@ -623,15 +629,16 @@ contains
     integer                               :: k
     real(dp), dimension(this % num_steps) :: ftmp
     
-    print*, "Evaluating function of interest"
+!    print*, "Evaluating function of interest"
     
     do concurrent(k = 1 : this % num_steps)
        call this % system % func % getFunctionValue(ftmp(k), this % time(k), &
             & x, this % U(k,:), this % UDOT(k,:), this % UDDOT(k,:))
+       ftmp(k) = this % h * ftmp(k)
     end do
     
     ! fval = sum(ftmp)/dble(this % num_steps)
-    fval = this % h * sum(ftmp)
+    fval = sum(ftmp)
    
   end subroutine evalFunc
 
