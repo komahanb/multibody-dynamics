@@ -673,8 +673,6 @@ contains
 
        ! Find the FD derivative
        dfdx(m) = (fvals_tmp-fvals)/dh
-
-       print*, "debug:", fvals, fvals_tmp, dh
        
     end do
 

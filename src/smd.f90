@@ -71,8 +71,6 @@ contains
     this % C = this % x(2)
     this % K = this % x(3)
 
-    print*, this % x
-
   end subroutine mapDesignVars
 
 !!$

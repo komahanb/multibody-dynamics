@@ -487,7 +487,7 @@ contains
        call this % adjointSolve(this % psi(k,:), alpha, beta, gamma, &
             & this % time(k), this % u(k,:), this % udot(k,:), this % uddot(k,:))
        
-        print *, this % psi(k,:), k
+!       print *, this % psi(k,:), k
 
     end do time
 

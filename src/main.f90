@@ -38,7 +38,7 @@ program main
 
   ! Design variable array
   real(dp), dimension(:), allocatable :: x, dfdx, dfdxtmp
-  real(dp)                            :: fval, ftmp, dh = 1.0d-6
+  real(dp)                            :: fval, ftmp, dh = 5.0d-8
   
   !-------------------------------------------------------------------!
   !                 Spring Mass Damper system                         !
@@ -46,20 +46,22 @@ program main
   
   allocate(X(3), dfdx(3), dfdxtmp(3))
 
-  x(1) = 1.00d0    ! mass
-  x(2) = 0.02d0    ! damping coeff
+  x(1) = 2.50d0    ! mass
+  x(2) = 0.2d0    ! damping coeff
   x(3) = 5.00d0    ! stiffness coef
 
   ! Initialize the system
   call smd1obj % initialize(num_state_vars = 1, num_design_vars = 3)
 
-  bdfobj =  BDF(system = smd1obj, tfinal = 1.0d0, h=0.01d0) 
+  bdfobj =  BDF(system = smd1obj, tfinal = 15.0d-3, h=1.0d-3, max_bdf_order = 1) 
 
   call bdfobj % evalFuncGrad(num_func=1, func = KE,  num_dv = 3, x = x, &
        & fvals = fval, dfdx= dfdx)
+
+  call bdfobj % writeSolution()
  
   call bdfobj % evalFDFuncGrad(num_func=1, func = KE,  num_dv = 3, x = x, &
-       & fvals = fval, dfdx= dfdxtmp, dh=1.0d-6)
+       & fvals = fval, dfdx= dfdxtmp, dh=dh)
 
   call bdfobj % finalize()
 
@@ -71,24 +73,23 @@ program main
   call smd1obj % finalize()
 
   ! Initialize the system
-  call smd1obj % initialize(num_state_vars = 1, num_design_vars = 3)
-  
-  dirkobj = DIRK(system = smd1obj, tfinal = 1.0d0, h=0.01d0) 
-  
-  call dirkobj % evalFuncGrad(num_func=1, func = KE, num_dv = 3, x = x, &
-       & fvals = fval, dfdx= dfdx)
-  
-  call dirkobj % evalFDFuncGrad(num_func=1, func = KE, num_dv = 3, x = x, &
-       & fvals = fval, dfdx= dfdxtmp, dh=1.0d-6)
-  
-  call dirkobj % finalize()
-  
-  print*, "fval         =", fval
-  print*, "Adjoint dfdx =", dfdx
-  print*, "FD      dfdx =", dfdxtmp
-  
-  ! Finalize the system
-  call smd1obj % finalize()
+!!$  call smd1obj % initialize(num_state_vars = 1, num_design_vars = 3)
+!!$  
+!!$  dirkobj = DIRK(system = smd1obj, tfinal = 0.01d0, h=0.01d0, num_stages=3) 
+!!$  
+!!$  call dirkobj % evalFuncGrad(num_func=1, func = KE, num_dv = 3, x = x, &
+!!$       & fvals = fval, dfdx= dfdx)
+!!$  
+!!$  call dirkobj % evalFDFuncGrad(num_func=1, func = KE, num_dv = 3, x = x, &
+!!$       & fvals = fval, dfdx= dfdxtmp, dh=1.0d-6)
+!!$  
+!!$  call dirkobj % finalize()  
+!!$  print*, "fval         =", fval
+!!$  print*, "Adjoint dfdx =", dfdx
+!!$  print*, "FD      dfdx =", dfdxtmp
+!!$  
+!!$  ! Finalize the system
+!!$  call smd1obj % finalize()
 
   deallocate(X, dfdx, dfdxtmp)
 

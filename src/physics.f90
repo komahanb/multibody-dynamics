@@ -194,7 +194,6 @@ contains
     this % x = x
 
     call this % mapDesignVars()
-    !print*,"How to map the variables to class variables?"
 
   end subroutine setDesignVars
     
