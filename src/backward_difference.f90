@@ -134,7 +134,7 @@ contains
 
        this % gamma(1, 1:3) = (/ 1.0_dp, -2.0_dp, 1.0_dp /)
        this % gamma(2, 1:5) = (/ 2.25_dp, -6.0_dp, 5.5_dp, -2.0_dp, 0.25_dp /)
-       this % gamma(3, 1:7) =  (/ 2.126736d0, -5.468750d0, 4.609375d0, &
+       this % gamma(3, 1:7) = (/ 2.126736d0, -5.468750d0, 4.609375d0, &
             & -1.284722d0, -0.015625d0, 0.031250d0, 0.001736d0 /)
 
     else if (this % max_order .eq. 2) then
@@ -235,10 +235,10 @@ contains
     class(BDF)                                         :: this
     real(dp) , dimension(:), intent(inout)             :: dfdx
     real(dp) , dimension(this % nSVars, this % nDVars) :: dRdX
-    real(dp)                                           :: scale
+    real(dp)                                           :: scale = 1.0d0
     integer                                            :: k
     
-    scale = this % h
+!    scale = this % h
     
     dfdx = 0.0d0
     
@@ -271,8 +271,9 @@ contains
     dfdx = dfdx + matmul(this % psi(2,:), dRdX)
 
     ! Finally multiply by the scalar
-    !   dfdx = this %  * dfdx
-    print*, "Check scaling of dfdx"
+    dfdx = this % h * dfdx
+
+    print*, "Check scaling of dfdx, and transpose"
 
   end subroutine computeTotalDerivative
 
@@ -306,7 +307,7 @@ contains
     print '("  >> Number of variables    : ",i4)', this % nsvars
     
     if ( .not. (this % nsvars .gt. 0) ) then
-       stop ">> Error: Zero state variable. Stopping."
+       stop ">> Error: No state variable. Stopping."
     end if
 
     !-----------------------------------------------------------------!
@@ -486,7 +487,7 @@ contains
        call this % adjointSolve(this % psi(k,:), alpha, beta, gamma, &
             & this % time(k), this % u(k,:), this % udot(k,:), this % uddot(k,:))
        
-       ! print *, this % psi(k,:), k
+        print *, this % psi(k,:), k
 
     end do time
 
@@ -634,11 +635,10 @@ contains
     do concurrent(k = 1 : this % num_steps)
        call this % system % func % getFunctionValue(ftmp(k), this % time(k), &
             & x, this % U(k,:), this % UDOT(k,:), this % UDDOT(k,:))
-       ftmp(k) = this % h * ftmp(k)
     end do
     
     ! fval = sum(ftmp)/dble(this % num_steps)
-    fval = sum(ftmp)
+    fval = this % h* sum(ftmp)
    
   end subroutine evalFunc
 
