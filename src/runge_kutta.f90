@@ -131,9 +131,9 @@ module runge_kutta_integrator
 
   end interface
   
-  interface BDF
+  interface DIRK
      module procedure initialize
-  end interface BDF
+  end interface DIRK
 
 contains
 
