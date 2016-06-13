@@ -912,6 +912,8 @@ contains
 
     end if    
 
+    rhs = -rhs
+
     if(allocated(jac1)) deallocate(jac1)
     if(allocated(jac2)) deallocate(jac2)
     if(allocated(jac3)) deallocate(jac3)
