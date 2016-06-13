@@ -55,7 +55,7 @@ module runge_kutta_integrator
      ! Implemented common procedures (visible to the user)
      !----------------------------------------------------------------!
 
-     procedure :: initialize, finalize, integrate
+     procedure :: finalize, integrate
 
      !----------------------------------------------------------------!
      ! Implemented procedures (not callable by the user)
@@ -130,6 +130,10 @@ module runge_kutta_integrator
      end subroutine buthcher_interface
 
   end interface
+  
+  interface BDF
+     module procedure initialize
+  end interface BDF
 
 contains
 
@@ -137,9 +141,8 @@ contains
   ! Initialize the dirk datatype and construct the tableau
   !===================================================================!
   
-  subroutine initialize(this, system, tinit, tfinal, h, second_order, num_stages)
+  type(DIRK) function initialize( system, tinit, tfinal, h, second_order, num_stages ) result(this)
     
-    class(RK)                       :: this
     class(physics), target :: system
     integer  , OPTIONAL, intent(in) :: num_stages
     real(dp) , OPTIONAL, intent(in) :: tinit, tfinal
@@ -161,7 +164,10 @@ contains
     !-----------------------------------------------------------------!
     this % nsvars = system % getNumStateVars()
     print '("  >> Number of variables    : ",i4)', this % nsvars
-    if (.not.(this % nsvars .gt. 0)) stop ">> Error: Zero state variable. Stopping."
+
+    if ( .not. (this % nsvars .gt. 0) ) then
+       stop ">> Error: Zero state variable. Stopping."
+    end if
 
     !-----------------------------------------------------------------!
     ! Set the order of the governing equations
@@ -278,7 +284,7 @@ contains
     ! set the start time
     this % time(1) = this % tinit
 
-  end subroutine initialize
+  end function initialize
 
   !===================================================================!
   ! Routine that checks if the Butcher Tableau entries are valid for
@@ -346,7 +352,7 @@ contains
     this % current_step = 1
 
     ! March in time
-    march: do k = 2, this % num_steps
+    time: do k = 2, this % num_steps
 
        this % current_step = this % current_step + 1
 
@@ -355,8 +361,8 @@ contains
 
        ! Advance the state to the current step
        call this % timeMarch(this % u, this % udot, this % uddot)
-
-    end do march
+       
+    end do time
 
   end subroutine Integrate
   
@@ -371,11 +377,11 @@ contains
     integer     :: k, i
     real(dp)    :: alpha, beta, gamma
 
-    do k = this % num_steps, 2, -1
+    time: do k = this % num_steps, 2, -1
        
        this % current_step = k
        
-       do i = this % num_stages, 1, -1
+       stage: do i = this % num_stages, 1, -1
 
           this % current_stage = i
           
@@ -384,13 +390,13 @@ contains
           !--------------------------------------------------------------!
           
           if (this % second_order) then
-             gamma = 1.0d0
-             beta  = this % h * this%A(i,i)
-             alpha = this % h * this%A(i,i)* this % h * this%A(i,i)
+             gamma = this % B(i) / this % h / this % h
+             beta  = this % B(i) * this % A(i,i) / this % h
+             alpha = this % B(i) * this % A(i,i) * this % A(i,i) 
           else
-             gamma = 0.0d0
-             beta  = 1.0d0
-             alpha = this % h * this%A(i,i)
+             gamma = 0
+             beta  = this % B(i) / this % h
+             alpha = this % B(i) * this % A(i,i)
           end if
           
           !--------------------------------------------------------------!
@@ -398,68 +404,13 @@ contains
           !--------------------------------------------------------------!
 
           call this % adjointSolve(this % psi(k,i,:), alpha, beta, gamma, &
-               & this % t(i), this % q(k,i,:), this % qdot(k,i,:), this % qddot(k,i,:))
+               & this % T(i), this % Q(k,i,:), this % QDOT(k,i,:), this % QDDOT(k,i,:))
           
-       end do
+       end do stage
 
-    end do
+    end do time
     
   end subroutine marchBackwards
-
-  !===================================================================!
-  ! Compute the total derivative of the function with respect to the
-  ! design variables and return the gradient 
-  !===================================================================!
-  
-  subroutine computeTotalDerivative( this, dfdx )
-    
-    class(DIRK)                              :: this
-    real(dp) , dimension(:), intent(inout)   :: dfdx
-    real(dp) , dimension(:,:), allocatable   :: dRdX
-    integer                                  :: k, j
-
-    allocate(dRdX(this % nSVars, this % nDVars))
-    
-    dfdx = 0.0d0
-    
-    !-----------------------------------------------------------------!
-    ! Compute dfdx
-    !-----------------------------------------------------------------!
-    
-    do k = 2, this % num_steps
-       do j = 1, this % num_stages
-          call this % system % func % addDFDX(dfdx, 1.0d0, this % T(k), &
-               & this % system % x, this % Q(k,j,:), this % QDOT(k,j,:), this % QDDOT(k,j,:) )
-       end do
-    end do
-
-    !-----------------------------------------------------------------!
-    ! Compute the total derivative
-    !-----------------------------------------------------------------!
-
-    do k = 2, this % num_steps
-       do j = 1, this % num_stages
-          call this % system % getResidualDVSens(dRdX, 1.0d0, this % T(k), &
-               & this % system % x, this % Q(k,j,:), this % QDOT(k,j,:), this % QDDOT(k,j,:))
-          dfdx = dfdx + matmul(this % psi(k,j,:), dRdX) ! check order
-       end do
-    end do
-
-    !-----------------------------------------------------------------!
-    ! Special logic for initial condition (use the adjoint variable
-    ! for the second time step)
-    !-----------------------------------------------------------------!
-    
-!!$    call this % system % func % addDfdx(dfdx, 1.0d0, this % time(1), &
-!!$         & this % system % x, this % u(1,:), this % udot(1,:), this % uddot(2,:) )
-!!$    
-!!$    call this % system % getResidualDVSens(dRdX, 1.0d0, this % time(1), &
-!!$         & this % system % x, this % u(1,:), this % udot(1,:), this % uddot(2,:))
-!!$    dfdx = dfdx + matmul(this % psi(2,:), dRdX)
-    
-    deallocate(dRdX)
-
-  end subroutine computeTotalDerivative
 
   !===================================================================!
   ! Update the states based on RK Formulae
@@ -609,11 +560,9 @@ contains
 
     k = this % current_step
 
-    this % current_stage = 0
-
     do j = 1, this % num_stages
 
-       this % current_stage = this % current_stage + 1
+       this % current_stage = j
 
        ! Find the stage times
        this % T(j) = this % time(k-1) + this % C(j)*this % h
@@ -693,10 +642,10 @@ contains
   
   subroutine AddFunctionDependency(this, rhs)
 
-    class(DIRK) :: this
+    class(DIRK)            :: this
     real(dp), dimension(:) :: rhs
-    real(dp) :: scale
-    integer :: k, i, j
+    real(dp)               :: scale
+    integer                :: k, i, j
 
     i = this % current_stage
     k = this % current_step
@@ -705,10 +654,10 @@ contains
 
     scale = 0.0d0
     do j = i, this % num_stages
-       scale = scale + this % h * this % B(j) *  this % h * this %A(j,i)
+       scale = scale + this % h * this % B(j) * this % h * this %A(j,i)
     end do
-
-    rhs(:) = scale*2.0d0*this % q(k,i,:)
+ 
+    rhs(:) = scale * 2.0d0 * this % q(k,i,:)
     
     ! rhs(:) =  2.0d0 * this % u(k,:)
     ! rhs(:) =  2.0d0 * this % q(k,i,:)
@@ -825,13 +774,197 @@ contains
  
     class(DIRK)                           :: this
     real(dp), dimension(:), intent(inout) :: rhs
-   
-    ! Add the contributions from the objective function
-    call this % AddFunctionDependency(rhs)
-    call this % AddTimeDependency(rhs)
-    call this % AddStageDependency(rhs)
+    real(dp)                              :: scale1=0.0d0, scale2=0.0d0, scale3=0.0d0
+    real(dp), dimension(:,:), allocatable :: jac1, jac2, jac3
+    integer :: k, j, i, p, s
 
+    k = this % current_step
+    i = this % current_stage
+    s = this % num_stages
+
+    allocate( jac1(this % nSVars, this % nSVars)  )
+    allocate( jac2(this % nSVars, this % nSVars) )
+    allocate( jac3(this % nSVars, this % nSVars) )
+
+    rhs = 0.0d0
+    
+    !-----------------------------------------------------------------!
+    ! Add all the residual contributions first
+    !-----------------------------------------------------------------!
+
+    current_r: do j = i + 1, s
+
+       scale1 = this % B(j) * this % A(j,i) / this % h
+
+       call this % system % assembleJacobian(jac1, 0.0d0, scale1, 0.0d0, &
+            & this % T(j), this % Q(k,j,:), this % QDOT(k,j,:), this % QDDOT(k,j,:))
+
+       scale2 = 0.0d0
+
+       do p = i, j
+
+          scale2 = scale2 + this % B(j) * this % A(j,i) * this % A(p,i)
+
+       end do
+       
+       call this % system % assembleJacobian(jac2,  scale2, 0.0d0, 0.0d0, &
+            & this % T(j), this % Q(k,j,:), this % QDOT(k,j,:), this % QDDOT(k,j,:))
+
+       
+       rhs = rhs + matmul( transpose(jac1+jac2), this % psi(k,j,:) )
+       
+    end do current_r
+
+    
+    if ( k+1 .le. this % num_steps ) then 
+
+       future_r: do j = i , s
+
+          scale1 = this % B(j) * this % B(i) / this % h
+
+          call this % system % assembleJacobian(jac1, 0.0d0, scale1, 0.0d0, &
+               & this % T(j), this % Q(k+1,j,:), this % QDOT(k+1,j,:), this % QDDOT(k+1,j,:))
+
+          scale2 = 0.0d0
+          do p = i , s
+             scale2 = scale2 + this % A(p,i) * this % B(p)
+          end do
+          do p = 1 , j
+             scale2 = scale2 + this % B(i) * this % A(j,p)
+          end do
+
+          scale2 = scale2 * this % B(j) 
+
+          call this % system % assembleJacobian(jac2, scale2, 0.0d0, 0.0d0, &
+               & this % T(j), this % Q(k+1,j,:), this % QDOT(k+1,j,:), this % QDDOT(k+1,j,:))
+
+       end do future_r
+
+    end if
+
+    !-----------------------------------------------------------------!
+    ! Now add function contributions
+    !-----------------------------------------------------------------!
+    
+    ! Add contribution from second derivative of state
+    
+    scale1 = this % B(i)/ this % h / this % h
+
+    call this % system % func % addDFdUDDot(rhs, scale1, this % T(i), &
+         & this % system % x, this % Q(k,i,:), this % qdot(k,i,:), this % qddot(k,i,:))
+    
+    current_f: do j = i, s
+
+       scale1 = this % B(j) * this % A(j,i) / this % h
+       
+       call this % system % func % addDFdUDot(rhs, scale1, this % T(j), &
+            & this % system % x, this % Q(k,j,:), this % qdot(k,j,:), this % qddot(k,j,:))
+       
+       scale2 = 0.0d0
+
+       do p = i, j
+
+          scale2 = scale2 + this % B(j) * this % A(j,i) * this % A(p,i)
+
+       end do
+       
+       call this % system % func % addDFdU(rhs,  scale2, this % T(j), &
+            & this % system % x, this % Q(k,j,:), this % Qdot(k,j,:), this % Qddot(k,j,:))
+
+       
+    end do current_f
+
+    if ( k+1 .le. this % num_steps ) then 
+
+       future_f: do j = i , s
+
+          scale1 = this % B(j) * this % B(i) / this % h
+
+          call this % system % func % addDFdUDot(rhs, scale1, this % T(j), &
+               & this % system % x, this % Q(k+1,j,:), this % qdot(k+1,j,:), this % qddot(k+1,j,:))
+          
+          scale2 = 0.0d0
+          do p = i , s
+             scale2 = scale2 + this % A(p,i) * this % B(p)
+          end do
+          do p = 1 , j
+             scale2 = scale2 + this % B(i) * this % A(j,p)
+          end do
+
+          scale2 = scale2 * this % B(j)
+
+          call this % system % func % addDFdU(rhs, scale2, this % T(j), &
+               & this % system % x, this % Q(k+1,j,:), this % Qdot(k+1,j,:), this % Qddot(k+1,j,:))
+
+       end do future_f
+
+    end if    
+
+    if(allocated(jac1)) deallocate(jac1)
+    if(allocated(jac2)) deallocate(jac2)
+    if(allocated(jac3)) deallocate(jac3)
+
+    ! Add the contributions from the objective function
+!!$    call this % AddFunctionDependency(rhs)
+!!$    call this % AddTimeDependency(rhs)
+!!$    call this % AddStageDependency(rhs)
+        
   end subroutine assembleRHS
+
+  !===================================================================!
+  ! Compute the total derivative of the function with respect to the
+  ! design variables and return the gradient 
+  !===================================================================!
+  
+  subroutine computeTotalDerivative( this, dfdx )
+
+    class(DIRK)                              :: this
+    real(dp) , dimension(:), intent(inout)   :: dfdx
+    real(dp) , dimension(:,:), allocatable   :: dRdX
+    integer                                  :: k, j
+
+    allocate(dRdX(this % nSVars, this % nDVars))
+
+    dfdx = 0.0d0
+
+    !-----------------------------------------------------------------!
+    ! Compute dfdx
+    !-----------------------------------------------------------------!
+
+    do k = 2, this % num_steps
+       do j = 1, this % num_stages
+          call this % system % func % addDFDX(dfdx, this % h * this % B(j), this % T(j), &
+               & this % system % x, this % Q(k,j,:), this % QDOT(k,j,:), this % QDDOT(k,j,:) )
+       end do
+    end do
+
+    !-----------------------------------------------------------------!
+    ! Compute the total derivative
+    !-----------------------------------------------------------------!
+
+    do k = 2, this % num_steps
+       do j = 1, this % num_stages
+          call this % system % getResidualDVSens(dRdX, this % h * this % B(j), this % T(j), &
+               & this % system % x, this % Q(k,j,:), this % QDOT(k,j,:), this % QDDOT(k,j,:))
+          dfdx = dfdx + matmul(this % psi(k,j,:), dRdX) ! check order
+       end do
+    end do
+
+    !-----------------------------------------------------------------!
+    ! Special logic for initial condition (use the adjoint variable
+    ! for the second time step)
+    !-----------------------------------------------------------------!
+
+!!$    call this % system % func % addDfdx(dfdx, 1.0d0, this % time(1), &
+!!$         & this % system % x, this % u(1,:), this % udot(1,:), this % uddot(2,:) )
+!!$    
+!!$    call this % system % getResidualDVSens(dRdX, 1.0d0, this % time(1), &
+!!$         & this % system % x, this % u(1,:), this % udot(1,:), this % uddot(2,:))
+!!$    dfdx = dfdx + matmul(this % psi(2,:), dRdX)
+
+    deallocate(dRdX)
+
+  end subroutine computeTotalDerivative
 
   !===================================================================!
   ! Evaluating the function of interest

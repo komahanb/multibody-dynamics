@@ -226,40 +226,6 @@ contains
   end subroutine writeSolutionAdjoint
 
   !===================================================================!
-  ! Subroutine that marches backwards in time to compute the lagrange
-  ! multipliers (adjoint variables for the function)
-  ! ===================================================================!
-  
-  subroutine marchBackwards( this )
-
-    class(BDF)                :: this
-    integer                   :: k, m
-    real(dp)                  :: alpha, beta, gamma
-    
-    do k = this % num_steps, 2, -1
-       
-       this % current_step = k 
-       
-       !--------------------------------------------------------------!
-       ! Determine the linearization coefficients for the Jacobian
-       !--------------------------------------------------------------!
-              
-       call this % getLinearCoeff(k, alpha, beta, gamma)
-       
-       !--------------------------------------------------------------!
-       ! Solve the adjoint equation at each step
-       !--------------------------------------------------------------!
-       
-       call this % adjointSolve(this % psi(k,:), alpha, beta, gamma, &
-            & this % time(k), this % u(k,:), this % udot(k,:), this % uddot(k,:))
-       
-       ! print *, this % psi(k,:), k
-
-    end do
-
-  end subroutine marchBackwards
-
-  !===================================================================!
   ! Compute the total derivative of the function with respect to the
   ! design variables and return the gradient 
   !===================================================================!
@@ -314,7 +280,7 @@ contains
   ! Initialize the BDF datatype and allocate required variables
   !===================================================================!
   
-  type(bdf) function initialize(system, tinit, tfinal, h, second_order, max_bdf_order )  result (this)
+  type(bdf) function initialize( system, tinit, tfinal, h, second_order, max_bdf_order )  result (this)
    
     class(physics), target          :: system
     integer  , OPTIONAL, intent(in) :: max_bdf_order
@@ -463,7 +429,7 @@ contains
     this % current_step = 1
 
     ! March in time
-    march: do k = 2, this % num_steps
+    time: do k = 2, this % num_steps
 
        this % current_step = this % current_step + 1
        
@@ -482,9 +448,43 @@ contains
        call this % newtonSolve(alpha, beta, gamma, &
             & this % time(k), this % u(k,:), this % udot(k,:), this % uddot(k,:))
 
-    end do march
+    end do time
 
   end subroutine Integrate
+
+  !===================================================================!
+  ! Subroutine that marches backwards in time to compute the lagrange
+  ! multipliers (adjoint variables for the function)
+  ! ===================================================================!
+  
+  subroutine marchBackwards( this )
+
+    class(BDF)                :: this
+    integer                   :: k
+    real(dp)                  :: alpha, beta, gamma
+    
+    time: do k = this % num_steps, 2, -1
+       
+       this % current_step = k 
+       
+       !--------------------------------------------------------------!
+       ! Determine the linearization coefficients for the Jacobian
+       !--------------------------------------------------------------!
+              
+       call this % getLinearCoeff(k, alpha, beta, gamma)
+       
+       !--------------------------------------------------------------!
+       ! Solve the adjoint equation at each step
+       !--------------------------------------------------------------!
+       
+       call this % adjointSolve(this % psi(k,:), alpha, beta, gamma, &
+            & this % time(k), this % u(k,:), this % udot(k,:), this % uddot(k,:))
+       
+       ! print *, this % psi(k,:), k
+
+    end do time
+
+  end subroutine marchBackwards
   
   !===================================================================!
   ! Approximate the state variables at each step using BDF formulae
