@@ -61,6 +61,8 @@ contains
     real(8)                              :: scale
 
     res(1) = res(1) + scale*0.5d0*udot(1)**2 ! wrt to m
+    res(1) = res(1) + scale*0.0d0 ! wrt to c
+    res(1) = res(1) + scale*0.0d0 ! wrt to k
     
   end subroutine addDfdX
   
