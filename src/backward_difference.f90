@@ -251,9 +251,9 @@ contains
             & this % system % x, this % u(k,:), this % udot(k,:), this % uddot(k,:) )
     end do
 
-    ! Initial condition
-    call this % system % func % addDfdx(dfdx, scale, this % time(1), &
-         & this % system % x, this % u(1,:), this % udot(1,:), this % uddot(2,:) )
+!!$    ! Initial condition
+!!$    call this % system % func % addDfdx(dfdx, scale, this % time(1), &
+!!$         & this % system % x, this % u(1,:), this % udot(1,:), this % uddot(2,:) )
     
     !-----------------------------------------------------------------!
     ! Compute the total derivative
@@ -265,10 +265,10 @@ contains
        dfdx = dfdx + matmul(this % psi(k,:), dRdX) ! check order
     end do
 
-    ! Add constraint contribution
-    call this % system % getResidualDVSens(dRdX, scale, this % time(1), &
-         & this % system % x, this % u(1,:), this % udot(1,:), this % uddot(2,:))
-    dfdx = dfdx + matmul(this % psi(2,:), dRdX)
+!!$    ! Add constraint contribution
+!!$    call this % system % getResidualDVSens(dRdX, scale, this % time(1), &
+!!$         & this % system % x, this % u(1,:), this % udot(1,:), this % uddot(2,:))
+!!$    dfdx = dfdx + matmul(this % psi(2,:), dRdX)
 
     ! Finally multiply by the scalar
     dfdx = this % h * dfdx
@@ -555,7 +555,7 @@ contains
     real(dp), dimension(:), intent(inout) :: rhs
     real(dp), dimension(:,:), allocatable :: jac
     real(dp)                              :: scale
-    integer                               :: k, i, m1, m2
+    integer                               :: k, i, m1, m2, idx
     
     allocate( jac(this % nSVars, this % nSVars) )
     
@@ -563,7 +563,7 @@ contains
     
     ! Zero the RHS first
     rhs = 0.0d0
-    
+
     !-----------------------------------------------------------------!
     ! Add function contribution (dfdu)
     !-----------------------------------------------------------------!
@@ -572,20 +572,24 @@ contains
          & this % system % x, this % u(k,:), this % udot(k,:), this % uddot(k,:))
 
     m1 = this % coeff % getOrder(k, 1)
-    do i = 1, m1 + 1
-       if ( k+i-1 .le. this % num_steps) then
-          scale = this % coeff % beta(m1, 1)/this % h
-          call this % system % func % addDFdUDot(rhs, scale, this % time(k+i-1), &
-               & this % system % x, this % u(k+i-1,:), this % udot(k+i-1,:), this % uddot(k+i-1,:))
+    do i = 0, m1
+       idx = k + i
+       if ( idx .le. this % num_steps) then
+          scale = this % coeff % beta(m1, i+1)/this % h
+          !print*, "first", k, idx, scale
+          call this % system % func % addDFdUDot(rhs, scale, this % time(idx), &
+               & this % system % x, this % u(idx,:), this % udot(idx,:), this % uddot(idx,:))
        end if
     end do
 
     m2 = this % coeff % getOrder(k, 2)
-    do i = 1, 2*m2 + 1
-       if ( k+i-1 .le. this % num_steps) then
-          scale = this % coeff % gamma(m2, 1)/this % h/this % h
-          call this % system % func % addDFdUDDot(rhs, scale, this % time(k+i-1), &
-               & this % system % x, this % u(k+i-1,:), this % udot(k+i-1,:), this % uddot(k+i-1,:))
+    do i = 0, 2*m2
+       idx = k + i
+       if ( idx .le. this % num_steps) then
+          scale = this % coeff % gamma(m2, i+1)/this % h/this % h
+          !print*, "second", k, idx , m2, scale
+          call this % system % func % addDFdUDDot(rhs, scale, this % time(idx), &
+               & this % system % x, this % u(idx,:), this % udot(idx,:), this % uddot(idx,:))
        end if
     end do
 
@@ -593,21 +597,25 @@ contains
     ! Add residual contribution
     !-----------------------------------------------------------------!
 
-    do i = 2, m1 + 1
-       if ( k+i-1 .le. this % num_steps) then
-          scale = this % coeff % beta(m1, 1)/this % h
+    do i = 1, m1 
+       idx = k + i
+       if ( idx .le. this % num_steps) then
+          scale = this % coeff % beta(m1, i+1)/this % h
+ !         print*, "first r", k, idx, this % psi(idx,:)
           call this % system % assembleJacobian(jac, 0.0d0, 1.0d0, 0.0d0, &
-               & this % time(k+i-1), this % u(k+i-1,:), this % udot(k+i-1,:), this % uddot(k+i-1,:))
-          rhs = rhs + scale*matmul( transpose(jac), this % psi(k+i-1,:) )
+               & this % time(idx), this % u(idx,:), this % udot(idx,:), this % uddot(idx,:))
+          rhs = rhs + scale*matmul( transpose(jac), this % psi(idx,:) )
        end if
     end do
 
-    do i = 2, 2*m2 + 1
-       if ( k+i-1 .le. this % num_steps) then
-          scale = this % coeff % gamma(m2, 1)/this % h/this % h
+    do i = 1, 2*m2
+       idx = k + i
+       if ( idx .le. this % num_steps) then
+!          print*, "second r", k, idx , m2
+          scale = this % coeff % gamma(m2, i+1)/this % h/this % h
           call this % system % assembleJacobian(jac, 0.0d0, 0.0d0, 1.0d0, &
-               & this % time(k+i-1), this % u(k+i-1,:), this % udot(k+i-1,:), this % uddot(k+i-1,:))
-          rhs = rhs + scale*matmul( transpose(jac), this % psi(k+i-1,:) )
+               & this % time(idx), this % u(idx,:), this % udot(idx,:), this % uddot(idx,:))
+          rhs = rhs + scale*matmul( transpose(jac), this % psi(idx,:) )
        end if
     end do
     
@@ -632,7 +640,7 @@ contains
     
 !    print*, "Evaluating function of interest"
     
-    do concurrent(k = 1 : this % num_steps)
+    do concurrent(k = 2 : this % num_steps)
        call this % system % func % getFunctionValue(ftmp(k), this % time(k), &
             & x, this % U(k,:), this % UDOT(k,:), this % UDDOT(k,:))
     end do
