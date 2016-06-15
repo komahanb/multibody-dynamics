@@ -93,9 +93,6 @@ module runge_kutta_integrator
      procedure, private :: assembleRHS
      procedure, private :: computeTotalDerivative
 
-     procedure, private :: AddFunctionDependency
-     procedure, private :: AddTimeDependency
-     procedure, private :: AddStageDependency
      procedure, public  :: evalFunc
 
   end type DIRK
@@ -346,7 +343,7 @@ contains
     class(RK) :: this
     integer :: k
 
-    ! Set states to zeror
+    ! Set states to zero
 
     this % U     = 0.0d0
     this % UDOT  = 0.0d0
@@ -646,137 +643,7 @@ contains
     end do
 
   end subroutine computeStageStateValues
-
-  !===================================================================!
-  ! The derivative of the objective function with respect to the
-  ! state.
-  !===================================================================!
-  
-  subroutine AddFunctionDependency(this, rhs)
-
-    class(DIRK)            :: this
-    real(dp), dimension(:) :: rhs
-    real(dp)               :: scale
-    integer                :: k, i, j
-
-    i = this % current_stage
-    k = this % current_step
-    
-    ! if (.not. k .eq. this % num_steps) return
-
-    scale = 0.0d0
-    do j = i, this % num_stages
-       scale = scale + this % h * this % B(j) * this % h * this %A(j,i)
-    end do
  
-    rhs(:) = scale * 2.0d0 * this % q(k,i,:)
-    
-    ! rhs(:) =  2.0d0 * this % u(k,:)
-    ! rhs(:) =  2.0d0 * this % q(k,i,:)
-
-  end subroutine AddFunctionDependency
-
-  !===================================================================!
-  ! Add the contribution to the RHS from the time-dependent terms
-  !===================================================================!
-
-  subroutine AddTimeDependency(this, rhs)
-    
-    class(DIRK) :: this
-    real(dp), dimension(:) :: rhs !nsvars length
-    integer  :: i, j, k, p
-    real(dp) :: scal1, scal2
-    real(dp), allocatable, dimension(:,:) :: jac1, jac2
-
-    ! if this is the last step skip this term
-    if (this % current_step .eq. this % num_steps) then
-       ! print*, "no time dependent terms", this % current_step, this % num_steps
-       return
-    end if
-
-    i = this % current_stage
-    k = this % current_step + 1
-
-    allocate(jac1(this%nsvars,this%nsvars))
-    allocate(jac2(this%nsvars,this%nsvars))
-
-    do j = 1, this % num_stages
-
-       ! first term
-       scal1 = this % h * this % B(i)
-       jac1 = 0.0d0
-       call this % system % assembleJacobian(jac1, 0.0d0, scal1, 0.0d0, &
-            & this % T(j), this % Q(k,j,:), this % QDOT(k,j,:), this % QDDOT(k,j,:))
-
-       ! second term
-       scal2 = 0.0d0
-
-       do p = i, this % num_stages
-          scal2 = scal2 + this % h * this % h * this % A(p,i) * this % B(p)
-       end do
-
-       do p = 1, j
-          scal2 = scal2 + this % h * this % h * this % B(i) * this % A(j,p)
-       end do
-       jac2 = 0.0d0
-       call this % system % assembleJacobian(jac2, scal2, 0.0d0, 0.0d0, &
-            & this % T(j), this % Q(k,j,:), this % QDOT(k,j,:), this % QDDOT(k,j,:))
-
-       ! multiply the jacobian with the adjoint vector from other stages
-       rhs = rhs + matmul(transpose(jac1+jac2), this % psi(k,j,:))
-
-    end do
-
-    if(allocated(jac1)) deallocate(jac1)
-    if(allocated(jac2)) deallocate(jac2)
-
-  end subroutine AddTimeDependency
-
-  !===================================================================!
-  ! Add the contribution to the RHS from the stage-dependent terms
-  !===================================================================!
-
-  subroutine AddStageDependency(this, rhs)
-
-    class(DIRK) :: this
-    real(dp), dimension(:) :: rhs !nsvars length
-    integer  :: i, j, k, p
-    real(dp) :: scal1, scal2
-    real(dp), allocatable, dimension(:,:) :: jac1, jac2
-
-    allocate(jac1(this%nsvars,this%nsvars))
-    allocate(jac2(this%nsvars,this%nsvars))
-
-    i = this % current_stage
-    k = this % current_step
-
-    do j = i+1, this % num_stages
-
-       ! first term
-       scal1 = this % h * this % A(j,i)
-
-       call this % system % assembleJacobian(jac1, 0.0d0, scal1, 0.0d0, &
-            & this % T(j), this % Q(k,j,:), this % QDOT(k,j,:), this % QDDOT(k,j,:))
-
-       ! second term
-       scal2 = 0.0d0
-       do p = 1, j-i+1
-          scal2 = scal2 + this % h * this % h * this % A(j,p+i-1) * this % A(p+i-1,i)
-       end do
-
-       call this % system % assembleJacobian(jac2, scal2, 0.0d0, 0.0d0, &
-            & this % T(j), this % Q(k,j,:), this % QDOT(k,j,:), this % QDDOT(k,j,:))
-
-       ! multiply the jacobian with the adjoint vector from other stages
-       rhs = rhs + matmul(transpose(jac1+jac2), this % psi(k,j,:))
-
-    end do
-
-    if(allocated(jac1)) deallocate(jac1)
-    if(allocated(jac2)) deallocate(jac2)
-
-  end subroutine AddStageDependency
-  
   !===================================================================!
   ! Function that puts together the right hand side of the adjoint
   ! equation into the supplied rhs vector.
@@ -786,8 +653,8 @@ contains
  
     class(DIRK)                           :: this
     real(dp), dimension(:), intent(inout) :: rhs
-    real(dp)                              :: scale1=0.0d0, scale2=0.0d0, scale3=0.0d0
-    real(dp), dimension(:,:), allocatable :: jac1, jac2, jac3
+    real(dp)                              :: scale1=0.0d0, scale2=0.0d0
+    real(dp), dimension(:,:), allocatable :: jac1, jac2
     integer :: k, j, i, p, s
 
     k = this % current_step
@@ -796,7 +663,6 @@ contains
 
     allocate( jac1(this % nSVars, this % nSVars)  )
     allocate( jac2(this % nSVars, this % nSVars) )
-    allocate( jac3(this % nSVars, this % nSVars) )
 
     rhs = 0.0d0
     
@@ -807,22 +673,16 @@ contains
     current_r: do j = i + 1, s
 
        scale1 = this % B(j) * this % A(j,i) / this % h
-
        call this % system % assembleJacobian(jac1, 0.0d0, scale1, 0.0d0, &
             & this % T(j), this % Q(k,j,:), this % QDOT(k,j,:), this % QDDOT(k,j,:))
 
        scale2 = 0.0d0
-
        do p = i, j
-
           scale2 = scale2 + this % B(j) * this % A(j,i) * this % A(p,i)
-
        end do
-       
        call this % system % assembleJacobian(jac2,  scale2, 0.0d0, 0.0d0, &
             & this % T(j), this % Q(k,j,:), this % QDOT(k,j,:), this % QDDOT(k,j,:))
 
-       
        rhs = rhs + matmul( transpose(jac1+jac2), this % psi(k,j,:) )
        
     end do current_r
@@ -850,6 +710,8 @@ contains
           call this % system % assembleJacobian(jac2, scale2, 0.0d0, 0.0d0, &
                & this % T(j), this % Q(k+1,j,:), this % QDOT(k+1,j,:), this % QDDOT(k+1,j,:))
 
+          rhs = rhs + matmul( transpose(jac1+jac2), this % psi(k+1,j,:) )
+
        end do future_r
 
     end if
@@ -868,22 +730,16 @@ contains
     current_f: do j = i, s
 
        scale1 = this % B(j) * this % A(j,i) / this % h
-       
        call this % system % func % addDFdUDot(rhs, scale1, this % T(j), &
             & this % system % x, this % Q(k,j,:), this % qdot(k,j,:), this % qddot(k,j,:))
        
        scale2 = 0.0d0
-
        do p = i, j
-
           scale2 = scale2 + this % B(j) * this % A(j,i) * this % A(p,i)
-
        end do
-       
        call this % system % func % addDFdU(rhs,  scale2, this % T(j), &
             & this % system % x, this % Q(k,j,:), this % Qdot(k,j,:), this % Qddot(k,j,:))
 
-       
     end do current_f
 
     if ( k+1 .le. this % num_steps ) then 
@@ -891,7 +747,6 @@ contains
        future_f: do j = i , s
 
           scale1 = this % B(j) * this % B(i) / this % h
-
           call this % system % func % addDFdUDot(rhs, scale1, this % T(j), &
                & this % system % x, this % Q(k+1,j,:), this % qdot(k+1,j,:), this % qddot(k+1,j,:))
           
@@ -904,7 +759,6 @@ contains
           end do
 
           scale2 = scale2 * this % B(j)
-
           call this % system % func % addDFdU(rhs, scale2, this % T(j), &
                & this % system % x, this % Q(k+1,j,:), this % Qdot(k+1,j,:), this % Qddot(k+1,j,:))
 
@@ -916,13 +770,7 @@ contains
 
     if(allocated(jac1)) deallocate(jac1)
     if(allocated(jac2)) deallocate(jac2)
-    if(allocated(jac3)) deallocate(jac3)
 
-    ! Add the contributions from the objective function
-!!$    call this % AddFunctionDependency(rhs)
-!!$    call this % AddTimeDependency(rhs)
-!!$    call this % AddStageDependency(rhs)
-        
   end subroutine assembleRHS
 
   !===================================================================!
@@ -947,8 +795,9 @@ contains
 
     do k = 2, this % num_steps
        do j = 1, this % num_stages
-          call this % system % func % addDFDX(dfdx, this % h * this % B(j), this % T(j), &
+          call this % system % func % addDFDX(dfdx, 1.0d0, this % T(j), &
                & this % system % x, this % Q(k,j,:), this % QDOT(k,j,:), this % QDDOT(k,j,:) )
+          dfdx(j) = this % h * this % B(j)* dfdx(j)
        end do
     end do
 
@@ -958,9 +807,9 @@ contains
 
     do k = 2, this % num_steps
        do j = 1, this % num_stages
-          call this % system % getResidualDVSens(dRdX, this % h * this % B(j), this % T(j), &
+          call this % system % getResidualDVSens(dRdX, 1.0d0, this % T(j), &
                & this % system % x, this % Q(k,j,:), this % QDOT(k,j,:), this % QDDOT(k,j,:))
-          dfdx = dfdx + matmul(this % psi(k,j,:), dRdX) ! check order
+          dfdx = dfdx + this % h * this % B(j)* matmul(this % psi(k,j,:), dRdX) ! check order
        end do
     end do
 
@@ -994,15 +843,14 @@ contains
 
 !    print*, "Evaluating function of interest"
     
-    do concurrent(k = 1 : this % num_steps)
+    do concurrent(k = 2 : this % num_steps)
        do concurrent(j = 1 : this % num_stages)
           call this % system % func % getFunctionValue(ftmp(k), this % T(j), &
                & x, this % Q(k,j,:), this % QDOT(k,j,:), this % QDDOT(k,j,:))
           ftmp(k) = this % h * this % B(j) * ftmp(k)
-!          print*, this % QDOT(k,j,:), this % B(j)
        end do
     end do
-!!$   
+   
 !!$    do concurrent(k = 1 : this % num_steps)
 !!$       call this % system % func % getFunctionValue(ftmp(k), this % time(k), &
 !!$            & x, this % U(k,:), this % UDOT(k,:), this % UDDOT(k,:))
