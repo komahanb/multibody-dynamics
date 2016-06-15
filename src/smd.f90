@@ -30,6 +30,7 @@ module spring_mass_damper_class
      real(8) :: k = 5.0d0
 
    contains
+
      procedure :: mapDesignVars
      procedure :: assembleResidual
      procedure :: assembleJacobian

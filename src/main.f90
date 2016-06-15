@@ -16,7 +16,7 @@ program main
 !!$  use multibody_dynamics_class      , only : multibody_dynamics
   use spring_mass_damper_class      , only : smd1, smd2
 !!$  use vanderpol_class               , only : vanderpol
-!!$  use aero_elastic_oscillator_class , only : aero_elastic_oscillator
+  use aero_elastic_oscillator_class , only : aero_elastic_oscillator
 
   ! Import functions for derivative calculation
   use smd_functions_class           , only : kinetic_energy
@@ -31,7 +31,7 @@ program main
   type(smd2)                   , target :: smd2obj    ! Spring-mass-damper test ODE (2 var)
 !!$  type(vanderpol)              , target :: vpl        ! Vanderpol equation (2 var)
 !!$  type(multibody_dynamics)     , target :: freefall   ! Rigid body dynamics system (12 vars)
-!!$  type(aero_elastic_oscillator), target :: oscillator ! Aeroelastic oscillator (2 vars)
+  type(aero_elastic_oscillator), target :: oscillator ! Aeroelastic oscillator (2 vars)
 
   ! Declare functions that are used
   type(kinetic_energy)         , target :: KE
@@ -99,6 +99,43 @@ program main
 !!$
 !!$  ! Finalize the system
 !!$  call smd1obj % finalize()
+
+  deallocate(X, dfdx, dfdxtmp)
+  
+  !===================================================================!
+  !  Aeroelastic Oscillator
+  !===================================================================!
+  
+  allocate(X(1), dfdx(1), dfdxtmp(1))
+
+  dfdx    = 0.0d0
+  dfdxtmp = 0.0d0
+
+  x(1) = 8.00d0 ! dynamic pressure
+  
+  ! Initialize the system
+  call oscillator % initialize(num_state_vars = 2, num_design_vars = 1)
+  
+  bdfobj = BDF(system = oscillator, tfinal = 50.0d0, h=1.0d-3, max_bdf_order = 3) 
+
+!  call bdfobj % evalFuncGrad(num_func=1, func = KE,  num_dv = 1, x = x, &
+ !      & fvals = fval, dfdx= dfdx)
+
+  call bdfobj % integrate()
+  call bdfobj % writeSolution()
+
+ ! call bdfobj % evalFDFuncGrad(num_func=1, func = KE,  num_dv = 1, x = x, &
+ !      & fvals = fval, dfdx= dfdxtmp, dh=dh)
+
+  call bdfobj % finalize()
+
+  print*, "fval         =", fval
+  print*, "Adjoint dfdx =", dfdx
+  print*, "FD      dfdx =", dfdxtmp
+  print *, "Error       =", abs(dfdxtmp-dfdx)
+
+  ! Finalize the system
+  call smd1obj % finalize()
 
   deallocate(X, dfdx, dfdxtmp)
 
