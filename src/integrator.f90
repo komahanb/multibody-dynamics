@@ -269,7 +269,7 @@ contains
     
  ! Lapack variables
     integer, allocatable, dimension(:)    :: ipiv
-    integer                               ::  info, size
+    integer                               :: info, size
    
  ! Norms for tracking progress
     real(dp)                              :: abs_res_norm

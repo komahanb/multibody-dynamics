@@ -167,8 +167,8 @@ contains
     real(8), intent(in) :: time
     real(8), intent(inout), dimension(:) :: u, udot
     
-    u(1) = 2.0d0
-    u(2) = 1.0d0
+    u(1) = 2.5d-1
+    u(2) = 1.5d-1
 
     udot(1) = 0.2d0
     udot(2) = -0.1d0
