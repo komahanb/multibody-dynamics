@@ -74,7 +74,7 @@ contains
     real(8), intent(in) :: time
     real(8), intent(in), dimension(:) :: u, udot, uddot
 
-    res(1) = uddot(1) + 0.25d0*udot(2) + 0.1d0*udot(1) &
+    res(1) = uddot(1) + 0.25d0*uddot(2) + 0.1d0*udot(1) &
          & + 0.2d0*u(1) + 0.1d0*this % Q*u(2)
 
     res(2) = 0.25d0*uddot(1) + 0.5d0*uddot(2) + 0.1d0*udot(2) &
@@ -130,8 +130,8 @@ contains
     
     ! derivative of first equation
     
-    jac(1,1) = jac(1,1) + beta*0.10d0
-    jac(1,2) = jac(1,2) + beta*0.25d0
+    jac(1,1) = jac(1,1) + beta*0.1d0
+    jac(1,2) = jac(1,2) + beta*0.0d0
 
     ! derivative of second equation
 
@@ -145,7 +145,7 @@ contains
     ! derivative of first equation
     
     jac(1,1) = jac(1,1) + gamma*1.0d0
-    jac(1,2) = jac(1,2) + gamma*0.0d0
+    jac(1,2) = jac(1,2) + gamma*0.25d0
 
     ! derivative of second equation
 
@@ -167,12 +167,12 @@ contains
     real(8), intent(in) :: time
     real(8), intent(inout), dimension(:) :: u, udot
     
-    u(1) = 2.5d-1
-    u(2) = 1.5d-1
-
-    udot(1) = 0.2d0
-    udot(2) = -0.1d0
+    u(1) = 0.00d0
+    u(2) = 0.00d0
     
+    udot(1) = 0.01d0
+    udot(2) = 0.00d0
+
   end subroutine getInitialStates
  
   !===================================================================!
