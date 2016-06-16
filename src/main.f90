@@ -110,25 +110,26 @@ program main
   !  Aeroelastic Oscillator
   !===================================================================!
   
-  allocate(X(1), dfdx(1), dfdxtmp(1))
+  allocate(X(2), dfdx(2), dfdxtmp(2))
 
   dfdx    = 0.0d0
   dfdxtmp = 0.0d0
 
-  x(1) = 1.00d0 ! dynamic pressure
+  x(1) = 9.0d0  ! dynamic pressure
+  x(2) = 20.0d0 ! nonlinear stiffness coeff
   
   ! Initialize the system
-  call oscillator % initialize(num_state_vars = 2, num_design_vars = 1)
+  call oscillator % initialize(num_state_vars = 2, num_design_vars = 2)
   
-  bdfobj = BDF(system = oscillator, tfinal = 300.0d0, h=2.0d-2, max_bdf_order = 3) 
+  bdfobj = BDF(system = oscillator, tfinal = 100.0d0, h=2.0d-2, max_bdf_order = 3) 
 
-  call bdfobj % evalFuncGrad(num_func=1, func = pitch1,  num_dv = 1, x = x, &
+  call bdfobj % evalFuncGrad(num_func=1, func = pitch1,  num_dv = 2, x = x, &
        & fvals = fval, dfdx= dfdx)
-
+  
 !  call bdfobj % integrate()
   call bdfobj % writeSolution()
   
-  call bdfobj % evalFDFuncGrad(num_func=1, func = pitch1,  num_dv = 1, x = x, &
+  call bdfobj % evalFDFuncGrad(num_func=1, func = pitch1,  num_dv = 2, x = x, &
        & fvals = fval, dfdx= dfdxtmp, dh=1.0d-6)
   
   call bdfobj % finalize()

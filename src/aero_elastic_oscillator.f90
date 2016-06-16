@@ -27,7 +27,8 @@ module aero_elastic_oscillator_class
      ! Define constants and other parameters needed for residual and
      ! jacobian assembly here
 
-     real(dp) :: Q = 8.0d0 ! reduced dynamic pressure
+     real(dp) :: Q = 8.0d0  ! reduced dynamic pressure
+     real(dp) :: E = 20.0d0 ! non-linear stiffness factor
 
    contains    
 
@@ -41,26 +42,6 @@ module aero_elastic_oscillator_class
 
 contains
   
-  !===================================================================!
-  ! Sets the design variables into the system
-  !===================================================================!
-  
-  subroutine setDesignVars(this, x)
-
-    class(aero_elastic_oscillator)     :: this
-    real(8), intent(in), dimension(:)  :: x
-
-    ! Overwrite the values to supplied ones
-    if (this % num_design_vars .eq. 1) then 
-
-    else if (this % num_design_vars .eq. 2) then
-
-    else if (this % num_design_vars .eq. 3) then
-
-    end if
-
-  end subroutine setDesignVars
-
   !-------------------------------------------------------------------!
   ! Residual assembly at each time step. 
   ! u(1) is the plunging state of the oscillator
@@ -78,7 +59,7 @@ contains
          & + 0.2d0*u(1) + 0.1d0*this % Q*u(2)
 
     res(2) = 0.25d0*uddot(1) + 0.5d0*uddot(2) + 0.1d0*udot(2) &
-         & + 0.5d0*u(2) + 20.0d0*u(2)*u(2)*u(2) - 0.1d0*this % Q*u(2)
+         & + 0.5d0*u(2) + this % E *u(2)*u(2)*u(2) - 0.1d0*this % Q*u(2)
 
   end subroutine assembleResidual
 
@@ -122,7 +103,7 @@ contains
     ! derivative of second equation
     
     jac(2,1) = jac(2,1) + alpha*0.0d0
-    jac(2,2) = jac(2,2) + alpha*(0.5d0 + 60.0d0*u(2)*u(2) - 0.1d0 * this % Q)
+    jac(2,2) = jac(2,2) + alpha*(0.5d0 + this % E*3.0d0*u(2)*u(2) - 0.1d0 * this % Q)
     
     !-----------------------------------------------------------------!
     ! Add dR/dQDOT
@@ -204,10 +185,13 @@ contains
     jac = 0.0d0
     
     jac(1,1) =   0.1d0*u(2)
+    jac(1,2) =   0.0d0
+
     jac(2,1) = - 0.1d0*u(2)
+    jac(2,2) =   u(2)*u(2)*u(2)
 
   end subroutine getResidualDVSens
-
+  
   !-------------------------------------------------------------------!
   ! Map the the design variables into the class variables
   !-------------------------------------------------------------------!
@@ -217,8 +201,8 @@ contains
     class(aero_elastic_oscillator) :: this
 
     this % Q = this % x(1)
+    this % E = this % x(2)
 
   end subroutine mapDesignVars
 
 end Module aero_elastic_oscillator_class
-
