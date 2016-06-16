@@ -29,43 +29,18 @@ module aero_elastic_oscillator_class
 
      real(dp) :: Q = 8.0d0 ! reduced dynamic pressure
 
-     integer  :: num_state_vars  = 1
-     integer  :: num_design_vars = 0
+   contains    
 
-   contains
-
-     procedure :: initialize
-     procedure :: setDesignVars
+     procedure :: mapDesignVars
      procedure :: assembleResidual
      procedure :: assembleJacobian
      procedure :: getInitialStates
-     procedure :: getNumStateVars
      procedure :: getResidualDVSens
 
   end type aero_elastic_oscillator
 
 contains
   
-  !---------------------------------------------------------------------!
-  ! Constructor for the aero elastic oscillator
-  !---------------------------------------------------------------------!
-  
-  subroutine initialize(this, x, function)
-
-    class(aero_elastic_oscillator)              :: this
-    class(abstract_function), target, OPTIONAL  :: function
-    real(8), intent(in), dimension(:), OPTIONAl :: x
-
-    ! Set the number of state variables
-    this % num_state_vars = 2
-
-    if (present(x)) then
-       this % num_design_vars = size(x)
-       call this % setDesignVars(x)
-    end if
-
-  end subroutine initialize
-
   !===================================================================!
   ! Sets the design variables into the system
   !===================================================================!
@@ -226,9 +201,24 @@ contains
     real(8), intent(in), dimension(:)      :: x, u, udot, uddot
     real(8)                                :: scale
 
-    stop"Not implemented"
+    jac = 0.0d0
+    
+    jac(1,1) =   0.1d0*u(2)
+    jac(2,1) = - 0.1d0*u(2)
 
   end subroutine getResidualDVSens
+
+  !-------------------------------------------------------------------!
+  ! Map the the design variables into the class variables
+  !-------------------------------------------------------------------!
+  
+  subroutine mapDesignVars(this)
+
+    class(aero_elastic_oscillator) :: this
+
+    this % Q = this % x(1)
+
+  end subroutine mapDesignVars
 
 end Module aero_elastic_oscillator_class
 
