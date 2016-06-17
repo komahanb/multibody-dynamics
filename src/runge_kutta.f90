@@ -795,9 +795,8 @@ contains
 
     do k = 2, this % num_steps
        do j = 1, this % num_stages
-          call this % system % func % addDFDX(dfdx, 1.0d0, this % T(j), &
+          call this % system % func % addDFDX(dfdx, this % h * this % B(j), this % T(j), &
                & this % system % x, this % Q(k,j,:), this % QDOT(k,j,:), this % QDDOT(k,j,:) )
-          dfdx(j) = this % h * this % B(j)* dfdx(j)
        end do
     end do
 
@@ -820,7 +819,8 @@ contains
 
 !!$    call this % system % func % addDfdx(dfdx, 1.0d0, this % time(1), &
 !!$         & this % system % x, this % u(1,:), this % udot(1,:), this % uddot(2,:) )
-!!$    
+
+!!$    ! Insufficient: use summation of adjoint vars
 !!$    call this % system % getResidualDVSens(dRdX, 1.0d0, this % time(1), &
 !!$         & this % system % x, this % u(1,:), this % udot(1,:), this % uddot(2,:))
 !!$    dfdx = dfdx + matmul(this % psi(2,:), dRdX)
