@@ -415,6 +415,8 @@ contains
           call this % adjointSolve(this % psi(k,i,:), alpha, beta, gamma, &
                & this % T(i), this % Q(k,i,:), this % QDOT(k,i,:), this % QDDOT(k,i,:))
           
+!          print *, "psi=", k, i, this % psi(k,i,:)
+
        end do stage
 
     end do time
@@ -793,10 +795,13 @@ contains
     ! Compute dfdx
     !-----------------------------------------------------------------!
 
+    ! always use scale
     do k = 2, this % num_steps
        do j = 1, this % num_stages
-          call this % system % func % addDFDX(dfdx, this % h * this % B(j), this % T(j), &
-               & this % system % x, this % Q(k,j,:), this % QDOT(k,j,:), this % QDDOT(k,j,:) )
+          call this % system % func % addDFDX(dfdx, this % h * this % B(j),&
+               &  this % T(j),  &
+               & this % system % x, this % Q(k,j,:), this % QDOT(k,j,:), &
+               & this % QDDOT(k,j,:) )
        end do
     end do
 
@@ -808,6 +813,7 @@ contains
        do j = 1, this % num_stages
           call this % system % getResidualDVSens(dRdX, 1.0d0, this % T(j), &
                & this % system % x, this % Q(k,j,:), this % QDOT(k,j,:), this % QDDOT(k,j,:))
+!          print*, this % B(j),drdx, this % psi (k,j,:)
           dfdx = dfdx + this % h * this % B(j)* matmul(this % psi(k,j,:), dRdX) ! check order
        end do
     end do
@@ -819,8 +825,7 @@ contains
 
 !!$    call this % system % func % addDfdx(dfdx, 1.0d0, this % time(1), &
 !!$         & this % system % x, this % u(1,:), this % udot(1,:), this % uddot(2,:) )
-
-!!$    ! Insufficient: use summation of adjoint vars
+!!$    
 !!$    call this % system % getResidualDVSens(dRdX, 1.0d0, this % time(1), &
 !!$         & this % system % x, this % u(1,:), this % udot(1,:), this % uddot(2,:))
 !!$    dfdx = dfdx + matmul(this % psi(2,:), dRdX)
@@ -838,27 +843,27 @@ contains
     class(DIRK)                        :: this
     real(dp), dimension(:), intent(in) :: x
     real(dp), intent(inout)            :: fval
-    integer                               :: k,j
-    real(dp), dimension(this % num_steps) :: ftmp
-
-!    print*, "Evaluating function of interest"
+    integer                            :: k,j
+    real(dp)                           :: ftmp
     
+    fval =0.0d0
+
     do concurrent(k = 2 : this % num_steps)
        do concurrent(j = 1 : this % num_stages)
-          call this % system % func % getFunctionValue(ftmp(k), this % T(j), &
+          call this % system % func % getFunctionValue(ftmp, this % T(j), &
                & x, this % Q(k,j,:), this % QDOT(k,j,:), this % QDDOT(k,j,:))
-          ftmp(k) = this % h * this % B(j) * ftmp(k)
+          fval = fval +  this % h * this % B(j) * ftmp
        end do
     end do
-   
+
 !!$    do concurrent(k = 1 : this % num_steps)
 !!$       call this % system % func % getFunctionValue(ftmp(k), this % time(k), &
 !!$            & x, this % U(k,:), this % UDOT(k,:), this % UDDOT(k,:))
 !!$       ftmp(k) = this % h * ftmp(k)
 !!$    end do
-    
+
     ! fval = sum(ftmp)/dble(this % num_steps)
-    fval = sum(ftmp)
+    !   fval = sum(ftmp)
 
   end subroutine evalFunc
 
