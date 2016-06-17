@@ -855,15 +855,15 @@ contains
           fval = fval +  this % h * this % B(j) * ftmp
        end do
     end do
-
+    
 !!$    do concurrent(k = 1 : this % num_steps)
 !!$       call this % system % func % getFunctionValue(ftmp(k), this % time(k), &
 !!$            & x, this % U(k,:), this % UDOT(k,:), this % UDDOT(k,:))
 !!$       ftmp(k) = this % h * ftmp(k)
 !!$    end do
-
+    
     ! fval = sum(ftmp)/dble(this % num_steps)
-    !   fval = sum(ftmp)
+    ! fval = sum(ftmp)
 
   end subroutine evalFunc
 

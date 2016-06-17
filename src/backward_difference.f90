@@ -252,8 +252,8 @@ contains
     end do
 
     ! Initial condition
-    call this % system % func % addDfdx(dfdx, scale, this % time(1), &
-         & this % system % x, this % u(1,:), this % udot(1,:), this % uddot(2,:) )
+!!$    call this % system % func % addDfdx(dfdx, scale, this % time(1), &
+!!$         & this % system % x, this % u(1,:), this % udot(1,:), this % uddot(2,:) )
     
     !-----------------------------------------------------------------!
     ! Compute the total derivative
@@ -266,9 +266,9 @@ contains
     end do
 
     ! Add constraint contribution
-    call this % system % getResidualDVSens(dRdX, scale, this % time(1), &
-         & this % system % x, this % u(1,:), this % udot(1,:), this % uddot(2,:))
-    dfdx = dfdx + matmul(this % psi(2,:), dRdX)
+!!$    call this % system % getResidualDVSens(dRdX, scale, this % time(1), &
+!!$         & this % system % x, this % u(1,:), this % udot(1,:), this % uddot(2,:))
+!!$    dfdx = dfdx + matmul(this % psi(2,:), dRdX)
 
     ! Finally multiply by the scalar
     dfdx = this % h * dfdx
@@ -656,7 +656,7 @@ contains
     integer                               :: k
     real(dp), dimension(this % num_steps) :: ftmp
     
-    do concurrent(k = 1 : this % num_steps)
+    do concurrent(k = 2 : this % num_steps)
        call this % system % func % getFunctionValue(ftmp(k), this % time(k), &
             & x, this % U(k,:), this % UDOT(k,:), this % UDDOT(k,:))
     end do
