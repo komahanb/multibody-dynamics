@@ -12,7 +12,10 @@ FC = gfortran
 #------------------------------
 CC_FLAGS =  #-g #-Wall
 CX_FLAGS =  #-g #-Wall
-FC_FLAGS =  -g -cpp  #-fbounds-check -ffree-form -Wall -cpp -dM -Wno-unused
+FC_FLAGS =  -g -cpp #-fbounds-check -ffree-form -Wall -cpp -dM -Wno-unused
+
+complex: FC_FLAGS+=-DUSE_COMPLEX
+complex: default
 
 #------------------------------
 # Define the suffixes in use
@@ -24,7 +27,7 @@ BIN_DIR=bin
 #-----------------------------------------------------------------------
 # Define any directories containing header files other than /usr/include
 #-----------------------------------------------------------------------
-INCLUDES = -I/usr/local/include
+INCLUDES = -I/usr/local/include -I./src
   
 #-----------------------------------------------------------------------
 # Define library paths in addition to /usr/lib
@@ -64,7 +67,7 @@ OBJ = $(patsubst src/%.f90 src/interface/%.f90 src/integrator/%.f90 src/dynamics
 
 TARGET = $(BIN_DIR)/test
 
-all:    $(TARGET)
+default:    $(TARGET)
 	@echo "\nCompilation and linking success...\n"
 
 $(TARGET): $(OBJ)

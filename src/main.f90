@@ -1,9 +1,8 @@
 !=====================================================================!
 ! Main Program for testing the integrators on different test problems
 !=====================================================================!
-
+#include "scalar.fpp"
 program main
-
   ! Import essentials  
   use iso_fortran_env               , only : dp => real64
 
@@ -42,7 +41,10 @@ program main
   ! Design variable array
   real(dp), dimension(:), allocatable :: x, dfdx, dfdxtmp
   real(dp)                            :: fval, ftmp, dh = 1.0d-8
-  
+  type(scalar) :: tt
+
+print*, tt
+stop
   !-------------------------------------------------------------------!
   !                 Spring Mass Damper system                         !
   !-------------------------------------------------------------------!
