@@ -14,8 +14,13 @@ CC_FLAGS =  #-g #-Wall
 CX_FLAGS =  #-g #-Wall
 FC_FLAGS =  -g -cpp #-fbounds-check -ffree-form -Wall -cpp -dM -Wno-unused
 
-complex: FC_FLAGS+=-DUSE_COMPLEX
-complex: all
+TARGET = $(BIN_DIR)/test
+
+default: $(OBJ)
+	$(FC) $(FC_FLAGS) $(INCLUDES) -o $(TARGET) $(OBJ) $(LIB_FLAGS) $(LIBS)
+
+complex: $(OBJ)
+	$(FC) $(FC_FLAGS) -DUSE_COMPLEX $(INCLUDES) -o $(TARGET) $(OBJ) $(LIB_FLAGS) $(LIBS)
 
 #------------------------------
 # Define the suffixes in use
@@ -64,14 +69,6 @@ OBJ = $(patsubst src/%.f90 src/interface/%.f90 src/integrator/%.f90 src/dynamics
 #------------------------------
 # Executable
 #------------------------------
-
-TARGET = $(BIN_DIR)/test
-
-all:    $(TARGET)
-	@echo "\nCompilation and linking success...\n"
-
-$(TARGET): $(OBJ)
-	$(FC) $(FC_FLAGS) $(INCLUDES) -o $(TARGET) $(OBJ) $(LIB_FLAGS) $(LIBS)
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.f90
 	$(FC) $(FC_FLAGS) -c  $< -o $@
