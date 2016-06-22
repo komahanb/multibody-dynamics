@@ -18,7 +18,7 @@ module runge_kutta_integrator
 
   ! Useful constants
   type(scalar), parameter :: ONE  = 1.0d0
-  type(scalar), parameter :: ZERO = 1.0d0
+  type(scalar), parameter :: ZERO = 0.0d0
 
   !===================================================================! 
   ! Abstract Runge-Kutta type

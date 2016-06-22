@@ -39,10 +39,10 @@ contains
   
   pure subroutine getFunctionValue(this, f, time, x, u, udot, uddot)
     
-    class(kinetic_energy), intent(inout) :: this
-    type(scalar), intent(inout)               :: f
-    real(dp), intent(in)                  :: time
-    type(scalar), intent(in), dimension(:)    :: x, u, udot, uddot
+    class(kinetic_energy), intent(inout)   :: this
+    type(scalar), intent(inout)            :: f
+    type(scalar), intent(in), dimension(:) :: x, u, udot, uddot
+    real(dp), intent(in)                   :: time
 
     f = 0.5d0*x(1)*uddot(1)**2 + 0.5d0*x(2)*udot(1)**2 + 0.5d0*x(3)*u(1)**2
     
@@ -54,10 +54,10 @@ contains
 
   subroutine addDfdX(this, res, scale, time, x, u, udot, uddot)
 
-    class(kinetic_energy)                :: this
+    class(kinetic_energy)                     :: this
     type(scalar), intent(inout), dimension(:) :: res
-    real(dp), intent(in)                  :: time
     type(scalar), intent(in), dimension(:)    :: x, u, udot, uddot
+    real(dp), intent(in)                      :: time
     type(scalar)                              :: scale
 
     res(1) = res(1) + scale*0.5d0*uddot(1)**2 ! wrt to m
@@ -72,9 +72,9 @@ contains
 
   subroutine addDfdU(this, res, scale, time, x, u, udot, uddot)
 
-    class(kinetic_energy)                :: this
+    class(kinetic_energy)                     :: this
     type(scalar), intent(inout), dimension(:) :: res
-    real(dp), intent(in)                  :: time
+    real(dp), intent(in)                      :: time
     type(scalar), intent(in), dimension(:)    :: x, u, udot, uddot
     type(scalar)                              :: scale
 
@@ -88,10 +88,10 @@ contains
 
   subroutine addDfdUDot(this, res, scale, time, x, u, udot, uddot)
 
-    class(kinetic_energy)                :: this
+    class(kinetic_energy)                     :: this
     type(scalar), intent(inout), dimension(:) :: res
-    real(dp), intent(in)                  :: time
     type(scalar), intent(in), dimension(:)    :: x, u, udot, uddot
+    real(dp), intent(in)                      :: time
     type(scalar)                              :: scale
     
     res(1) = res(1) + scale*x(2)*udot(1) ! wrt to udot(1)
@@ -104,12 +104,12 @@ contains
 
   subroutine addDfdUDDot(this, res, scale, time, x, u, udot, uddot)
 
-    class(kinetic_energy)                :: this
+    class(kinetic_energy)                     :: this
     type(scalar), intent(inout), dimension(:) :: res
-    real(dp), intent(in)                  :: time
     type(scalar), intent(in), dimension(:)    :: x, u, udot, uddot
+    real(dp), intent(in)                      :: time
     type(scalar)                              :: scale
-
+    
     res(1) = res(1) + scale*x(1)*uddot(1) ! wrt to uddot(1)
 
   end subroutine addDfdUDDot

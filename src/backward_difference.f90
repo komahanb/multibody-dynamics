@@ -18,7 +18,7 @@ module bdf_integrator
 
   ! Useful constants
   type(scalar), parameter :: ONE  = 1.0d0
-  type(scalar), parameter :: ZERO = 1.0d0
+  type(scalar), parameter :: ZERO = 0.0d0
 
   !===================================================================!
   ! A derived type for the bdf coefficients
@@ -472,7 +472,7 @@ contains
 
     class(BDF)                :: this
     integer                   :: k
-    type(scalar)                  :: alpha, beta, gamma
+    type(scalar)              :: alpha, beta, gamma
     
     time: do k = this % num_steps, 2, -1
        
@@ -483,18 +483,16 @@ contains
        !--------------------------------------------------------------!
               
        call this % getLinearCoeff(k, alpha, beta, gamma)
-       
+    
        !--------------------------------------------------------------!
        ! Solve the adjoint equation at each step
        !--------------------------------------------------------------!
        
        call this % adjointSolve(this % psi(k,:), alpha, beta, gamma, &
             & this % time(k), this % u(k,:), this % udot(k,:), this % uddot(k,:))
-       
-!       print *, this % psi(k,:), k
 
     end do time
-
+    
   end subroutine marchBackwards
   
   !===================================================================!
@@ -555,11 +553,11 @@ contains
   
   subroutine assembleRHS( this, rhs )
 
-    class(BDF)                            :: this
+    class(BDF)                                :: this
     type(scalar), dimension(:), intent(inout) :: rhs
     type(scalar), dimension(:,:), allocatable :: jac
     type(scalar)                              :: scale
-    integer                               :: k, i, m1, m2, idx
+    integer                                   :: k, i, m1, m2, idx
     
     allocate( jac(this % nSVars, this % nSVars) )
     
@@ -608,9 +606,9 @@ contains
 !!$                  & this % system % x, this % u(idx,:), this % udot(idx,:), this % uddot(idx,:))
 !!$             
 !!$             if (i .ne. 0) then
-!!$                call this % system % assembleJacobian(jac, ZERO, ZERO, ONE, &
+!!$                call this % system % assembleJacobian(jac, ZERO, ZERO, scale, &
 !!$                     & this % time(idx), this % u(idx,:), this % udot(idx,:), this % uddot(idx,:))
-!!$                rhs = rhs + scale*matmul( transpose(jac), this % psi(idx,:) )
+!!$                rhs = rhs + matmul( transpose(jac), this % psi(idx,:) )
 !!$             end if
 !!$
 !!$          end if
@@ -625,9 +623,9 @@ contains
        idx = k + i
        if ( idx .le. this % num_steps) then
           scale = this % coeff % beta(m1, i+1)/this % h
-          call this % system % assembleJacobian(jac, ZERO, ONE, ZERO, &
+          call this % system % assembleJacobian(jac, ZERO, scale, ZERO, &
                & this % time(idx), this % u(idx,:), this % udot(idx,:), this % uddot(idx,:))
-          rhs = rhs + scale*matmul( transpose(jac), this % psi(idx,:) )
+          rhs = rhs + matmul( transpose(jac), this % psi(idx,:) )
        end if
     end do
 
@@ -635,9 +633,9 @@ contains
        idx = k + i
        if ( idx .le. this % num_steps) then
           scale = this % coeff % gamma(m2, i+1)/this % h/this % h
-          call this % system % assembleJacobian(jac, ZERO, ZERO, ONE, &
+          call this % system % assembleJacobian(jac, ZERO, ZERO, scale, &
                & this % time(idx), this % u(idx,:), this % udot(idx,:), this % uddot(idx,:))
-          rhs = rhs + scale*matmul( transpose(jac), this % psi(idx,:) )
+          rhs = rhs + matmul( transpose(jac), this % psi(idx,:) )
        end if
     end do
     

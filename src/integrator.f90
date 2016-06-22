@@ -234,9 +234,9 @@ contains
     end if
 
     do k = 1, this % num_steps
-       write(90, *)  this % time(k), (this % u(k,j), j=1,this%nsvars ), &
-            & (this % udot(k,j), j=1,this%nsvars ), &
-            & (this % uddot(k,j), j=1,this%nsvars )
+       write(90, *)  this % time(k), (dble(this % u(k,j)), j=1,this%nsvars ), &
+            & (dble(this % udot(k,j)), j=1,this%nsvars ), &
+            & (dble(this % uddot(k,j)), j=1,this%nsvars )
     end do
 
     close(90)
@@ -358,7 +358,17 @@ contains
 
        ! Call LAPACK to solve the stage values system
        dq = -res
+       
+#if defined USE_COMPLEX
+       call ZGESV(size, 1, jac, size, IPIV, dq, size, INFO)
+#else
        call DGESV(size, 1, jac, size, IPIV, dq, size, INFO)
+#endif
+
+       if (INFO .ne. 0) then
+          print*, "LAPACK ERROR:", info
+          stop
+       end if
        
        ! Update the solution
        qddot = qddot + gamma * dq
@@ -509,13 +519,13 @@ contains
 
  ! Arguments
     type(scalar), intent(in)                  :: alpha, beta, gamma
-    real(dp), intent(in)                  :: t
+    real(dp), intent(in)                      :: t
     type(scalar), intent(inout), dimension(:) :: q, qdot, qddot
     type(scalar), intent(inout), dimension(:) :: psi
 
  ! Lapack variables
-    integer, allocatable, dimension(:)    :: ipiv
-    integer                               :: info, size
+    integer, allocatable, dimension(:)        :: ipiv
+    integer                                   :: info, size
        
  ! Other Local variables
     type(scalar), allocatable, dimension(:)   :: rhs
@@ -542,7 +552,16 @@ contains
     jac = transpose(jac)
     
     ! Call lapack to solve the stage values system
+#if defined USE_COMPLEX
+    call ZGESV(size, 1, jac, size, IPIV, rhs, size, INFO)    
+#else
     call DGESV(size, 1, jac, size, IPIV, rhs, size, INFO)
+#endif
+    
+    if (INFO .ne. 0) then
+       print*, "LAPACK ERROR:", info
+       stop
+    end if
 
     ! Store into the output array
     psi = rhs
@@ -626,15 +645,20 @@ contains
   subroutine evalFDFuncGrad( this, num_func, func, &
        & num_dv, x, fvals, dfdx, dh )
 
-    class(integrator)                                :: this
-    class(abstract_function)       , target          :: func
-    integer, intent(in)                              :: num_func, num_dv
-    type(scalar), dimension(:), intent(inout)            :: x
-    type(scalar), dimension(:), intent(inout)            :: dfdx
-    type(scalar), intent(inout)                          :: fvals
-    real(dp), intent(in)                             :: dh
-    type(scalar)                                         :: fvals_tmp, xtmp
-    integer                                          :: m
+    class(integrator)                         :: this
+    class(abstract_function)       , target   :: func
+
+    integer, intent(in)                       :: num_func, num_dv
+
+    type(scalar), dimension(:), intent(inout) :: x
+    type(scalar), dimension(:), intent(inout) :: dfdx
+    type(scalar), intent(inout)               :: fvals
+
+    real(dp), intent(in)                      :: dh
+
+    type(scalar)                              :: fvals_tmp, xtmp
+
+    integer                                   :: m
 
     !-----------------------------------------------------------------!
     ! Set the objective function into the system
@@ -658,16 +682,22 @@ contains
     !-----------------------------------------------------------------!
     ! Compute the objective/ constraint function value
     !-----------------------------------------------------------------!
-
+#if defined USE_COMPLEX
+#else
     call this % evalFunc(x, fvals)
-
+#endif
+   
     do m = 1, this % ndvars
 
        ! Store the original x value
        xtmp = x(m)
 
-       ! Perturb the variable       
+       ! Perturb the variable              
+#if defined USE_COMPLEX
+       x(m) = cmplx(dble(x(m)), 1.0d-15)
+#else
        x(m) = x(m) + dh
+#endif
 
        call this % system % setDesignVars(num_dv, x)
        call this % integrate()
@@ -677,8 +707,12 @@ contains
        x(m) = xtmp
 
        ! Find the FD derivative
+#if defined USE_COMPLEX
+       dfdx(m) = aimag(fvals_tmp)/1.0d-15
+#else
        dfdx(m) = (fvals_tmp-fvals)/dh
-       
+#endif
+ 
     end do
 
   end subroutine evalFDFuncGrad
@@ -693,7 +727,7 @@ contains
     integer :: j
     
     do j = 1, size(z)
-       znorm2 = znorm2 + sqrt(real(z(j))**2 +  imag(z(j))**2)
+       znorm2 = znorm2 + sqrt(dble(z(j))**2 + aimag(z(j))**2)
     end do
     
   end function znorm2
