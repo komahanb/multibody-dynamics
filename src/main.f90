@@ -82,7 +82,7 @@ program main
   ! Initialize the system
   call smd1obj % initialize(num_state_vars = 1, num_design_vars = 3)
 
-  dirkobj = DIRK(system = smd1obj, tfinal = 10.d0, h=1.0d-3, num_stages=3) 
+  dirkobj = DIRK(system = smd1obj, tfinal = 10.0d0, h=1.0d-3, num_stages=3) 
   
   call dirkobj % evalFuncGrad(num_func=1, func = KE, num_dv = 3, x = x, &
        & fvals = fval, dfdx= dfdx)
@@ -103,8 +103,6 @@ program main
   call smd1obj % finalize()
 
   deallocate(X, dfdx, dfdxtmp)
-
-stop
   
   !===================================================================!
   !  Aeroelastic Oscillator
@@ -121,7 +119,7 @@ stop
   ! Initialize the system
   call oscillator % initialize(num_state_vars = 2, num_design_vars = 2)
   
-  bdfobj = BDF(system = oscillator, tfinal = 100.0d0, h=1.0d-3, max_bdf_order = 3) 
+  bdfobj = BDF(system = oscillator, tfinal = 1.0d0, h=1.0d-3, max_bdf_order = 3) 
 
   call bdfobj % evalFuncGrad(num_func=1, func = pitch1,  num_dv = 2, x = x, &
        & fvals = fval, dfdx= dfdx)
@@ -148,7 +146,7 @@ stop
   ! Initialize the system
   call oscillator % initialize(num_state_vars = 2, num_design_vars = 2)
   
-  dirkobj = DIRK(system = oscillator, tfinal = 100.d0, h=1.0d-3, num_stages=3) 
+  dirkobj = DIRK(system = oscillator, tfinal = 1.d0, h=1.0d-3, num_stages=3) 
   
   call dirkobj % evalFuncGrad(num_func = 1, func = pitch1, num_dv = 2, x = x, &
        & fvals = fval, dfdx= dfdx)

@@ -623,9 +623,9 @@ contains
        idx = k + i
        if ( idx .le. this % num_steps) then
           scale = this % coeff % beta(m1, i+1)/this % h
-          call this % system % assembleJacobian(jac, ZERO, scale, ZERO, &
+          call this % system % assembleJacobian(jac, ZERO, ONE, ZERO, &
                & this % time(idx), this % u(idx,:), this % udot(idx,:), this % uddot(idx,:))
-          rhs = rhs + matmul( transpose(jac), this % psi(idx,:) )
+          rhs = rhs + scale*matmul( transpose(jac), this % psi(idx,:) )
        end if
     end do
 
@@ -633,9 +633,9 @@ contains
        idx = k + i
        if ( idx .le. this % num_steps) then
           scale = this % coeff % gamma(m2, i+1)/this % h/this % h
-          call this % system % assembleJacobian(jac, ZERO, ZERO, scale, &
+          call this % system % assembleJacobian(jac, ZERO, ZERO, ONE, &
                & this % time(idx), this % u(idx,:), this % udot(idx,:), this % uddot(idx,:))
-          rhs = rhs + matmul( transpose(jac), this % psi(idx,:) )
+          rhs = rhs + scale*matmul( transpose(jac), this % psi(idx,:) )
        end if
     end do
     
