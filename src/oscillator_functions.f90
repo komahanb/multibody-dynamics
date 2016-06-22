@@ -46,7 +46,7 @@ contains
     
     class(pitch), intent(inout)       :: this
     type(scalar), intent(inout)            :: f
-    type(scalar), intent(in)               :: time
+    real(dp), intent(in)                  :: time
     type(scalar), intent(in), dimension(:) :: x, u, udot, uddot
     
     f = abs(u(2))
@@ -61,7 +61,7 @@ contains
 
     class(pitch)                         :: this
     type(scalar), intent(inout), dimension(:) :: res
-    type(scalar), intent(in)                  :: time
+    real(dp), intent(in)                  :: time
     type(scalar), intent(in), dimension(:)    :: x, u, udot, uddot
     type(scalar)                              :: scale
     
@@ -77,7 +77,7 @@ contains
 
     class(pitch)                :: this
     type(scalar), intent(inout), dimension(:) :: res
-    type(scalar), intent(in)                  :: time
+    real(dp), intent(in)                  :: time
     type(scalar), intent(in), dimension(:)    :: x, u, udot, uddot
     type(scalar)                              :: scale
     type(scalar) :: ONE = 1.0d0
@@ -94,7 +94,7 @@ contains
 
     class(pitch)                :: this
     type(scalar), intent(inout), dimension(:) :: res
-    type(scalar), intent(in)                  :: time
+    real(dp), intent(in)                  :: time
     type(scalar), intent(in), dimension(:)    :: x, u, udot, uddot
     type(scalar)                              :: scale
     
@@ -110,7 +110,7 @@ contains
 
     class(pitch)                :: this
     type(scalar), intent(inout), dimension(:) :: res
-    type(scalar), intent(in)                  :: time
+    real(dp), intent(in)                  :: time
     type(scalar), intent(in), dimension(:)    :: x, u, udot, uddot
     type(scalar)                              :: scale
 

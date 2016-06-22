@@ -41,7 +41,7 @@ contains
     
     class(kinetic_energy), intent(inout) :: this
     type(scalar), intent(inout)               :: f
-    type(scalar), intent(in)                  :: time
+    real(dp), intent(in)                  :: time
     type(scalar), intent(in), dimension(:)    :: x, u, udot, uddot
 
     f = 0.5d0*x(1)*uddot(1)**2 + 0.5d0*x(2)*udot(1)**2 + 0.5d0*x(3)*u(1)**2
@@ -56,7 +56,7 @@ contains
 
     class(kinetic_energy)                :: this
     type(scalar), intent(inout), dimension(:) :: res
-    type(scalar), intent(in)                  :: time
+    real(dp), intent(in)                  :: time
     type(scalar), intent(in), dimension(:)    :: x, u, udot, uddot
     type(scalar)                              :: scale
 
@@ -74,7 +74,7 @@ contains
 
     class(kinetic_energy)                :: this
     type(scalar), intent(inout), dimension(:) :: res
-    type(scalar), intent(in)                  :: time
+    real(dp), intent(in)                  :: time
     type(scalar), intent(in), dimension(:)    :: x, u, udot, uddot
     type(scalar)                              :: scale
 
@@ -90,7 +90,7 @@ contains
 
     class(kinetic_energy)                :: this
     type(scalar), intent(inout), dimension(:) :: res
-    type(scalar), intent(in)                  :: time
+    real(dp), intent(in)                  :: time
     type(scalar), intent(in), dimension(:)    :: x, u, udot, uddot
     type(scalar)                              :: scale
     
@@ -106,7 +106,7 @@ contains
 
     class(kinetic_energy)                :: this
     type(scalar), intent(inout), dimension(:) :: res
-    type(scalar), intent(in)                  :: time
+    real(dp), intent(in)                  :: time
     type(scalar), intent(in), dimension(:)    :: x, u, udot, uddot
     type(scalar)                              :: scale
 

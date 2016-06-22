@@ -59,7 +59,7 @@ module physics_class
        
        class(physics)                         :: this
        type(scalar), intent(inout), dimension(:,:) :: jac
-       type(scalar), intent(in)                    :: time
+       real(dp), intent(in)                        :: time
        type(scalar), intent(in), dimension(:)      :: x, u, udot, uddot
        type(scalar)                                :: scale
 
@@ -87,7 +87,7 @@ module physics_class
 
        class(physics) :: this
        type(scalar), intent(inout), dimension(:) :: res
-       type(scalar), intent(in) :: time
+       real(dp), intent(in) :: time
        type(scalar), intent(in), dimension(:) :: u, udot, uddot
 
      end subroutine residual_assembly_interface
@@ -104,7 +104,7 @@ module physics_class
        class(physics) :: this
        type(scalar), intent(inout), dimension(:,:) :: jac
        type(scalar), intent(in) :: alpha, beta, gamma
-       type(scalar), intent(in) :: time
+       real(dp), intent(in) :: time
        type(scalar), intent(in), dimension(:) :: u, udot, uddot
 
      end subroutine jacobian_assembly_interface
@@ -118,7 +118,7 @@ module physics_class
        import physics
 
        class(physics) :: this
-       type(scalar), intent(in) :: time
+       real(dp), intent(in) :: time
        type(scalar), intent(inout), dimension(:) :: u, udot
 
      end subroutine initial_condition_interface

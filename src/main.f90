@@ -38,11 +38,9 @@ program main
 
   ! Design variable array
   type(scalar), dimension(:), allocatable :: x, dfdx, dfdxtmp
-  type(scalar)                            :: fval, ftmp, dh = 1.0d-8
-  type(scalar) :: tt
+  type(scalar)                            :: fval, ftmp
+  real(dp) :: dh = 1.0d-8
 
-print*, tt
-stop
   !-------------------------------------------------------------------!
   !                 Spring Mass Damper system                         !
   !-------------------------------------------------------------------!

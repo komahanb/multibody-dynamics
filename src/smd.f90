@@ -132,7 +132,7 @@ contains
 
     class(smd1) :: this
 
-    type(scalar), intent(in) :: time
+    real(dp), intent(in) :: time
     type(scalar), intent(inout), dimension(:) :: u, udot
 
     u(1) = 1.0d0
@@ -150,7 +150,7 @@ contains
 
     class(smd1) :: this
     type(scalar), intent(inout), dimension(:) :: res
-    type(scalar), intent(in) :: time
+    real(dp), intent(in) :: time
     type(scalar), intent(in), dimension(:) :: u, udot, uddot
 
     res(1) = this % m * uddot(1) + this % c * udot(1) + this % k * u(1)
@@ -179,7 +179,7 @@ contains
     class(smd1) :: this
     type(scalar), intent(inout), dimension(:,:) :: jac
     type(scalar), intent(in) :: alpha, beta, gamma
-    type(scalar), intent(in) :: time
+    real(dp), intent(in) :: time
     type(scalar), intent(in), dimension(:) :: u, udot, uddot
 
     ! Zero all  entries first
@@ -198,7 +198,7 @@ contains
 
     class(smd1)                            :: this
     type(scalar), intent(inout), dimension(:,:) :: jac
-    type(scalar), intent(in)                    :: time
+    real(dp), intent(in) :: time
     type(scalar), intent(in), dimension(:)      :: x, u, udot, uddot
     type(scalar)                                :: scale
 
@@ -220,7 +220,7 @@ contains
 
     class(smd2) :: this
 
-    type(scalar), intent(in) :: time
+    real(dp), intent(in) :: time
     type(scalar), intent(inout), dimension(:) :: u, udot
 
     u(1) = 1.0d0
@@ -239,7 +239,7 @@ contains
 
     class(smd2) :: this
     type(scalar), intent(inout), dimension(:) :: res
-    type(scalar), intent(in) :: time
+    real(dp), intent(in) :: time
     type(scalar), intent(in), dimension(:) :: u, udot, uddot
 
     res(1) = uddot(1) + 0.02d0*udot(1)*udot(2) + 5.0d0*u(1)
@@ -269,7 +269,7 @@ contains
     class(smd2) :: this
     type(scalar), intent(inout), dimension(:,:) :: jac
     type(scalar), intent(in) :: alpha, beta, gamma
-    type(scalar), intent(in) :: time
+    real(dp), intent(in) :: time
     type(scalar), intent(in), dimension(:) :: u, udot, uddot
 
     ! Zero all  entries first
@@ -322,7 +322,7 @@ contains
 
     class(smd2)                            :: this
     type(scalar), intent(inout), dimension(:,:) :: jac
-    type(scalar), intent(in)                    :: time
+    real(dp), intent(in) :: time
     type(scalar), intent(in), dimension(:)      :: x, u, udot, uddot
     type(scalar)                                :: scale
     

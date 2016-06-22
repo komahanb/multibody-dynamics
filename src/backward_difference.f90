@@ -289,8 +289,8 @@ contains
    
     class(physics), target          :: system
     integer  , OPTIONAL, intent(in) :: max_bdf_order
-    type(scalar) , OPTIONAL, intent(in) :: tinit, tfinal
-    type(scalar) , OPTIONAL, intent(in) :: h
+    real(dp) , OPTIONAL, intent(in) :: tinit, tfinal
+    real(dp) , OPTIONAL, intent(in) :: h
     logical  , OPTIONAL, intent(in) :: second_order
 
     print *, "======================================"

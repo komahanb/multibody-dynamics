@@ -42,7 +42,7 @@ module runge_kutta_integrator
      ! The stage time and its corresponding derivatives
      !----------------------------------------------------------------!
 
-     type(scalar), dimension(:), allocatable     :: T
+     real(dp), dimension(:), allocatable     :: T
      type(scalar), dimension(:,:,:), allocatable :: Q
      type(scalar), dimension(:,:,:), allocatable :: QDOT
      type(scalar), dimension(:,:,:), allocatable :: QDDOT
@@ -144,8 +144,8 @@ contains
     
     class(physics), target :: system
     integer  , OPTIONAL, intent(in) :: num_stages
-    type(scalar) , OPTIONAL, intent(in) :: tinit, tfinal
-    type(scalar) , OPTIONAL, intent(in) :: h
+    real(dp) , OPTIONAL, intent(in) :: tinit, tfinal
+    real(dp), OPTIONAL, intent(in) :: h
     logical  , OPTIONAL, intent(in) :: second_order
 
     print *, "======================================"

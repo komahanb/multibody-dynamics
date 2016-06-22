@@ -51,7 +51,7 @@ contains
 
     class(aero_elastic_oscillator) :: this
     type(scalar), intent(inout), dimension(:) :: res
-    type(scalar), intent(in) :: time
+    real(dp), intent(in) :: time
     type(scalar), intent(in), dimension(:) :: u, udot, uddot
 
     res(1) = uddot(1) + 0.25d0*uddot(2) + 0.1d0*udot(1) &
@@ -84,7 +84,7 @@ contains
     class(aero_elastic_oscillator) :: this
     type(scalar), intent(inout), dimension(:,:) :: jac
     type(scalar), intent(in) :: alpha, beta, gamma
-    type(scalar), intent(in) :: time
+    real(dp), intent(in) :: time
     type(scalar), intent(in), dimension(:) :: u, udot, uddot
     
     ! Zero all entries first
@@ -144,7 +144,7 @@ contains
 
     class(aero_elastic_oscillator) :: this
 
-    type(scalar), intent(in) :: time
+    real(dp), intent(in) :: time
     type(scalar), intent(inout), dimension(:) :: u, udot
     
     u(1) = 0.00d0
@@ -177,7 +177,7 @@ contains
 
     class(aero_elastic_oscillator)         :: this
     type(scalar), intent(inout), dimension(:,:) :: jac
-    type(scalar), intent(in)                    :: time
+    real(dp), intent(in) :: time
     type(scalar), intent(in), dimension(:)      :: x, u, udot, uddot
     type(scalar)                                :: scale
 

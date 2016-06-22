@@ -51,7 +51,7 @@ module function_class
 
        class(abstract_function), intent(inout) :: this
        type(scalar), intent(inout)                  :: f
-       type(scalar), intent(in)                     :: time
+       real(dp), intent(in)                     :: time
        type(scalar), intent(in), dimension(:)       :: x, u, udot, uddot
 
      end subroutine interface_evaluate
@@ -66,7 +66,7 @@ module function_class
 
        class(abstract_function)             :: this
        type(scalar), intent(inout), dimension(:) :: res
-       type(scalar), intent(in)                  :: time
+       real(dp), intent(in)                  :: time
        type(scalar), intent(in), dimension(:)    :: x, u, udot, uddot
        type(scalar)                              :: scale
 

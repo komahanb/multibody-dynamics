@@ -15,7 +15,7 @@ CX_FLAGS =  #-g #-Wall
 FC_FLAGS =  -g -cpp #-fbounds-check -ffree-form -Wall -cpp -dM -Wno-unused
 
 complex: FC_FLAGS+=-DUSE_COMPLEX
-complex: default
+complex: all
 
 #------------------------------
 # Define the suffixes in use
@@ -67,7 +67,7 @@ OBJ = $(patsubst src/%.f90 src/interface/%.f90 src/integrator/%.f90 src/dynamics
 
 TARGET = $(BIN_DIR)/test
 
-default:    $(TARGET)
+all:    $(TARGET)
 	@echo "\nCompilation and linking success...\n"
 
 $(TARGET): $(OBJ)

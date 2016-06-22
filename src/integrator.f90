@@ -20,7 +20,7 @@ module integrator_class
 
   private
   public ::  integrator
-
+  
   interface norm2
      module procedure znorm2
   end interface norm2
@@ -44,8 +44,8 @@ module integrator_class
      !----------------------------------------------------------------!
 
      integer  :: num_steps = 0                 ! number of time steps
-     type(scalar) :: tinit = 0.0d0, tfinal = 1.0d0 ! initial and final times
-     type(scalar) :: h = 0.1d0                     ! default step size
+     real(dp) :: tinit = 0.0d0, tfinal = 1.0d0 ! initial and final times
+     real(dp) :: h = 0.1d0                     ! default step size
 
      !----------------------------------------------------------------!
      ! Nonlinear solution at each stage
@@ -58,7 +58,7 @@ module integrator_class
      ! Track global time and states
      !----------------------------------------------------------------!
 
-     type(scalar), dimension(:), allocatable   :: time
+     real(dp), dimension(:), allocatable   :: time
      type(scalar), dimension(:,:), allocatable :: U
      type(scalar), dimension(:,:), allocatable :: UDOT
      type(scalar), dimension(:,:), allocatable :: UDDOT
@@ -265,7 +265,7 @@ contains
 
  ! Arguments
     type(scalar), intent(in)                  :: alpha, beta, gamma
-    type(scalar), intent(in)                  :: t
+    real(dp), intent(in)                  :: t
     type(scalar), intent(inout), dimension(:) :: q, qdot, qddot
     
  ! Lapack variables
@@ -273,7 +273,7 @@ contains
     integer                               :: info, size
    
  ! Norms for tracking progress
-    real(dp)                                  :: abs_res_norm
+    real(dp)                              :: abs_res_norm
     real(dp)                                  :: rel_res_norm
     real(dp)                                  :: init_norm
     
@@ -399,7 +399,7 @@ contains
     type(scalar), intent(inout), dimension(:,:) :: jac
     
     ! Arrays
-    type(scalar), intent(in)                    :: t
+    real(dp), intent(in)                    :: t
     type(scalar), intent(in), dimension(:)      :: q, qdot, qddot     ! states
 
     type(scalar), allocatable, dimension(:)     :: pstate             ! perturbed states
@@ -509,7 +509,7 @@ contains
 
  ! Arguments
     type(scalar), intent(in)                  :: alpha, beta, gamma
-    type(scalar), intent(in)                  :: t
+    real(dp), intent(in)                  :: t
     type(scalar), intent(inout), dimension(:) :: q, qdot, qddot
     type(scalar), intent(inout), dimension(:) :: psi
 
@@ -632,7 +632,7 @@ contains
     type(scalar), dimension(:), intent(inout)            :: x
     type(scalar), dimension(:), intent(inout)            :: dfdx
     type(scalar), intent(inout)                          :: fvals
-    type(scalar), intent(in)                             :: dh
+    real(dp), intent(in)                             :: dh
     type(scalar)                                         :: fvals_tmp, xtmp
     integer                                          :: m
 
@@ -683,13 +683,19 @@ contains
 
   end subroutine evalFDFuncGrad
 
+  !===================================================================!
+  ! Norm of a complex number array
+  !===================================================================!
   
   real(dp) pure function znorm2(z)
-    type(scalar), dimension(:), intent(in) :: z
+    
+    complex(dp), dimension(:), intent(in) :: z
     integer :: j
+    
     do j = 1, size(z)
        znorm2 = znorm2 + sqrt(real(z(j))**2 +  imag(z(j))**2)
     end do
+    
   end function znorm2
 
 end module integrator_class
