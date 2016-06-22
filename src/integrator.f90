@@ -62,6 +62,7 @@ module integrator_class
      type(scalar), dimension(:,:), allocatable :: U
      type(scalar), dimension(:,:), allocatable :: UDOT
      type(scalar), dimension(:,:), allocatable :: UDDOT
+     type(scalar) , dimension(:,:), allocatable :: psi
 
      !----------------------------------------------------------------!
      ! Miscellaneous variables
@@ -98,8 +99,8 @@ module integrator_class
      procedure(InterfaceAssembleRHS)    , private, deferred :: assembleRHS
      procedure(InterfaceTotalDerivative), private, deferred :: computeTotalDerivative
      procedure(InterfaceMarch), public, deferred            :: integrate, marchBackwards
-     procedure(InterfaceEvalFunc), deferred                 :: evalFunc
      procedure                                              :: adjointSolve
+     procedure                                              :: evalFunc
      procedure                                              :: evalFuncGrad
      procedure                                              :: evalFDFuncGrad
 
@@ -235,8 +236,9 @@ contains
 
     do k = 1, this % num_steps
        write(90, *)  this % time(k), (dble(this % u(k,j)), j=1,this%nsvars ), &
-            & (dble(this % udot(k,j)), j=1,this%nsvars ), &
-            & (dble(this % uddot(k,j)), j=1,this%nsvars )
+            & (dble(this % udot(k,j)), j=1,this%nsvars ),  &
+            & (dble(this % uddot(k,j)), j=1,this%nsvars ), & 
+            & (dble(this % psi(k,j)), j=1,this%nsvars )
     end do
 
     close(90)
@@ -716,6 +718,38 @@ contains
     end do
 
   end subroutine evalFDFuncGrad
+
+
+  !===================================================================!
+  ! Evaluating the function of interest
+  !===================================================================!
+
+  subroutine evalFunc(this, x, fval)
+
+    class(integrator)                         :: this
+    type(scalar), dimension(:), intent(in)    :: x
+    type(scalar), intent(inout)               :: fval
+    type(scalar), dimension(this % num_steps) :: ftmp
+    integer                                   :: k
+    
+    do concurrent(k = 2 : this % num_steps)
+       call this % system % func % getFunctionValue(ftmp(k), this % time(k), &
+            & x, this % U(k,:), this % UDOT(k,:), this % UDDOT(k,:))
+    end do
+    
+    ! fval = sum(ftmp)/dble(this % num_steps)
+    fval = this % h* sum(ftmp)
+   
+!!$    do concurrent(k = 2 : this % num_steps)
+!!$       do concurrent(j = 1 : this % num_stages)
+!!$          call this % system % func % getFunctionValue(ftmp, this % T(j), &
+!!$               & x, this % Q(k,j,:), this % QDOT(k,j,:), this % QDDOT(k,j,:))
+!!$          fval = fval +  this % h * this % B(j) * ftmp
+!!$       end do
+!!$    end do
+!!$    
+
+  end subroutine evalFunc
 
   !===================================================================!
   ! Norm of a complex number array

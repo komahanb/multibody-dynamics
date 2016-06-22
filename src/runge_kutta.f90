@@ -51,7 +51,7 @@ module runge_kutta_integrator
      ! The lagrange multipliers
      !----------------------------------------------------------------!
      
-     type(scalar), dimension(:,:,:), allocatable   :: psi
+     type(scalar), dimension(:,:,:), allocatable :: LAM
 
    contains
 
@@ -96,8 +96,6 @@ module runge_kutta_integrator
      procedure, public  :: marchBackwards
      procedure, private :: assembleRHS
      procedure, private :: computeTotalDerivative
-
-     procedure, public  :: evalFunc
 
   end type DIRK
 
@@ -249,7 +247,10 @@ contains
     ! Allocate space for the lagrange multipliers
     !-----------------------------------------------------------------!
     
-    allocate(this % psi(this % num_steps, this % num_stages, this % nsvars))
+    allocate(this % lam(this % num_steps, this % num_stages, this % nsvars))
+    this % lam = 0.0d0
+
+    allocate(this % psi(this % num_steps, this % nsvars))
     this % psi = 0.0d0
 
     !-----------------------------------------------------------------!
@@ -262,7 +263,7 @@ contains
     allocate(this % U(this % num_steps, this % nsvars))
     this % U = 0.0d0
 
-    allocate(this % uDOT(this % num_steps, this % nsvars))
+    allocate(this % UDOT(this % num_steps, this % nsvars))
     this % UDOT = 0.0d0
 
     allocate(this % UDDOT(this % num_steps, this % nsvars))
@@ -332,6 +333,7 @@ contains
     if(allocated(this % U)) deallocate(this % U)
     if(allocated(this % time)) deallocate(this % time)
 
+    if(allocated(this % lam)) deallocate(this % lam)
     if(allocated(this % psi)) deallocate(this % psi)
 
   end subroutine finalize
@@ -414,10 +416,13 @@ contains
           ! Solve the adjoint equation at each step
           !--------------------------------------------------------------!
 
-          call this % adjointSolve(this % psi(k,i,:), alpha, beta, gamma, &
+          call this % adjointSolve(this % lam(k,i,:), alpha, beta, gamma, &
                & this % T(i), this % Q(k,i,:), this % QDOT(k,i,:), this % QDDOT(k,i,:))
           
-!          print *, "psi=", k, i, this % psi(k,i,:)
+!          print *, "lam=", k, i, this % lam(k,i,:)
+          
+          ! Find the adjoint variable for each time step          
+          this % psi(k,:) =  this % psi(k,:) + this % B(i) * this % lam (k,i,:)
 
        end do stage
 
@@ -687,7 +692,7 @@ contains
        call this % system % assembleJacobian(jac2,  scale2, ZERO, ZERO, &
             & this % T(j), this % Q(k,j,:), this % QDOT(k,j,:), this % QDDOT(k,j,:))
 
-       rhs = rhs + matmul( transpose(jac1+jac2), this % psi(k,j,:) )
+       rhs = rhs + matmul( transpose(jac1+jac2), this % lam(k,j,:) )
        
     end do current_r
 
@@ -714,7 +719,7 @@ contains
           call this % system % assembleJacobian(jac2, scale2, ZERO, ZERO, &
                & this % T(j), this % Q(k+1,j,:), this % QDOT(k+1,j,:), this % QDDOT(k+1,j,:))
 
-          rhs = rhs + matmul( transpose(jac1+jac2), this % psi(k+1,j,:) )
+          rhs = rhs + matmul( transpose(jac1+jac2), this % lam(k+1,j,:) )
 
        end do future_r
 
@@ -815,8 +820,8 @@ contains
        do j = 1, this % num_stages
           call this % system % getResidualDVSens(dRdX, ONE, this % T(j), &
                & this % system % x, this % Q(k,j,:), this % QDOT(k,j,:), this % QDDOT(k,j,:))
-!          print*, this % B(j),drdx, this % psi (k,j,:)
-          dfdx = dfdx + this % h * this % B(j)* matmul(this % psi(k,j,:), dRdX) ! check order
+!          print*, this % B(j),drdx, this % lam (k,j,:)
+          dfdx = dfdx + this % h * this % B(j)* matmul(this % lam(k,j,:), dRdX) ! check order
        end do
     end do
 
@@ -830,43 +835,10 @@ contains
 !!$    
 !!$    call this % system % getResidualDVSens(dRdX, 1.0d0, this % time(1), &
 !!$         & this % system % x, this % u(1,:), this % udot(1,:), this % uddot(2,:))
-!!$    dfdx = dfdx + matmul(this % psi(2,:), dRdX)
+!!$    dfdx = dfdx + matmul(this % lam(2,:), dRdX)
 
     deallocate(dRdX)
-
+ 
   end subroutine computeTotalDerivative
-
-  !===================================================================!
-  ! Evaluating the function of interest
-  !===================================================================!
-  
-  subroutine evalFunc(this, x, fval)
-    
-    class(DIRK)                        :: this
-    type(scalar), dimension(:), intent(in) :: x
-    type(scalar), intent(inout)            :: fval
-    integer                            :: k,j
-    type(scalar)                           :: ftmp
-    
-    fval =0.0d0
-
-    do concurrent(k = 2 : this % num_steps)
-       do concurrent(j = 1 : this % num_stages)
-          call this % system % func % getFunctionValue(ftmp, this % T(j), &
-               & x, this % Q(k,j,:), this % QDOT(k,j,:), this % QDDOT(k,j,:))
-          fval = fval +  this % h * this % B(j) * ftmp
-       end do
-    end do
-    
-!!$    do concurrent(k = 1 : this % num_steps)
-!!$       call this % system % func % getFunctionValue(ftmp(k), this % time(k), &
-!!$            & x, this % U(k,:), this % UDOT(k,:), this % UDDOT(k,:))
-!!$       ftmp(k) = this % h * ftmp(k)
-!!$    end do
-    
-    ! fval = sum(ftmp)/dble(this % num_steps)
-    ! fval = sum(ftmp)
-
-  end subroutine evalFunc
 
 end module runge_kutta_integrator

@@ -58,8 +58,6 @@ module bdf_integrator
      integer                                :: max_bdf_order = 3
      type(bdf_coeff)                        :: coeff
 
-     type(scalar) , dimension(:,:), allocatable :: psi
-
    contains
 
  ! Routines for integration
@@ -72,10 +70,6 @@ module bdf_integrator
      procedure, public  :: marchBackwards
      procedure, private :: assembleRHS
      procedure, private :: computeTotalDerivative
-     procedure, public  :: evalFunc
-
-! Overridden procedure
-     procedure :: writeSolution => writeSolutionAdjoint
 
   end type BDF
   
@@ -190,45 +184,7 @@ contains
     if ( getOrder .gt. this % max_order ) getOrder = this % max_order
 
   end function getOrder
-  
-  !===================================================================!
-  ! Write solution to file
-  !===================================================================!
-  
-  subroutine writeSolutionAdjoint(this, filename)
-
-    class(BDF)                             :: this
-    character(len=*), OPTIONAL, intent(in) :: filename
-    character(len=7), parameter            :: directory = "output/"
-    character(len=32)                      :: path = ""
-    integer                                :: k, j, ierr
-
-    path = trim(path)
-
-    if (present(filename)) then
-       path = directory//filename
-    else
-       path = directory//"solution.dat"
-    end if
-
-    open(unit=90, file=trim(path), iostat= ierr)
-
-    if (ierr .ne. 0) then
-       write(*,'("  >> Opening file ", 39A, " failed")') path
-       return
-    end if
-
-    do k = 1, this % num_steps
-       write(90, *)  this % time(k), (this % u(k,j), j=1,this % nsvars ), &
-            & (this % udot(k,j), j=1,this % nsvars ), &
-            & (this % uddot(k,j), j=1,this % nsvars ), &
-            & (this % psi(k,j), j=1,this % nsvars)
-    end do
-
-    close(90)
-
-  end subroutine writeSolutionAdjoint
-
+ 
   !===================================================================!
   ! Compute the total derivative of the function with respect to the
   ! design variables and return the gradient 
@@ -645,27 +601,5 @@ contains
     if(allocated(jac)) deallocate(jac)
     
   end subroutine assembleRHS
-
-  !===================================================================!
-  ! Evaluating the function of interest
-  !===================================================================!
-
-  subroutine evalFunc(this, x, fval)
-
-    class(BDF)                            :: this
-    type(scalar), dimension(:), intent(in)    :: x
-    type(scalar), intent(inout)               :: fval
-    integer                               :: k
-    type(scalar), dimension(this % num_steps) :: ftmp
-    
-    do concurrent(k = 2 : this % num_steps)
-       call this % system % func % getFunctionValue(ftmp(k), this % time(k), &
-            & x, this % U(k,:), this % UDOT(k,:), this % UDDOT(k,:))
-    end do
-    
-    ! fval = sum(ftmp)/dble(this % num_steps)
-    fval = this % h* sum(ftmp)
-   
-  end subroutine evalFunc
 
 end module bdf_integrator
