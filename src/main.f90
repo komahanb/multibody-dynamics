@@ -52,11 +52,11 @@ program main
   x(1) = 2.50d0    ! mass
   x(2) = 0.20d0    ! damping coeff
   x(3) = 5.00d0    ! stiffness coef
-
+  
   ! Initialize the system
   call smd1obj % initialize(num_state_vars = 1, num_design_vars = 3)
 
-  bdfobj = BDF(system = smd1obj, tfinal = 1.0d-1, h=1.0d-3, max_bdf_order = 3)
+  bdfobj = BDF(system = smd1obj, tfinal = 10000.0d-3, h=1.0d-3, max_bdf_order = 1)
 
   call bdfobj % evalFuncGrad(num_func=1, func = KE,  num_dv = 3, x = x, &
        & fvals = fval, dfdx= dfdx)
@@ -76,13 +76,15 @@ program main
   ! Finalize the system
   call smd1obj % finalize()
 
+stop
+
   dfdx = 0.0d0
   dfdxtmp = 0.0d0
   
   ! Initialize the system
   call smd1obj % initialize(num_state_vars = 1, num_design_vars = 3)
 
-  dirkobj = DIRK(system = smd1obj, tfinal = 1.0d-1, h=1.0d-3, num_stages=3) 
+  dirkobj = DIRK(system = smd1obj, tfinal = 1.0d-3, h=1.0d-3, num_stages=3) 
   
   call dirkobj % evalFuncGrad(num_func=1, func = KE, num_dv = 3, x = x, &
        & fvals = fval, dfdx= dfdx)

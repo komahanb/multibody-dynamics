@@ -178,7 +178,7 @@ contains
     integer, intent(in)             :: k, d
 
     ! find the order of approximation
-    getOrder = (k-1)/d ! k = md + 1
+    getOrder = (k-1)/d  ! k = md + 1
 
     ! Do not let exceed the max order sought
     if ( getOrder .gt. this % max_order ) getOrder = this % max_order
@@ -210,15 +210,15 @@ contains
        call this % system % func % addDfdx(dfdx, scale, this % time(k), &
             & this % system % x, this % u(k,:), this % udot(k,:), this % uddot(k,:) )
     end do
-
+    
     ! Initial condition
-!!$    call this % system % func % addDfdx(dfdx, scale, this % time(1), &
-!!$         & this % system % x, this % u(1,:), this % udot(1,:), this % uddot(2,:) )
+    call this % system % func % addDfdx(dfdx, scale, this % time(1), &
+         & this % system % x, this % u(1,:), this % udot(1,:), this % uddot(1,:) )
     
     !-----------------------------------------------------------------!
     ! Compute the total derivative
     !-----------------------------------------------------------------!
-
+    
     do k = 2, this % num_steps
        call this % system % getResidualDVSens(dRdX, scale, this % time(k), &
             & this % system % x, this % u(k,:), this % udot(k,:), this % uddot(k,:))
@@ -226,9 +226,9 @@ contains
     end do
 
     ! Add constraint contribution
-!!$    call this % system % getResidualDVSens(dRdX, scale, this % time(1), &
-!!$         & this % system % x, this % u(1,:), this % udot(1,:), this % uddot(2,:))
-!!$    dfdx = dfdx + matmul(this % psi(2,:), dRdX)
+    call this % system % getResidualDVSens(dRdX, scale, this % time(1), &
+         & this % system % x, this % u(1,:), this % udot(1,:), this % uddot(1,:))
+    dfdx = dfdx + matmul(this % psi(2,:), dRdX)
 
     ! Finally multiply by the scalar
     dfdx = this % h * dfdx
@@ -446,6 +446,8 @@ contains
        
        call this % adjointSolve(this % psi(k,:), alpha, beta, gamma, &
             & this % time(k), this % u(k,:), this % udot(k,:), this % uddot(k,:))
+       
+       ! print*, "k,psi=", k, this % psi(k,:)
 
     end do time
     
@@ -517,11 +519,15 @@ contains
     
     allocate( jac(this % nSVars, this % nSVars) )
     
-    k = this % current_step
-    
+    k = this % current_step 
+    m1 = this % coeff % getOrder(k, 1)
+    m2 = this % coeff % getOrder( k, 2)
+
+    if (m2 .eq. 0) m2 = 1
+
     ! Zero the RHS first
     rhs = 0.0d0
-
+    
     !-----------------------------------------------------------------!
     ! Add function contribution (dfdu)
     !-----------------------------------------------------------------!
@@ -529,7 +535,6 @@ contains
     call this % system % func % addDFdU(rhs, ONE, this % time(k), &
          & this % system % x, this % u(k,:), this % udot(k,:), this % uddot(k,:))
 
-    m1 = this % coeff % getOrder(k, 1)
     do i = 0, m1
        idx = k + i
        if ( idx .le. this % num_steps) then
@@ -539,7 +544,6 @@ contains
        end if
     end do
 
-    m2 = this % coeff % getOrder(k, 2)
     do i = 0, 2*m2
        idx = k + i
        if ( idx .le. this % num_steps) then
@@ -548,33 +552,11 @@ contains
                & this % system % x, this % u(idx,:), this % udot(idx,:), this % uddot(idx,:))
        end if
     end do
-    
-!!$    ! Special logic for taking care of the initial steps where there
-!!$    ! is not enough points for second derivative terms for even first
-!!$    ! order approximation
-!!$    if (m2 .eq. 0) then
-!!$       do i = 0, 1
-!!$          idx = k + i
-!!$          if ( idx .le. this % num_steps) then
-!!$             
-!!$             scale = this % coeff % beta(1, i+1)/this % h
-!!$             call this % system % func % addDFdUDDot(rhs, scale, this % time(idx), &
-!!$                  & this % system % x, this % u(idx,:), this % udot(idx,:), this % uddot(idx,:))
-!!$             
-!!$             if (i .ne. 0) then
-!!$                call this % system % assembleJacobian(jac, ZERO, ZERO, scale, &
-!!$                     & this % time(idx), this % u(idx,:), this % udot(idx,:), this % uddot(idx,:))
-!!$                rhs = rhs + matmul( transpose(jac), this % psi(idx,:) )
-!!$             end if
-!!$
-!!$          end if
-!!$       end do
-!!$    end if
-    
+
     !-----------------------------------------------------------------!
     ! Add residual contribution
     !-----------------------------------------------------------------!
-
+    
     do i = 1, m1 
        idx = k + i
        if ( idx .le. this % num_steps) then

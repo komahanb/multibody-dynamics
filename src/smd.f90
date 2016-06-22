@@ -148,10 +148,10 @@ contains
 
   subroutine assembleResidual(this, res, time, u, udot, uddot)
 
-    class(smd1) :: this
+    class(smd1)                               :: this
     type(scalar), intent(inout), dimension(:) :: res
-    real(dp), intent(in) :: time
-    type(scalar), intent(in), dimension(:) :: u, udot, uddot
+    real(dp), intent(in)                      :: time
+    type(scalar), intent(in), dimension(:)    :: u, udot, uddot
 
     res(1) = this % m * uddot(1) + this % c * udot(1) + this % k * u(1)
 
@@ -176,11 +176,11 @@ contains
   subroutine assembleJacobian( this, jac, alpha, beta, gamma, &
        & time, u, udot, uddot )
 
-    class(smd1) :: this
+    class(smd1)                                 :: this
     type(scalar), intent(inout), dimension(:,:) :: jac
-    type(scalar), intent(in) :: alpha, beta, gamma
-    real(dp), intent(in) :: time
-    type(scalar), intent(in), dimension(:) :: u, udot, uddot
+    type(scalar), intent(in)                    :: alpha, beta, gamma
+    real(dp), intent(in)                        :: time
+    type(scalar), intent(in), dimension(:)      :: u, udot, uddot
 
     ! Zero all  entries first
     jac = 0.0d0

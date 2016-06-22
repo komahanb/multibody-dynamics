@@ -403,10 +403,11 @@ contains
           !--------------------------------------------------------------!
           
           if (this % second_order) then
-             gamma = this % B(i) / this % h / this % h
-             beta  = this % B(i) * this % A(i,i) / this % h
-             alpha = this % B(i) * this % A(i,i) * this % A(i,i) 
+             gamma = 1.0d0
+             beta  = this % h * this % A(i,i)
+             alpha = this % h * this % h * this % A(i,i) * this % A(i,i) 
           else
+             stop "Reformualte first order"
              gamma = 0
              beta  = this % B(i) / this % h
              alpha = this % B(i) * this % A(i,i)
@@ -426,7 +427,7 @@ contains
        
        if ( k .lt. this % num_steps) then
 
-          this % psi(k,:) = this % psi(k,:) + this % h * this % psi (k+1,:) 
+!          this % psi(k,:) = this % psi(k,:) + this % h * this % psi (k+1,:) 
 
        end if
 
@@ -685,18 +686,18 @@ contains
 
     current_r: do j = i + 1, s
 
-       scale1 = this % B(j) * this % A(j,i) / this % h
+       scale1 = this % A(j,i) * this % h
        call this % system % assembleJacobian(jac1, ZERO, scale1, ZERO, &
             & this % T(j), this % Q(k,j,:), this % QDOT(k,j,:), this % QDDOT(k,j,:))
 
        scale2 = 0.0d0
        do p = i, j
-          scale2 = scale2 + this % B(j) * this % A(j,i) * this % A(p,i)
+          scale2 = scale2 +  this % A(p,i) * this % h
        end do
-       call this % system % assembleJacobian(jac2,  scale2, ZERO, ZERO, &
+       call this % system % assembleJacobian(jac2,  scale1*scale2, ZERO, ZERO, &
             & this % T(j), this % Q(k,j,:), this % QDOT(k,j,:), this % QDDOT(k,j,:))
 
-       rhs = rhs + matmul( transpose(jac1+jac2), this % lam(k,j,:) )
+       rhs = rhs + matmul(transpose(jac1+jac2), this % lam(k,j,:))
        
     end do current_r
 
@@ -735,26 +736,25 @@ contains
     
     ! Add contribution from second derivative of state
     
-    scale1 = this % B(i)/ this % h / this % h
-
+    scale1 = 1.0d0
     call this % system % func % addDFdUDDot(rhs, scale1, this % T(i), &
          & this % system % x, this % Q(k,i,:), this % qdot(k,i,:), this % qddot(k,i,:))
     
     current_f: do j = i, s
 
-       scale1 = this % B(j) * this % A(j,i) / this % h
+       scale1 = this % A(j,i) * this % h
        call this % system % func % addDFdUDot(rhs, scale1, this % T(j), &
             & this % system % x, this % Q(k,j,:), this % qdot(k,j,:), this % qddot(k,j,:))
        
        scale2 = 0.0d0
        do p = i, j
-          scale2 = scale2 + this % B(j) * this % A(j,i) * this % A(p,i)
+          scale2 = scale2 + this % A(p,i) * this % h
        end do
-       call this % system % func % addDFdU(rhs,  scale2, this % T(j), &
+       call this % system % func % addDFdU(rhs, scale1*scale2, this % T(j), &
             & this % system % x, this % Q(k,j,:), this % Qdot(k,j,:), this % Qddot(k,j,:))
-
+       
     end do current_f
-
+    
     if ( k+1 .le. this % num_steps ) then 
 !!$
 !!$       future_f: do j = i , s

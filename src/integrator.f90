@@ -52,7 +52,7 @@ module integrator_class
      !----------------------------------------------------------------!
 
      integer  :: max_newton = 25
-     real(dp) :: atol = 1.0d-14, rtol = 1.0d-12
+     real(dp) :: atol = 1.0d-14, rtol = 1.0d-13
 
      !----------------------------------------------------------------!
      ! Track global time and states
@@ -263,19 +263,19 @@ contains
 
   subroutine newtonSolve( this, alpha, beta, gamma, t, q, qdot, qddot )
     
-    class(integrator)                     :: this
+    class(integrator)                         :: this
 
  ! Arguments
     type(scalar), intent(in)                  :: alpha, beta, gamma
-    real(dp), intent(in)                  :: t
+    real(dp), intent(in)                      :: t
     type(scalar), intent(inout), dimension(:) :: q, qdot, qddot
     
  ! Lapack variables
-    integer, allocatable, dimension(:)    :: ipiv
-    integer                               :: info, size
+    integer, allocatable, dimension(:)        :: ipiv
+    integer                                   :: info, size
    
  ! Norms for tracking progress
-    real(dp)                              :: abs_res_norm
+    real(dp)                                  :: abs_res_norm
     real(dp)                                  :: rel_res_norm
     real(dp)                                  :: init_norm
     
@@ -283,8 +283,8 @@ contains
     type(scalar), allocatable, dimension(:)   :: res, dq
     type(scalar), allocatable, dimension(:,:) :: jac, fd_jac
 
-    integer                               :: n, k
-    logical                               :: conv = .false.
+    integer                                   :: n, k
+    logical                                   :: conv = .false.
 
     type(scalar)                              :: jac_err
 
@@ -326,7 +326,7 @@ contains
              ! Compare the exact and approximate Jacobians and
              ! complain about the error in Jacobian if there is any
              jac_err = maxval(abs(fd_jac - jac))
-             if ( abs(jac_err) .gt. 1.0d-3) then
+             if ( abs(jac_err) .gt. 1.0d-3 ) then
                 print *, "q     =", q
                 print *, "qdot  =", qdot
                 print *, "qddot =", qddot
@@ -366,7 +366,6 @@ contains
 #else
        call DGESV(size, 1, jac, size, IPIV, dq, size, INFO)
 #endif
-
        if (INFO .ne. 0) then
           print*, "LAPACK ERROR:", info
           stop
@@ -552,22 +551,21 @@ contains
 
     ! Transpose the system
     jac = transpose(jac)
-    
+
     ! Call lapack to solve the stage values system
 #if defined USE_COMPLEX
     call ZGESV(size, 1, jac, size, IPIV, rhs, size, INFO)    
 #else
     call DGESV(size, 1, jac, size, IPIV, rhs, size, INFO)
 #endif
-    
     if (INFO .ne. 0) then
        print*, "LAPACK ERROR:", info
        stop
     end if
-
+    
     ! Store into the output array
     psi = rhs
-
+    
     if (allocated(ipiv)) deallocate(ipiv)
     if (allocated(rhs)) deallocate(rhs)
     if (allocated(jac)) deallocate(jac)
@@ -696,7 +694,7 @@ contains
 
        ! Perturb the variable              
 #if defined USE_COMPLEX
-       x(m) = cmplx(dble(x(m)), 1.0d-15)
+       x(m) = cmplx(dble(x(m)), 1.0d-16)
 #else
        x(m) = x(m) + dh
 #endif
@@ -710,7 +708,7 @@ contains
 
        ! Find the FD derivative
 #if defined USE_COMPLEX
-       dfdx(m) = aimag(fvals_tmp)/1.0d-15
+       dfdx(m) = aimag(fvals_tmp)/1.0d-16
 #else
        dfdx(m) = (fvals_tmp-fvals)/dh
 #endif
@@ -732,13 +730,13 @@ contains
     type(scalar), dimension(this % num_steps) :: ftmp
     integer                                   :: k
     
-    do concurrent(k = 2 : this % num_steps)
+    do concurrent(k = 1 : this % num_steps)
        call this % system % func % getFunctionValue(ftmp(k), this % time(k), &
             & x, this % U(k,:), this % UDOT(k,:), this % UDDOT(k,:))
     end do
     
     ! fval = sum(ftmp)/dble(this % num_steps)
-    fval = this % h* sum(ftmp)
+    fval = this % h*sum(ftmp)
    
 !!$    do concurrent(k = 2 : this % num_steps)
 !!$       do concurrent(j = 1 : this % num_stages)
