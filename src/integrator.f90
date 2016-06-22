@@ -597,6 +597,8 @@ contains
     !-----------------------------------------------------------------!
     ! Set the number of variables, design variables into the system
     !-----------------------------------------------------------------!
+    
+    if (num_dv .ne. this % system % num_design_vars) stop "NDV mismatch"
 
     call this % system % setDesignVars(num_dv, x)
     this % nDVars = num_dv
@@ -669,6 +671,8 @@ contains
     !-----------------------------------------------------------------!
     ! Set the number of variables, design variables into the system
     !-----------------------------------------------------------------!
+    
+    if (num_dv .ne. this % system % num_design_vars) stop "NDV mismatch"
 
     call this % system % setDesignVars(num_dv, x)
     this % nDVars = num_dv
