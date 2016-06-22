@@ -419,12 +419,16 @@ contains
           call this % adjointSolve(this % lam(k,i,:), alpha, beta, gamma, &
                & this % T(i), this % Q(k,i,:), this % QDOT(k,i,:), this % QDDOT(k,i,:))
           
-!          print *, "lam=", k, i, this % lam(k,i,:)
-          
           ! Find the adjoint variable for each time step          
-          this % psi(k,:) =  this % psi(k,:) + this % B(i) * this % lam (k,i,:)
-
+          this % psi(k,:) = this % psi(k,:) + this % B(i) * this % lam (k,i,:)
+          
        end do stage
+       
+       if ( k .lt. this % num_steps) then
+
+          this % psi(k,:) = this % psi(k,:) + this % h * this % psi (k+1,:) 
+
+       end if
 
     end do time
     
@@ -699,29 +703,29 @@ contains
     
     if ( k+1 .le. this % num_steps ) then 
 
-       future_r: do j = i , s
-
-          scale1 = this % B(j) * this % B(i) / this % h
-
-          call this % system % assembleJacobian(jac1, ZERO, scale1, ZERO, &
-               & this % T(j), this % Q(k+1,j,:), this % QDOT(k+1,j,:), this % QDDOT(k+1,j,:))
-
-          scale2 = 0.0d0
-          do p = i , s
-             scale2 = scale2 + this % A(p,i) * this % B(p)
-          end do
-          do p = 1 , j
-             scale2 = scale2 + this % B(i) * this % A(j,p)
-          end do
-
-          scale2 = scale2 * this % B(j) 
-
-          call this % system % assembleJacobian(jac2, scale2, ZERO, ZERO, &
-               & this % T(j), this % Q(k+1,j,:), this % QDOT(k+1,j,:), this % QDDOT(k+1,j,:))
-
-          rhs = rhs + matmul( transpose(jac1+jac2), this % lam(k+1,j,:) )
-
-       end do future_r
+!!$       future_r: do j = i , s
+!!$
+!!$          scale1 = this % B(j) * this % B(i) / this % h
+!!$
+!!$          call this % system % assembleJacobian(jac1, ZERO, scale1, ZERO, &
+!!$               & this % T(j), this % Q(k+1,j,:), this % QDOT(k+1,j,:), this % QDDOT(k+1,j,:))
+!!$
+!!$          scale2 = 0.0d0
+!!$          do p = i , s
+!!$             scale2 = scale2 + this % A(p,i) * this % B(p)
+!!$          end do
+!!$          do p = 1 , j
+!!$             scale2 = scale2 + this % B(i) * this % A(j,p)
+!!$          end do
+!!$
+!!$          scale2 = scale2 * this % B(j) 
+!!$
+!!$          call this % system % assembleJacobian(jac2, scale2, ZERO, ZERO, &
+!!$               & this % T(j), this % Q(k+1,j,:), this % QDOT(k+1,j,:), this % QDDOT(k+1,j,:))
+!!$
+!!$          rhs = rhs + matmul( transpose(jac1+jac2), this % lam(k+1,j,:) )
+!!$
+!!$       end do future_r
 
     end if
 
@@ -752,26 +756,26 @@ contains
     end do current_f
 
     if ( k+1 .le. this % num_steps ) then 
-
-       future_f: do j = i , s
-
-          scale1 = this % B(j) * this % B(i) / this % h
-          call this % system % func % addDFdUDot(rhs, scale1, this % T(j), &
-               & this % system % x, this % Q(k+1,j,:), this % qdot(k+1,j,:), this % qddot(k+1,j,:))
-          
-          scale2 = 0.0d0
-          do p = i , s
-             scale2 = scale2 + this % A(p,i) * this % B(p)
-          end do
-          do p = 1 , j
-             scale2 = scale2 + this % B(i) * this % A(j,p)
-          end do
-
-          scale2 = scale2 * this % B(j)
-          call this % system % func % addDFdU(rhs, scale2, this % T(j), &
-               & this % system % x, this % Q(k+1,j,:), this % Qdot(k+1,j,:), this % Qddot(k+1,j,:))
-
-       end do future_f
+!!$
+!!$       future_f: do j = i , s
+!!$
+!!$          scale1 = this % B(j) * this % B(i) / this % h
+!!$          call this % system % func % addDFdUDot(rhs, scale1, this % T(j), &
+!!$               & this % system % x, this % Q(k+1,j,:), this % qdot(k+1,j,:), this % qddot(k+1,j,:))
+!!$          
+!!$          scale2 = 0.0d0
+!!$          do p = i , s
+!!$             scale2 = scale2 + this % A(p,i) * this % B(p)
+!!$          end do
+!!$          do p = 1 , j
+!!$             scale2 = scale2 + this % B(i) * this % A(j,p)
+!!$          end do
+!!$
+!!$          scale2 = scale2 * this % B(j)
+!!$          call this % system % func % addDFdU(rhs, scale2, this % T(j), &
+!!$               & this % system % x, this % Q(k+1,j,:), this % Qdot(k+1,j,:), this % Qddot(k+1,j,:))
+!!$
+!!$       end do future_f
 
     end if    
 
