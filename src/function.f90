@@ -1,3 +1,4 @@
+#include "scalar.fpp"
 !=====================================================================!
 ! Module that contains common procedures for any function of interest
 ! that the user wishes to implement.
@@ -49,9 +50,9 @@ module function_class
        import abstract_function
 
        class(abstract_function), intent(inout) :: this
-       real(8), intent(inout)                  :: f
-       real(8), intent(in)                     :: time
-       real(8), intent(in), dimension(:)       :: x, u, udot, uddot
+       type(scalar), intent(inout)                  :: f
+       type(scalar), intent(in)                     :: time
+       type(scalar), intent(in), dimension(:)       :: x, u, udot, uddot
 
      end subroutine interface_evaluate
 
@@ -64,10 +65,10 @@ module function_class
        import abstract_function
 
        class(abstract_function)             :: this
-       real(8), intent(inout), dimension(:) :: res
-       real(8), intent(in)                  :: time
-       real(8), intent(in), dimension(:)    :: x, u, udot, uddot
-       real(8)                              :: scale
+       type(scalar), intent(inout), dimension(:) :: res
+       type(scalar), intent(in)                  :: time
+       type(scalar), intent(in), dimension(:)    :: x, u, udot, uddot
+       type(scalar)                              :: scale
 
      end subroutine interface_gradient
 

@@ -1,3 +1,4 @@
+#include "scalar.fpp"
 !=====================================================================!
 ! Module that implements an Aero-Elastic Oscillator reported in:
 ! Zhao, L. and Yang, Z., ``Chaotic motions of an airfoil with
@@ -7,8 +8,6 @@
 
 module aero_elastic_oscillator_class
   
-  use iso_fortran_env , only : dp => real64
-
   use physics_class,  only : physics
   use function_class, only : abstract_function
 
@@ -27,8 +26,8 @@ module aero_elastic_oscillator_class
      ! Define constants and other parameters needed for residual and
      ! jacobian assembly here
 
-     real(dp) :: Q = 8.0d0  ! reduced dynamic pressure
-     real(dp) :: E = 20.0d0 ! non-linear stiffness factor
+     type(scalar) :: Q = 8.0d0  ! reduced dynamic pressure
+     type(scalar) :: E = 20.0d0 ! non-linear stiffness factor
 
    contains    
 
@@ -51,9 +50,9 @@ contains
   subroutine assembleResidual( this, res, time, u, udot, uddot )
 
     class(aero_elastic_oscillator) :: this
-    real(8), intent(inout), dimension(:) :: res
-    real(8), intent(in) :: time
-    real(8), intent(in), dimension(:) :: u, udot, uddot
+    type(scalar), intent(inout), dimension(:) :: res
+    type(scalar), intent(in) :: time
+    type(scalar), intent(in), dimension(:) :: u, udot, uddot
 
     res(1) = uddot(1) + 0.25d0*uddot(2) + 0.1d0*udot(1) &
          & + 0.2d0*u(1) + 0.1d0*this % Q*u(2)
@@ -83,10 +82,10 @@ contains
        & time, u, udot, uddot )
 
     class(aero_elastic_oscillator) :: this
-    real(8), intent(inout), dimension(:,:) :: jac
-    real(8), intent(in) :: alpha, beta, gamma
-    real(8), intent(in) :: time
-    real(8), intent(in), dimension(:) :: u, udot, uddot
+    type(scalar), intent(inout), dimension(:,:) :: jac
+    type(scalar), intent(in) :: alpha, beta, gamma
+    type(scalar), intent(in) :: time
+    type(scalar), intent(in), dimension(:) :: u, udot, uddot
     
     ! Zero all entries first
     jac = 0.0d0
@@ -145,8 +144,8 @@ contains
 
     class(aero_elastic_oscillator) :: this
 
-    real(8), intent(in) :: time
-    real(8), intent(inout), dimension(:) :: u, udot
+    type(scalar), intent(in) :: time
+    type(scalar), intent(inout), dimension(:) :: u, udot
     
     u(1) = 0.00d0
     u(2) = 0.00d0
@@ -177,10 +176,10 @@ contains
   subroutine getResidualDVSens(this, jac, scale, time, x, u, udot, uddot)
 
     class(aero_elastic_oscillator)         :: this
-    real(8), intent(inout), dimension(:,:) :: jac
-    real(8), intent(in)                    :: time
-    real(8), intent(in), dimension(:)      :: x, u, udot, uddot
-    real(8)                                :: scale
+    type(scalar), intent(inout), dimension(:,:) :: jac
+    type(scalar), intent(in)                    :: time
+    type(scalar), intent(in), dimension(:)      :: x, u, udot, uddot
+    type(scalar)                                :: scale
 
     jac = 0.0d0
     

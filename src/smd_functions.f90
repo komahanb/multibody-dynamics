@@ -1,3 +1,4 @@
+#include "scalar.fpp"
 !=====================================================================!
 ! Module that contains functions related to spring mass damper system
 !
@@ -6,7 +7,6 @@
 
 module smd_functions_class
 
-  use iso_fortran_env, only : dp => real64
   use function_class, only  : abstract_function
 
   implicit none
@@ -40,9 +40,9 @@ contains
   pure subroutine getFunctionValue(this, f, time, x, u, udot, uddot)
     
     class(kinetic_energy), intent(inout) :: this
-    real(8), intent(inout)               :: f
-    real(8), intent(in)                  :: time
-    real(8), intent(in), dimension(:)    :: x, u, udot, uddot
+    type(scalar), intent(inout)               :: f
+    type(scalar), intent(in)                  :: time
+    type(scalar), intent(in), dimension(:)    :: x, u, udot, uddot
 
     f = 0.5d0*x(1)*uddot(1)**2 + 0.5d0*x(2)*udot(1)**2 + 0.5d0*x(3)*u(1)**2
     
@@ -55,10 +55,10 @@ contains
   subroutine addDfdX(this, res, scale, time, x, u, udot, uddot)
 
     class(kinetic_energy)                :: this
-    real(8), intent(inout), dimension(:) :: res
-    real(8), intent(in)                  :: time
-    real(8), intent(in), dimension(:)    :: x, u, udot, uddot
-    real(8)                              :: scale
+    type(scalar), intent(inout), dimension(:) :: res
+    type(scalar), intent(in)                  :: time
+    type(scalar), intent(in), dimension(:)    :: x, u, udot, uddot
+    type(scalar)                              :: scale
 
     res(1) = res(1) + scale*0.5d0*uddot(1)**2 ! wrt to m
     res(2) = res(2) + scale*0.5d0*udot(1)**2 ! wrt to c
@@ -73,10 +73,10 @@ contains
   subroutine addDfdU(this, res, scale, time, x, u, udot, uddot)
 
     class(kinetic_energy)                :: this
-    real(8), intent(inout), dimension(:) :: res
-    real(8), intent(in)                  :: time
-    real(8), intent(in), dimension(:)    :: x, u, udot, uddot
-    real(8)                              :: scale
+    type(scalar), intent(inout), dimension(:) :: res
+    type(scalar), intent(in)                  :: time
+    type(scalar), intent(in), dimension(:)    :: x, u, udot, uddot
+    type(scalar)                              :: scale
 
     res(1) = res(1) + scale*x(3)*u(1) ! to u(1)
     
@@ -89,10 +89,10 @@ contains
   subroutine addDfdUDot(this, res, scale, time, x, u, udot, uddot)
 
     class(kinetic_energy)                :: this
-    real(8), intent(inout), dimension(:) :: res
-    real(8), intent(in)                  :: time
-    real(8), intent(in), dimension(:)    :: x, u, udot, uddot
-    real(8)                              :: scale
+    type(scalar), intent(inout), dimension(:) :: res
+    type(scalar), intent(in)                  :: time
+    type(scalar), intent(in), dimension(:)    :: x, u, udot, uddot
+    type(scalar)                              :: scale
     
     res(1) = res(1) + scale*x(2)*udot(1) ! wrt to udot(1)
 
@@ -105,10 +105,10 @@ contains
   subroutine addDfdUDDot(this, res, scale, time, x, u, udot, uddot)
 
     class(kinetic_energy)                :: this
-    real(8), intent(inout), dimension(:) :: res
-    real(8), intent(in)                  :: time
-    real(8), intent(in), dimension(:)    :: x, u, udot, uddot
-    real(8)                              :: scale
+    type(scalar), intent(inout), dimension(:) :: res
+    type(scalar), intent(in)                  :: time
+    type(scalar), intent(in), dimension(:)    :: x, u, udot, uddot
+    type(scalar)                              :: scale
 
     res(1) = res(1) + scale*x(1)*uddot(1) ! wrt to uddot(1)
 

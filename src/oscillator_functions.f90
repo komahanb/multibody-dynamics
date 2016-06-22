@@ -1,3 +1,4 @@
+#include "scalar.fpp"
 !=====================================================================!
 ! Module that contains functions related to spring mass damper system
 !
@@ -6,13 +7,18 @@
 
 module oscillator_functions_class
 
-  use iso_fortran_env, only : dp => real64
   use function_class, only  : abstract_function
 
   implicit none
 
   private
   public :: pitch
+
+  interface sign
+     module procedure sign_cc
+     module procedure sign_cr
+     module procedure sign_rc
+  end interface
 
   !-------------------------------------------------------------------!
   ! Type that models any physical phenomenon
@@ -39,9 +45,9 @@ contains
   pure subroutine getFunctionValue(this, f, time, x, u, udot, uddot)
     
     class(pitch), intent(inout)       :: this
-    real(8), intent(inout)            :: f
-    real(8), intent(in)               :: time
-    real(8), intent(in), dimension(:) :: x, u, udot, uddot
+    type(scalar), intent(inout)            :: f
+    type(scalar), intent(in)               :: time
+    type(scalar), intent(in), dimension(:) :: x, u, udot, uddot
     
     f = abs(u(2))
     
@@ -54,12 +60,12 @@ contains
   subroutine addDfdX(this, res, scale, time, x, u, udot, uddot)
 
     class(pitch)                         :: this
-    real(8), intent(inout), dimension(:) :: res
-    real(8), intent(in)                  :: time
-    real(8), intent(in), dimension(:)    :: x, u, udot, uddot
-    real(8)                              :: scale
+    type(scalar), intent(inout), dimension(:) :: res
+    type(scalar), intent(in)                  :: time
+    type(scalar), intent(in), dimension(:)    :: x, u, udot, uddot
+    type(scalar)                              :: scale
     
-   res = 0.0d0
+ !  res = 0.0d0
 
   end subroutine addDfdX
   
@@ -70,13 +76,13 @@ contains
   subroutine addDfdU(this, res, scale, time, x, u, udot, uddot)
 
     class(pitch)                :: this
-    real(8), intent(inout), dimension(:) :: res
-    real(8), intent(in)                  :: time
-    real(8), intent(in), dimension(:)    :: x, u, udot, uddot
-    real(8)                              :: scale
-
-    res(1) = res(1) + scale*0.0d0
-    res(2) = res(2) + scale*sign(1.0d0,u(2))
+    type(scalar), intent(inout), dimension(:) :: res
+    type(scalar), intent(in)                  :: time
+    type(scalar), intent(in), dimension(:)    :: x, u, udot, uddot
+    type(scalar)                              :: scale
+    type(scalar) :: ONE = 1.0d0
+!    res(1) = res(1) + scale*0.0d0
+    res(2) = res(2) + scale*sign(ONE,u(2))
     
   end subroutine addDfdU
 
@@ -87,10 +93,10 @@ contains
   subroutine addDfdUDot(this, res, scale, time, x, u, udot, uddot)
 
     class(pitch)                :: this
-    real(8), intent(inout), dimension(:) :: res
-    real(8), intent(in)                  :: time
-    real(8), intent(in), dimension(:)    :: x, u, udot, uddot
-    real(8)                              :: scale
+    type(scalar), intent(inout), dimension(:) :: res
+    type(scalar), intent(in)                  :: time
+    type(scalar), intent(in), dimension(:)    :: x, u, udot, uddot
+    type(scalar)                              :: scale
     
     res(1) = res(1) + scale*0.0d0 ! wrt to udot(1)
 
@@ -103,13 +109,51 @@ contains
   subroutine addDfdUDDot(this, res, scale, time, x, u, udot, uddot)
 
     class(pitch)                :: this
-    real(8), intent(inout), dimension(:) :: res
-    real(8), intent(in)                  :: time
-    real(8), intent(in), dimension(:)    :: x, u, udot, uddot
-    real(8)                              :: scale
+    type(scalar), intent(inout), dimension(:) :: res
+    type(scalar), intent(in)                  :: time
+    type(scalar), intent(in), dimension(:)    :: x, u, udot, uddot
+    type(scalar)                              :: scale
 
-    res(1) = res(1) + scale*0.0d0 ! wrt to uddot(1)
+  !  res(1) = res(1) + scale*0.0d0 ! wrt to uddot(1)
 
   end subroutine addDfdUDDot
+
+! SIGN, intrinsic, assume that val1 is always a complex*16
+!                  in reality could be int
+  complex*16 function sign_cc(val1, val2)
+    complex*16, intent(in) :: val1, val2
+    real*8  sign
+    if (real(val2) < 0.) then
+      sign = -1.
+    else
+      sign = 1.
+    endif
+    sign_cc = sign * val1
+    return
+  end function sign_cc
+  complex*16 function sign_cr(val1, val2)
+    complex*16, intent(in) :: val1
+    real*8, intent(in) :: val2
+    real*8 sign
+    if (real(val2) < 0.) then
+      sign = -1.
+    else
+      sign = 1.
+    endif
+    sign_cr = sign * val1
+    return
+  end function sign_cr
+  complex*16 function sign_rc(val1, val2)
+    real*8, intent(in) :: val1
+    complex*16, intent(in) :: val2
+    real*8 sign
+    if (real(val2) < 0.) then
+      sign = -1.
+    else
+      sign = 1.
+    endif
+    sign_rc = sign * val1
+    return
+  end function sign_rc
 
 end module oscillator_functions_class

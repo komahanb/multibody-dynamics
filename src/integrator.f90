@@ -1,3 +1,4 @@
+#include "scalar.fpp"
 !=====================================================================!
 ! Parent class for integration schemes to extend. This has some common
 ! logic such as:
@@ -12,7 +13,6 @@
 
 module integrator_class
   
-  use iso_fortran_env, only : dp => real64
   use physics_class  , only : physics
   use function_class , only : abstract_function
 
@@ -20,6 +20,10 @@ module integrator_class
 
   private
   public ::  integrator
+
+  interface norm2
+     module procedure znorm2
+  end interface norm2
 
   !===================================================================! 
   ! Abstract Integrator type
@@ -40,8 +44,8 @@ module integrator_class
      !----------------------------------------------------------------!
 
      integer  :: num_steps = 0                 ! number of time steps
-     real(dp) :: tinit = 0.0d0, tfinal = 1.0d0 ! initial and final times
-     real(dp) :: h = 0.1d0                     ! default step size
+     type(scalar) :: tinit = 0.0d0, tfinal = 1.0d0 ! initial and final times
+     type(scalar) :: h = 0.1d0                     ! default step size
 
      !----------------------------------------------------------------!
      ! Nonlinear solution at each stage
@@ -54,10 +58,10 @@ module integrator_class
      ! Track global time and states
      !----------------------------------------------------------------!
 
-     real(dp), dimension(:), allocatable   :: time
-     real(dp), dimension(:,:), allocatable :: U
-     real(dp), dimension(:,:), allocatable :: UDOT
-     real(dp), dimension(:,:), allocatable :: UDDOT
+     type(scalar), dimension(:), allocatable   :: time
+     type(scalar), dimension(:,:), allocatable :: U
+     type(scalar), dimension(:,:), allocatable :: UDOT
+     type(scalar), dimension(:,:), allocatable :: UDDOT
 
      !----------------------------------------------------------------!
      ! Miscellaneous variables
@@ -109,11 +113,10 @@ module integrator_class
      
      subroutine InterfaceAssembleRHS(this, rhs)
        
-       use iso_fortran_env , only : dp => real64
        import integrator
 
        class(integrator)                     :: this
-       real(dp), dimension(:), intent(inout) :: rhs
+       type(scalar), dimension(:), intent(inout) :: rhs
 
      end subroutine InterfaceAssembleRHS
      
@@ -123,11 +126,10 @@ module integrator_class
      
      subroutine InterfaceTotalDerivative(this, dfdx)
 
-       use iso_fortran_env , only : dp => real64
        import integrator
 
        class(integrator)                     :: this
-       real(dp), dimension(:), intent(inout) :: dfdx
+       type(scalar), dimension(:), intent(inout) :: dfdx
        
      end subroutine InterfaceTotalDerivative
 
@@ -146,12 +148,11 @@ module integrator_class
      
      subroutine InterfaceEvalFunc(this, x, fval)
 
-       use iso_fortran_env , only : dp => real64
        import integrator
 
        class(integrator)                  :: this
-       real(dp), dimension(:), intent(in) :: x
-       real(dp), intent(inout)            :: fval
+       type(scalar), dimension(:), intent(in) :: x
+       type(scalar), intent(inout)            :: fval
 
      end subroutine InterfaceEvalFunc
 
@@ -263,27 +264,27 @@ contains
     class(integrator)                     :: this
 
  ! Arguments
-    real(dp), intent(in)                  :: alpha, beta, gamma
-    real(dp), intent(in)                  :: t
-    real(dp), intent(inout), dimension(:) :: q, qdot, qddot
+    type(scalar), intent(in)                  :: alpha, beta, gamma
+    type(scalar), intent(in)                  :: t
+    type(scalar), intent(inout), dimension(:) :: q, qdot, qddot
     
  ! Lapack variables
     integer, allocatable, dimension(:)    :: ipiv
     integer                               :: info, size
    
  ! Norms for tracking progress
-    real(dp)                              :: abs_res_norm
-    real(dp)                              :: rel_res_norm
-    real(dp)                              :: init_norm
+    real(dp)                                  :: abs_res_norm
+    real(dp)                                  :: rel_res_norm
+    real(dp)                                  :: init_norm
     
  ! Other Local variables
-    real(dp), allocatable, dimension(:)   :: res, dq
-    real(dp), allocatable, dimension(:,:) :: jac, fd_jac
+    type(scalar), allocatable, dimension(:)   :: res, dq
+    type(scalar), allocatable, dimension(:,:) :: jac, fd_jac
 
     integer                               :: n, k
     logical                               :: conv = .false.
 
-    real(dp)                              :: jac_err
+    type(scalar)                              :: jac_err
 
     ! find the size of the linear system based on the calling object
     size = this % nsvars; k = this % current_step
@@ -323,7 +324,7 @@ contains
              ! Compare the exact and approximate Jacobians and
              ! complain about the error in Jacobian if there is any
              jac_err = maxval(abs(fd_jac - jac))
-             if ( jac_err .gt. 1.0d-3) then
+             if ( abs(jac_err) .gt. 1.0d-3) then
                 print *, "q     =", q
                 print *, "qdot  =", qdot
                 print *, "qddot =", qddot
@@ -350,7 +351,7 @@ contains
        if ((abs_res_norm .le. this % atol) .or. (rel_res_norm .le. this % rtol)) then
           conv = .true.
           exit newton
-       else if (abs_res_norm .ne. abs_res_norm .or. rel_res_norm .ne. rel_res_norm ) then
+       else if ((abs_res_norm .ne. abs_res_norm) .or. (rel_res_norm .ne. rel_res_norm) ) then
           conv = .false.
           exit newton
        end if
@@ -395,18 +396,18 @@ contains
     class(integrator)                       :: this
     
     ! Matrices
-    real(dp), intent(inout), dimension(:,:) :: jac
+    type(scalar), intent(inout), dimension(:,:) :: jac
     
     ! Arrays
-    real(dp), intent(in)                    :: t
-    real(dp), intent(in), dimension(:)      :: q, qdot, qddot     ! states
+    type(scalar), intent(in)                    :: t
+    type(scalar), intent(in), dimension(:)      :: q, qdot, qddot     ! states
 
-    real(dp), allocatable, dimension(:)     :: pstate             ! perturbed states
-    real(dp), allocatable, dimension(:)     :: R, Rtmp            ! original residual and perturbed residual
+    type(scalar), allocatable, dimension(:)     :: pstate             ! perturbed states
+    type(scalar), allocatable, dimension(:)     :: R, Rtmp            ! original residual and perturbed residual
 
     ! Scalars
-    real(dp)                                :: dh = 1.0d-6        ! finite-diff step size
-    real(dp), intent(in)                    :: alpha, beta, gamma ! linearization coefficients
+    type(scalar)                                :: dh = 1.0d-6        ! finite-diff step size
+    type(scalar), intent(in)                    :: alpha, beta, gamma ! linearization coefficients
     integer                                 :: m                  ! loop variables
 
     !  Zero the supplied jacobian matrix for safety (as we are
@@ -507,18 +508,18 @@ contains
     class(integrator) :: this
 
  ! Arguments
-    real(dp), intent(in)                  :: alpha, beta, gamma
-    real(dp), intent(in)                  :: t
-    real(dp), intent(inout), dimension(:) :: q, qdot, qddot
-    real(dp), intent(inout), dimension(:) :: psi
+    type(scalar), intent(in)                  :: alpha, beta, gamma
+    type(scalar), intent(in)                  :: t
+    type(scalar), intent(inout), dimension(:) :: q, qdot, qddot
+    type(scalar), intent(inout), dimension(:) :: psi
 
  ! Lapack variables
     integer, allocatable, dimension(:)    :: ipiv
     integer                               :: info, size
        
  ! Other Local variables
-    real(dp), allocatable, dimension(:)   :: rhs
-    real(dp), allocatable, dimension(:,:) :: jac
+    type(scalar), allocatable, dimension(:)   :: rhs
+    type(scalar), allocatable, dimension(:,:) :: jac
 
     ! find the size of the linear system based on the calling object
     size = this % nsvars
@@ -562,10 +563,10 @@ contains
     
     class(integrator)                                :: this
     class(abstract_function)       , target          :: func
-    real(dp), dimension(:), intent(in)               :: x
+    type(scalar), dimension(:), intent(in)               :: x
     integer, intent(in)                              :: num_func, num_dv
-    real(dp), dimension(:), intent(inout), OPTIONAL  :: dfdx
-    real(dp), intent(inout), OPTIONAL                :: fvals
+    type(scalar), dimension(:), intent(inout), OPTIONAL  :: dfdx
+    type(scalar), intent(inout), OPTIONAL                :: fvals
 
    
     !-----------------------------------------------------------------!
@@ -628,11 +629,11 @@ contains
     class(integrator)                                :: this
     class(abstract_function)       , target          :: func
     integer, intent(in)                              :: num_func, num_dv
-    real(dp), dimension(:), intent(inout)            :: x
-    real(dp), dimension(:), intent(inout)            :: dfdx
-    real(dp), intent(inout)                          :: fvals
-    real(dp), intent(in)                             :: dh
-    real(dp)                                         :: fvals_tmp, xtmp
+    type(scalar), dimension(:), intent(inout)            :: x
+    type(scalar), dimension(:), intent(inout)            :: dfdx
+    type(scalar), intent(inout)                          :: fvals
+    type(scalar), intent(in)                             :: dh
+    type(scalar)                                         :: fvals_tmp, xtmp
     integer                                          :: m
 
     !-----------------------------------------------------------------!
@@ -681,5 +682,14 @@ contains
     end do
 
   end subroutine evalFDFuncGrad
+
+  
+  real(dp) pure function znorm2(z)
+    type(scalar), dimension(:), intent(in) :: z
+    integer :: j
+    do j = 1, size(z)
+       znorm2 = znorm2 + sqrt(real(z(j))**2 +  imag(z(j))**2)
+    end do
+  end function znorm2
 
 end module integrator_class

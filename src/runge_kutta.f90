@@ -1,3 +1,4 @@
+#include "scalar.fpp"
 !=====================================================================!
 ! A Diagonally Implicit Runge Kutta integrator module for first and
 ! second order systems.
@@ -7,7 +8,6 @@
 
 module runge_kutta_integrator
 
-  use iso_fortran_env , only : dp => real64
   use integrator_class, only : integrator
   use physics_class,    only : physics
 
@@ -15,6 +15,10 @@ module runge_kutta_integrator
 
   private
   public :: DIRK
+
+  ! Useful constants
+  type(scalar), parameter :: ONE  = 1.0d0
+  type(scalar), parameter :: ZERO = 1.0d0
 
   !===================================================================! 
   ! Abstract Runge-Kutta type
@@ -30,24 +34,24 @@ module runge_kutta_integrator
      ! The Butcher Tableau 
      !----------------------------------------------------------------!
 
-     real(dp), dimension(:,:), allocatable :: A ! forms the coeff matrix
-     real(dp), dimension(:), allocatable   :: B ! multiplies the state derivatives
-     real(dp), dimension(:), allocatable   :: C ! multiplies the time
+     type(scalar), dimension(:,:), allocatable :: A ! forms the coeff matrix
+     type(scalar), dimension(:), allocatable   :: B ! multiplies the state derivatives
+     type(scalar), dimension(:), allocatable   :: C ! multiplies the time
 
      !----------------------------------------------------------------!
      ! The stage time and its corresponding derivatives
      !----------------------------------------------------------------!
 
-     real(dp), dimension(:), allocatable     :: T
-     real(dp), dimension(:,:,:), allocatable :: Q
-     real(dp), dimension(:,:,:), allocatable :: QDOT
-     real(dp), dimension(:,:,:), allocatable :: QDDOT
+     type(scalar), dimension(:), allocatable     :: T
+     type(scalar), dimension(:,:,:), allocatable :: Q
+     type(scalar), dimension(:,:,:), allocatable :: QDOT
+     type(scalar), dimension(:,:,:), allocatable :: QDDOT
 
      !----------------------------------------------------------------!
      ! The lagrange multipliers
      !----------------------------------------------------------------!
      
-     real(dp), dimension(:,:,:), allocatable   :: psi
+     type(scalar), dimension(:,:,:), allocatable   :: psi
 
    contains
 
@@ -108,11 +112,10 @@ module runge_kutta_integrator
      !================================================================!
 
      subroutine computeStageStateValues_interface(this, q, qdot)
-       use iso_fortran_env , only : dp => real64
        import RK
        class(RK) :: this
-       real(dp), intent(in), dimension(:,:)           :: q
-       real(dp), OPTIONAL, intent(in), dimension(:,:) :: qdot
+       type(scalar), intent(in), dimension(:,:)           :: q
+       type(scalar), OPTIONAL, intent(in), dimension(:,:) :: qdot
      end subroutine computeStageStateValues_interface
 
      !================================================================!
@@ -121,7 +124,6 @@ module runge_kutta_integrator
      !================================================================!
 
      subroutine buthcher_interface(this)
-       use iso_fortran_env , only : dp => real64
        import RK
        class(RK) :: this
      end subroutine buthcher_interface
@@ -142,8 +144,8 @@ contains
     
     class(physics), target :: system
     integer  , OPTIONAL, intent(in) :: num_stages
-    real(dp) , OPTIONAL, intent(in) :: tinit, tfinal
-    real(dp) , OPTIONAL, intent(in) :: h
+    type(scalar) , OPTIONAL, intent(in) :: tinit, tfinal
+    type(scalar) , OPTIONAL, intent(in) :: h
     logical  , OPTIONAL, intent(in) :: second_order
 
     print *, "======================================"
@@ -299,7 +301,7 @@ contains
        end if
     end do
 
-    if ((sum(this % B) - 1.0d0) .gt. 5.0d-16) then
+    if (abs(sum(this % B) - 1.0d0) .gt. 5.0d-16) then
        print *, "WARNING: sum(B) != 1", this % num_stages
     end if
 
@@ -384,7 +386,7 @@ contains
 
     class(DIRK) :: this
     integer     :: k, i
-    real(dp)    :: alpha, beta, gamma
+    type(scalar)    :: alpha, beta, gamma
 
     time: do k = this % num_steps, 2, -1
        
@@ -432,7 +434,7 @@ contains
     implicit none
 
     class(RK) :: this
-    real(dp),  dimension(:,:) :: q, qdot, qddot ! current state
+    type(scalar),  dimension(:,:) :: q, qdot, qddot ! current state
     integer :: m, k
 
     ! Store the current time step
@@ -480,11 +482,11 @@ contains
   subroutine ButcherDIRK(this)
 
     class(DIRK) :: this
-    real(dp), parameter :: PI = 22.0d0/7.0d0
-    real(dp), parameter :: tmp  = 1.0d0/(2.0d0*dsqrt(3.0d0))
-    real(dp), parameter :: half = 1.0d0/2.0d0
-    real(dp), parameter :: one  = 1.0d0
-    real(dp), parameter :: alpha = 2.0d0*cos(PI/18.0d0)/dsqrt(3.0d0)
+    type(scalar), parameter :: PI = 22.0d0/7.0d0
+    type(scalar), parameter :: tmp  = 1.0d0/(2.0d0*dsqrt(3.0d0))
+    type(scalar), parameter :: half = 1.0d0/2.0d0
+    type(scalar), parameter :: one  = 1.0d0
+    type(scalar), parameter :: alpha = 2.0d0*cos(PI/18.0d0)/dsqrt(3.0d0)
 
     ! Put the entries into the tableau (ROGER ALEXANDER 1977)
     if (this % num_stages .eq. 1) then 
@@ -564,10 +566,10 @@ contains
   subroutine computeStageStateValues( this, q, qdot )
 
     class(DIRK)                                    :: this
-    real(dp), intent(in), dimension(:,:)           :: q
-    real(dp), OPTIONAL, intent(in), dimension(:,:) :: qdot
+    type(scalar), intent(in), dimension(:,:)           :: q
+    type(scalar), OPTIONAL, intent(in), dimension(:,:) :: qdot
     integer                                        :: k, j, m
-    real(dp)                                       :: alpha, beta, gamma
+    type(scalar)                                       :: alpha, beta, gamma
 
     k = this % current_step
 
@@ -654,9 +656,9 @@ contains
   subroutine assembleRHS(this, rhs)
  
     class(DIRK)                           :: this
-    real(dp), dimension(:), intent(inout) :: rhs
-    real(dp)                              :: scale1=0.0d0, scale2=0.0d0
-    real(dp), dimension(:,:), allocatable :: jac1, jac2
+    type(scalar), dimension(:), intent(inout) :: rhs
+    type(scalar)                              :: scale1=0.0d0, scale2=0.0d0
+    type(scalar), dimension(:,:), allocatable :: jac1, jac2
     integer :: k, j, i, p, s
 
     k = this % current_step
@@ -675,14 +677,14 @@ contains
     current_r: do j = i + 1, s
 
        scale1 = this % B(j) * this % A(j,i) / this % h
-       call this % system % assembleJacobian(jac1, 0.0d0, scale1, 0.0d0, &
+       call this % system % assembleJacobian(jac1, ZERO, scale1, ZERO, &
             & this % T(j), this % Q(k,j,:), this % QDOT(k,j,:), this % QDDOT(k,j,:))
 
        scale2 = 0.0d0
        do p = i, j
           scale2 = scale2 + this % B(j) * this % A(j,i) * this % A(p,i)
        end do
-       call this % system % assembleJacobian(jac2,  scale2, 0.0d0, 0.0d0, &
+       call this % system % assembleJacobian(jac2,  scale2, ZERO, ZERO, &
             & this % T(j), this % Q(k,j,:), this % QDOT(k,j,:), this % QDDOT(k,j,:))
 
        rhs = rhs + matmul( transpose(jac1+jac2), this % psi(k,j,:) )
@@ -696,7 +698,7 @@ contains
 
           scale1 = this % B(j) * this % B(i) / this % h
 
-          call this % system % assembleJacobian(jac1, 0.0d0, scale1, 0.0d0, &
+          call this % system % assembleJacobian(jac1, ZERO, scale1, ZERO, &
                & this % T(j), this % Q(k+1,j,:), this % QDOT(k+1,j,:), this % QDDOT(k+1,j,:))
 
           scale2 = 0.0d0
@@ -709,7 +711,7 @@ contains
 
           scale2 = scale2 * this % B(j) 
 
-          call this % system % assembleJacobian(jac2, scale2, 0.0d0, 0.0d0, &
+          call this % system % assembleJacobian(jac2, scale2, ZERO, ZERO, &
                & this % T(j), this % Q(k+1,j,:), this % QDOT(k+1,j,:), this % QDDOT(k+1,j,:))
 
           rhs = rhs + matmul( transpose(jac1+jac2), this % psi(k+1,j,:) )
@@ -783,8 +785,8 @@ contains
   subroutine computeTotalDerivative( this, dfdx )
 
     class(DIRK)                              :: this
-    real(dp) , dimension(:), intent(inout)   :: dfdx
-    real(dp) , dimension(:,:), allocatable   :: dRdX
+    type(scalar) , dimension(:), intent(inout)   :: dfdx
+    type(scalar) , dimension(:,:), allocatable   :: dRdX
     integer                                  :: k, j
 
     allocate(dRdX(this % nSVars, this % nDVars))
@@ -811,7 +813,7 @@ contains
 
     do k = 2, this % num_steps
        do j = 1, this % num_stages
-          call this % system % getResidualDVSens(dRdX, 1.0d0, this % T(j), &
+          call this % system % getResidualDVSens(dRdX, ONE, this % T(j), &
                & this % system % x, this % Q(k,j,:), this % QDOT(k,j,:), this % QDDOT(k,j,:))
 !          print*, this % B(j),drdx, this % psi (k,j,:)
           dfdx = dfdx + this % h * this % B(j)* matmul(this % psi(k,j,:), dRdX) ! check order
@@ -841,10 +843,10 @@ contains
   subroutine evalFunc(this, x, fval)
     
     class(DIRK)                        :: this
-    real(dp), dimension(:), intent(in) :: x
-    real(dp), intent(inout)            :: fval
+    type(scalar), dimension(:), intent(in) :: x
+    type(scalar), intent(inout)            :: fval
     integer                            :: k,j
-    real(dp)                           :: ftmp
+    type(scalar)                           :: ftmp
     
     fval =0.0d0
 

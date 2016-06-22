@@ -1,11 +1,10 @@
+#include "scalar.fpp"
 !=====================================================================!
 ! Module that provides the ability to the user to implement random
 ! ODEs and use with the DIRK scheme
 !=====================================================================!
 
 module spring_mass_damper_class
-
-  use iso_fortran_env , only : dp => real64
 
   use physics_class,  only : physics
   use function_class, only : abstract_function
@@ -25,9 +24,9 @@ module spring_mass_damper_class
      ! Define constants and other parameters needed for residual and
      ! jacobian assembly here
 
-     real(8) :: m = 1.0d0
-     real(8) :: c = 0.02d0
-     real(8) :: k = 5.0d0
+     type(scalar) :: m = 1.0d0
+     type(scalar) :: c = 0.02d0
+     type(scalar) :: k = 5.0d0
 
    contains
 
@@ -83,7 +82,7 @@ contains
 !!$
 !!$    class(smd1)                                 :: this
 !!$    class(abstract_function), target, OPTIONAL  :: function
-!!$    real(8), intent(in), dimension(:), OPTIONAl :: x
+!!$    type(scalar), intent(in), dimension(:), OPTIONAl :: x
 !!$
 !!$    ! Set the number of state variables
 !!$    this % num_state_vars = 1
@@ -110,7 +109,7 @@ contains
 !!$  subroutine setDesignVars(this, num_dvs, x)
 !!$
 !!$    class(smd1)                        :: this
-!!$    real(8), intent(in), dimension(:)  :: x
+!!$    type(scalar), intent(in), dimension(:)  :: x
 !!$   
 !!$    ! Overwrite the values to supplied ones
 !!$    if (this % num_design_vars .eq. 1) then 
@@ -133,8 +132,8 @@ contains
 
     class(smd1) :: this
 
-    real(8), intent(in) :: time
-    real(8), intent(inout), dimension(:) :: u, udot
+    type(scalar), intent(in) :: time
+    type(scalar), intent(inout), dimension(:) :: u, udot
 
     u(1) = 1.0d0
 
@@ -150,9 +149,9 @@ contains
   subroutine assembleResidual(this, res, time, u, udot, uddot)
 
     class(smd1) :: this
-    real(8), intent(inout), dimension(:) :: res
-    real(8), intent(in) :: time
-    real(8), intent(in), dimension(:) :: u, udot, uddot
+    type(scalar), intent(inout), dimension(:) :: res
+    type(scalar), intent(in) :: time
+    type(scalar), intent(in), dimension(:) :: u, udot, uddot
 
     res(1) = this % m * uddot(1) + this % c * udot(1) + this % k * u(1)
 
@@ -178,10 +177,10 @@ contains
        & time, u, udot, uddot )
 
     class(smd1) :: this
-    real(8), intent(inout), dimension(:,:) :: jac
-    real(8), intent(in) :: alpha, beta, gamma
-    real(8), intent(in) :: time
-    real(8), intent(in), dimension(:) :: u, udot, uddot
+    type(scalar), intent(inout), dimension(:,:) :: jac
+    type(scalar), intent(in) :: alpha, beta, gamma
+    type(scalar), intent(in) :: time
+    type(scalar), intent(in), dimension(:) :: u, udot, uddot
 
     ! Zero all  entries first
     jac = 0.0d0
@@ -198,10 +197,10 @@ contains
   subroutine getResidualDVSens(this, jac, scale, time, x, u, udot, uddot)
 
     class(smd1)                            :: this
-    real(8), intent(inout), dimension(:,:) :: jac
-    real(8), intent(in)                    :: time
-    real(8), intent(in), dimension(:)      :: x, u, udot, uddot
-    real(8)                                :: scale
+    type(scalar), intent(inout), dimension(:,:) :: jac
+    type(scalar), intent(in)                    :: time
+    type(scalar), intent(in), dimension(:)      :: x, u, udot, uddot
+    type(scalar)                                :: scale
 
     jac = 0.0d0 
 
@@ -221,8 +220,8 @@ contains
 
     class(smd2) :: this
 
-    real(8), intent(in) :: time
-    real(8), intent(inout), dimension(:) :: u, udot
+    type(scalar), intent(in) :: time
+    type(scalar), intent(inout), dimension(:) :: u, udot
 
     u(1) = 1.0d0
     u(2) = 2.0d0
@@ -239,9 +238,9 @@ contains
   subroutine assembleResidual2(this, res, time, u, udot, uddot)
 
     class(smd2) :: this
-    real(8), intent(inout), dimension(:) :: res
-    real(8), intent(in) :: time
-    real(8), intent(in), dimension(:) :: u, udot, uddot
+    type(scalar), intent(inout), dimension(:) :: res
+    type(scalar), intent(in) :: time
+    type(scalar), intent(in), dimension(:) :: u, udot, uddot
 
     res(1) = uddot(1) + 0.02d0*udot(1)*udot(2) + 5.0d0*u(1)
     res(2) = uddot(2) - 0.05d0*udot(2)*udot(1) + 1.0d0*u(2)*u(1)
@@ -268,10 +267,10 @@ contains
        & time, u, udot, uddot )
 
     class(smd2) :: this
-    real(8), intent(inout), dimension(:,:) :: jac
-    real(8), intent(in) :: alpha, beta, gamma
-    real(8), intent(in) :: time
-    real(8), intent(in), dimension(:) :: u, udot, uddot
+    type(scalar), intent(inout), dimension(:,:) :: jac
+    type(scalar), intent(in) :: alpha, beta, gamma
+    type(scalar), intent(in) :: time
+    type(scalar), intent(in), dimension(:) :: u, udot, uddot
 
     ! Zero all  entries first
     jac = 0.0d0
@@ -322,10 +321,10 @@ contains
   subroutine getResidualDVSens2(this, jac, scale, time, x, u, udot, uddot)
 
     class(smd2)                            :: this
-    real(8), intent(inout), dimension(:,:) :: jac
-    real(8), intent(in)                    :: time
-    real(8), intent(in), dimension(:)      :: x, u, udot, uddot
-    real(8)                                :: scale
+    type(scalar), intent(inout), dimension(:,:) :: jac
+    type(scalar), intent(in)                    :: time
+    type(scalar), intent(in), dimension(:)      :: x, u, udot, uddot
+    type(scalar)                                :: scale
     
     stop"Not implemented"
 

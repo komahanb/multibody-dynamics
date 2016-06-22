@@ -1,3 +1,4 @@
+#include "scalar.fpp"
 !=====================================================================!
 ! Module that contains common procedures for any physical system
 ! subject to governing equations
@@ -7,7 +8,6 @@
 
 module physics_class
 
-  use iso_fortran_env, only : dp => real64
   use function_class, only  : abstract_function
 
   implicit none
@@ -23,7 +23,7 @@ module physics_class
 
      integer                             :: num_design_vars = 0 
      integer                             :: num_state_vars  = 0 
-     real(dp), dimension(:), allocatable :: x
+     type(scalar), dimension(:), allocatable :: x
      class(abstract_function), pointer   :: func => null() ! function of interest
      
    contains  
@@ -58,10 +58,10 @@ module physics_class
        import physics
        
        class(physics)                         :: this
-       real(8), intent(inout), dimension(:,:) :: jac
-       real(8), intent(in)                    :: time
-       real(8), intent(in), dimension(:)      :: x, u, udot, uddot
-       real(8)                                :: scale
+       type(scalar), intent(inout), dimension(:,:) :: jac
+       type(scalar), intent(in)                    :: time
+       type(scalar), intent(in), dimension(:)      :: x, u, udot, uddot
+       type(scalar)                                :: scale
 
      end subroutine InterfaceGetResidualDVSens
 
@@ -74,7 +74,7 @@ module physics_class
        import abstract_function
        class(physics) :: this
        class(abstract_function), target, OPTIONAL  :: function
-       real(8), intent(in), dimension(:), OPTIONAl :: x
+       type(scalar), intent(in), dimension(:), OPTIONAl :: x
      end subroutine InterfaceInitialize
     
      !----------------------------------------------------------------!
@@ -86,9 +86,9 @@ module physics_class
        import physics
 
        class(physics) :: this
-       real(8), intent(inout), dimension(:) :: res
-       real(8), intent(in) :: time
-       real(8), intent(in), dimension(:) :: u, udot, uddot
+       type(scalar), intent(inout), dimension(:) :: res
+       type(scalar), intent(in) :: time
+       type(scalar), intent(in), dimension(:) :: u, udot, uddot
 
      end subroutine residual_assembly_interface
 
@@ -102,10 +102,10 @@ module physics_class
        import physics
 
        class(physics) :: this
-       real(8), intent(inout), dimension(:,:) :: jac
-       real(8), intent(in) :: alpha, beta, gamma
-       real(8), intent(in) :: time
-       real(8), intent(in), dimension(:) :: u, udot, uddot
+       type(scalar), intent(inout), dimension(:,:) :: jac
+       type(scalar), intent(in) :: alpha, beta, gamma
+       type(scalar), intent(in) :: time
+       type(scalar), intent(in), dimension(:) :: u, udot, uddot
 
      end subroutine jacobian_assembly_interface
      
@@ -118,8 +118,8 @@ module physics_class
        import physics
 
        class(physics) :: this
-       real(8), intent(in) :: time
-       real(8), intent(inout), dimension(:) :: u, udot
+       type(scalar), intent(in) :: time
+       type(scalar), intent(inout), dimension(:) :: u, udot
 
      end subroutine initial_condition_interface
 
@@ -186,7 +186,7 @@ contains
   subroutine setDesignVars(this, num_dvs, x)
     
     class(physics)                    :: this
-    real(8), intent(in), dimension(:) :: x
+    type(scalar), intent(in), dimension(:) :: x
     integer, intent(in)               :: num_dvs
     
     if (this % num_design_vars .ne. size(x)) stop "Error in num_design_vars"

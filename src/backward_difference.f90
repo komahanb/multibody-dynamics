@@ -1,3 +1,4 @@
+#include "scalar.fpp"
 !=====================================================================!
 ! Backward Difference Formula Integration Module for first and second
 ! order systems with adjoint derivative capabilities.
@@ -7,7 +8,6 @@
 
 module bdf_integrator
 
-  use iso_fortran_env , only : dp => real64
   use integrator_class, only : integrator
   use physics_class,    only : physics
 
@@ -15,6 +15,10 @@ module bdf_integrator
 
   private
   public :: BDF
+
+  ! Useful constants
+  type(scalar), parameter :: ONE  = 1.0d0
+  type(scalar), parameter :: ZERO = 1.0d0
 
   !===================================================================!
   ! A derived type for the bdf coefficients
@@ -26,9 +30,9 @@ module bdf_integrator
      integer                               :: max_order = 3
      
      ! Coeff values
-     real(dp)                              :: alpha
-     real(dp), dimension(:,:), allocatable :: beta
-     real(dp), dimension(:,:), allocatable :: gamma
+     type(scalar)                              :: alpha
+     type(scalar), dimension(:,:), allocatable :: beta
+     type(scalar), dimension(:,:), allocatable :: gamma
 
    contains
 
@@ -54,7 +58,7 @@ module bdf_integrator
      integer                                :: max_bdf_order = 3
      type(bdf_coeff)                        :: coeff
 
-     real(dp) , dimension(:,:), allocatable :: psi
+     type(scalar) , dimension(:,:), allocatable :: psi
 
    contains
 
@@ -89,7 +93,7 @@ contains
     
     class(BDF), intent(inout) :: this
     integer, intent(in)       :: k
-    real(dp), intent(inout)   :: alpha, beta, gamma
+    type(scalar), intent(inout)   :: alpha, beta, gamma
     
     alpha = this % coeff % alpha
 
@@ -129,26 +133,26 @@ contains
     if (this % max_order .eq. 3) then
 
        this % beta (1, 1:2) = (/ 1.0, -1.0 /)
-       this % beta (2, 1:3) = (/ 1.5_dp, -2.0_dp, 0.5_dp /)
+       this % beta (2, 1:3) = (/ 1.5d0, -2.0d0, 0.5d0 /)
        this % beta (3, 1:4) = (/ 35.d0/24.0d0, -15.d0/8.0d0, 3.0d0/8.0d0, 1.0d0/24.0d0 /)
 
-       this % gamma(1, 1:3) = (/ 1.0_dp, -2.0_dp, 1.0_dp /)
-       this % gamma(2, 1:5) = (/ 2.25_dp, -6.0_dp, 5.5_dp, -2.0_dp, 0.25_dp /)
+       this % gamma(1, 1:3) = (/ 1.0d0, -2.0d0, 1.0d0 /)
+       this % gamma(2, 1:5) = (/ 2.25d0, -6.0d0, 5.5d0, -2.0d0, 0.25d0 /)
        this % gamma(3, 1:7) = (/ 2.126736d0, -5.468750d0, 4.609375d0, &
             & -1.284722d0, -0.015625d0, 0.031250d0, 0.001736d0 /)
 
     else if (this % max_order .eq. 2) then
 
        this % beta (1, 1:2) = (/ 1.0, -1.0 /)
-       this % beta (2, 1:3) = (/ 1.5_dp, -2.0_dp, 0.5_dp /)
+       this % beta (2, 1:3) = (/ 1.5d0, -2.0d0, 0.5d0 /)
 
-       this % gamma(1, 1:3) = (/ 1.0_dp, -2.0_dp, 1.0_dp /)
-       this % gamma(2, 1:5) = (/ 2.25_dp, -6.0_dp, 5.5_dp, -2.0_dp, 0.25_dp /)
+       this % gamma(1, 1:3) = (/ 1.0d0, -2.0d0, 1.0d0 /)
+       this % gamma(2, 1:5) = (/ 2.25d0, -6.0d0, 5.5d0, -2.0d0, 0.25d0 /)
 
     else if (this % max_order .eq. 1) then
 
        this % beta (1, 1:2) = (/ 1.0, -1.0 /)
-       this % gamma(1, 1:3) = (/ 1.0_dp, -2.0_dp, 1.0_dp /)
+       this % gamma(1, 1:3) = (/ 1.0d0, -2.0d0, 1.0d0 /)
     else 
        print *,  "Wrong max_bdf_order:", this % max_order
        stop
@@ -233,9 +237,9 @@ contains
   subroutine computeTotalDerivative( this, dfdx )
     
     class(BDF)                                         :: this
-    real(dp) , dimension(:), intent(inout)             :: dfdx
-    real(dp) , dimension(this % nSVars, this % nDVars) :: dRdX
-    real(dp)                                           :: scale = 1.0d0
+    type(scalar) , dimension(:), intent(inout)             :: dfdx
+    type(scalar) , dimension(this % nSVars, this % nDVars) :: dRdX
+    type(scalar)                                           :: scale = 1.0d0
     integer                                            :: k
     
 !    scale = this % h
@@ -285,8 +289,8 @@ contains
    
     class(physics), target          :: system
     integer  , OPTIONAL, intent(in) :: max_bdf_order
-    real(dp) , OPTIONAL, intent(in) :: tinit, tfinal
-    real(dp) , OPTIONAL, intent(in) :: h
+    type(scalar) , OPTIONAL, intent(in) :: tinit, tfinal
+    type(scalar) , OPTIONAL, intent(in) :: h
     logical  , OPTIONAL, intent(in) :: second_order
 
     print *, "======================================"
@@ -420,7 +424,7 @@ contains
   subroutine Integrate( this )
 
     class(BDF) :: this
-    real(dp)   :: alpha, beta, gamma
+    type(scalar)   :: alpha, beta, gamma
     integer    :: k
 
     ! Set states to zeror
@@ -468,7 +472,7 @@ contains
 
     class(BDF)                :: this
     integer                   :: k
-    real(dp)                  :: alpha, beta, gamma
+    type(scalar)                  :: alpha, beta, gamma
     
     time: do k = this % num_steps, 2, -1
        
@@ -552,9 +556,9 @@ contains
   subroutine assembleRHS( this, rhs )
 
     class(BDF)                            :: this
-    real(dp), dimension(:), intent(inout) :: rhs
-    real(dp), dimension(:,:), allocatable :: jac
-    real(dp)                              :: scale
+    type(scalar), dimension(:), intent(inout) :: rhs
+    type(scalar), dimension(:,:), allocatable :: jac
+    type(scalar)                              :: scale
     integer                               :: k, i, m1, m2, idx
     
     allocate( jac(this % nSVars, this % nSVars) )
@@ -568,7 +572,7 @@ contains
     ! Add function contribution (dfdu)
     !-----------------------------------------------------------------!
     
-    call this % system % func % addDFdU(rhs, 1.0d0, this % time(k), &
+    call this % system % func % addDFdU(rhs, ONE, this % time(k), &
          & this % system % x, this % u(k,:), this % udot(k,:), this % uddot(k,:))
 
     m1 = this % coeff % getOrder(k, 1)
@@ -604,7 +608,7 @@ contains
 !!$                  & this % system % x, this % u(idx,:), this % udot(idx,:), this % uddot(idx,:))
 !!$             
 !!$             if (i .ne. 0) then
-!!$                call this % system % assembleJacobian(jac, 0.0d0, 0.0d0, 1.0d0, &
+!!$                call this % system % assembleJacobian(jac, ZERO, ZERO, ONE, &
 !!$                     & this % time(idx), this % u(idx,:), this % udot(idx,:), this % uddot(idx,:))
 !!$                rhs = rhs + scale*matmul( transpose(jac), this % psi(idx,:) )
 !!$             end if
@@ -621,7 +625,7 @@ contains
        idx = k + i
        if ( idx .le. this % num_steps) then
           scale = this % coeff % beta(m1, i+1)/this % h
-          call this % system % assembleJacobian(jac, 0.0d0, 1.0d0, 0.0d0, &
+          call this % system % assembleJacobian(jac, ZERO, ONE, ZERO, &
                & this % time(idx), this % u(idx,:), this % udot(idx,:), this % uddot(idx,:))
           rhs = rhs + scale*matmul( transpose(jac), this % psi(idx,:) )
        end if
@@ -631,7 +635,7 @@ contains
        idx = k + i
        if ( idx .le. this % num_steps) then
           scale = this % coeff % gamma(m2, i+1)/this % h/this % h
-          call this % system % assembleJacobian(jac, 0.0d0, 0.0d0, 1.0d0, &
+          call this % system % assembleJacobian(jac, ZERO, ZERO, ONE, &
                & this % time(idx), this % u(idx,:), this % udot(idx,:), this % uddot(idx,:))
           rhs = rhs + scale*matmul( transpose(jac), this % psi(idx,:) )
        end if
@@ -651,10 +655,10 @@ contains
   subroutine evalFunc(this, x, fval)
 
     class(BDF)                            :: this
-    real(dp), dimension(:), intent(in)    :: x
-    real(dp), intent(inout)               :: fval
+    type(scalar), dimension(:), intent(in)    :: x
+    type(scalar), intent(inout)               :: fval
     integer                               :: k
-    real(dp), dimension(this % num_steps) :: ftmp
+    type(scalar), dimension(this % num_steps) :: ftmp
     
     do concurrent(k = 2 : this % num_steps)
        call this % system % func % getFunctionValue(ftmp(k), this % time(k), &
