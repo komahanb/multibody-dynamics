@@ -97,7 +97,7 @@ module integrator_class
      !----------------------------------------------------------------!
 
      procedure(InterfaceAssembleRHS)    , private, deferred :: assembleRHS
-     procedure(InterfaceTotalDerivative), private, deferred :: computeTotalDerivative
+     procedure :: computeTotalDerivative
      procedure(InterfaceMarch), public, deferred            :: integrate, marchBackwards
      procedure                                              :: adjointSolve
      procedure                                              :: evalFunc
@@ -124,15 +124,15 @@ module integrator_class
      !===================================================================!
      ! Interface routine to assemble the RHS of the adjoint systen
      !===================================================================!
-     
-     subroutine InterfaceTotalDerivative(this, dfdx)
-
-       import integrator
-
-       class(integrator)                     :: this
-       type(scalar), dimension(:), intent(inout) :: dfdx
-       
-     end subroutine InterfaceTotalDerivative
+!!$     
+!!$     subroutine InterfaceTotalDerivative(this, dfdx)
+!!$
+!!$       import integrator
+!!$
+!!$       class(integrator)                     :: this
+!!$       type(scalar), dimension(:), intent(inout) :: dfdx
+!!$       
+!!$     end subroutine InterfaceTotalDerivative
 
      !===================================================================!
      ! Interface routine to assemble the RHS of the adjoint systen
@@ -263,28 +263,28 @@ contains
 
   subroutine newtonSolve( this, alpha, beta, gamma, t, q, qdot, qddot )
     
-    class(integrator)                     :: this
+    class(integrator)                         :: this
 
  ! Arguments
     type(scalar), intent(in)                  :: alpha, beta, gamma
-    real(dp), intent(in)                  :: t
+    real(dp), intent(in)                      :: t
     type(scalar), intent(inout), dimension(:) :: q, qdot, qddot
     
  ! Lapack variables
-    integer, allocatable, dimension(:)    :: ipiv
-    integer                               :: info, size
+    integer, allocatable, dimension(:)        :: ipiv
+    integer                                   :: info, size
    
  ! Norms for tracking progress
-    real(dp)                              :: abs_res_norm
-    real(dp)                                  :: rel_res_norm
-    real(dp)                                  :: init_norm
+    real(dp)                                  :: abs_res_norm = 0.0d0
+    real(dp)                                  :: rel_res_norm = 0.0d0
+    real(dp)                                  :: init_norm    = 0.0d0
     
  ! Other Local variables
     type(scalar), allocatable, dimension(:)   :: res, dq
     type(scalar), allocatable, dimension(:,:) :: jac, fd_jac
 
-    integer                               :: n, k
-    logical                               :: conv = .false.
+    integer                                   :: n, k
+    logical                                   :: conv = .false.
 
     type(scalar)                              :: jac_err
 
@@ -729,9 +729,12 @@ contains
     class(integrator)                         :: this
     type(scalar), dimension(:), intent(in)    :: x
     type(scalar), intent(inout)               :: fval
-    type(scalar), dimension(this % num_steps) :: ftmp
+    type(scalar), allocatable, dimension(:) :: ftmp
     integer                                   :: k
     
+    allocate(ftmp(this % num_steps))
+    ftmp = 0.0d0
+
     do concurrent(k = 2 : this % num_steps)
        call this % system % func % getFunctionValue(ftmp(k), this % time(k), &
             & x, this % U(k,:), this % UDOT(k,:), this % UDDOT(k,:))
@@ -749,6 +752,8 @@ contains
 !!$    end do
 !!$    
 
+    deallocate(ftmp)
+
   end subroutine evalFunc
 
   !===================================================================!
@@ -765,5 +770,57 @@ contains
     end do
     
   end function znorm2
+
+  !===================================================================!
+  ! Compute the total derivative of the function with respect to the
+  ! design variables and return the gradient 
+  !===================================================================!
+  
+  subroutine computeTotalDerivative( this, dfdx )
+    
+    class(integrator)                                         :: this
+    type(scalar) , dimension(:), intent(inout)             :: dfdx
+    type(scalar) , dimension(this % nSVars, this % nDVars) :: dRdX
+    type(scalar)                                           :: scale = 1.0d0
+    integer                                            :: k
+    
+!    scale = this % h
+    
+    dfdx = 0.0d0
+    
+    !-----------------------------------------------------------------!
+    ! Compute dfdx
+    !-----------------------------------------------------------------!
+
+    do k = 2, this % num_steps
+       call this % system % func % addDfdx(dfdx, scale, this % time(k), &
+            & this % system % x, this % u(k,:), this % udot(k,:), this % uddot(k,:) )
+    end do
+
+    ! Initial condition
+!!$    call this % system % func % addDfdx(dfdx, scale, this % time(1), &
+!!$         & this % system % x, this % u(1,:), this % udot(1,:), this % uddot(2,:) )
+    
+    !-----------------------------------------------------------------!
+    ! Compute the total derivative
+    !-----------------------------------------------------------------!
+
+    do k = 2, this % num_steps
+       call this % system % getResidualDVSens(dRdX, scale, this % time(k), &
+            & this % system % x, this % u(k,:), this % udot(k,:), this % uddot(k,:))
+       dfdx = dfdx + matmul(this % psi(k,:), dRdX) ! check order
+    end do
+
+    ! Add constraint contribution
+!!$    call this % system % getResidualDVSens(dRdX, scale, this % time(1), &
+!!$         & this % system % x, this % u(1,:), this % udot(1,:), this % uddot(2,:))
+!!$    dfdx = dfdx + matmul(this % psi(2,:), dRdX)
+
+    ! Finally multiply by the scalar
+    dfdx = this % h * dfdx
+
+    print*, "Check scaling of dfdx, and transpose"
+
+  end subroutine computeTotalDerivative
 
 end module integrator_class

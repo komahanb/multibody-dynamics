@@ -34,80 +34,84 @@ program main
 
   ! Declare functions that are used
   type(kinetic_energy)         , target :: KE
-  type(pitch)         , target :: pitch1
+  type(pitch)         , target          :: pitch1
 
   ! Design variable array
   type(scalar), dimension(:), allocatable :: x, dfdx, dfdxtmp
   type(scalar)                            :: fval, ftmp
-  real(dp) :: dh = 1.0d-8
+  real(dp)                                :: dh = 1.0d-15
 
   !-------------------------------------------------------------------!
   !                 Spring Mass Damper system                         !
   !-------------------------------------------------------------------!
   
   allocate(X(3), dfdx(3), dfdxtmp(3))
-  dfdx=0.0d0
-  dfdxtmp =0.0d0
+  dfdx    = 0.0d0
+  dfdxtmp = 0.0d0
 
   x(1) = 2.50d0    ! mass
-  x(2) = 0.20d0    ! damping coeff
+  x(2) = 2.0d0     ! damping coeff
   x(3) = 5.00d0    ! stiffness coef
 
   ! Initialize the system
   call smd1obj % initialize(num_state_vars = 1, num_design_vars = 3)
 
-  bdfobj = BDF(system = smd1obj, tfinal = 10.0d0, h=1.0d-3, max_bdf_order = 3)
+  bdfobj = BDF(system = smd1obj, tfinal = 20.0d-3, h=1.0d-3, max_bdf_order = 3, second_order = .true.)
 
   call bdfobj % evalFuncGrad(num_func=1, func = KE,  num_dv = 3, x = x, &
        & fvals = fval, dfdx= dfdx)
 
-  call bdfobj % writeSolution()
- 
   call bdfobj % evalFDFuncGrad(num_func=1, func = KE,  num_dv = 3, x = x, &
        & fvals = fval, dfdx= dfdxtmp, dh=dh)
   
+  call bdfobj % writeSolution()
+
   call bdfobj % finalize()
 
-  print*, "fval         =", fval
-  print*, "Adjoint dfdx =", dfdx
-  print*, "FD      dfdx =", dfdxtmp
-  print *, "Error       =", abs(dfdxtmp-dfdx)
+  print*, "Fval         = ", fval
+  print*, "Adjoint dfdx = ", dfdx
+  print*, "FD      dfdx = ", dfdxtmp
+  print*, "Error        = ", abs(dfdxtmp-dfdx)
 
   ! Finalize the system
   call smd1obj % finalize()
 
+  stop
+
   dfdx = 0.0d0
   dfdxtmp = 0.0d0
-  
+
   ! Initialize the system
   call smd1obj % initialize(num_state_vars = 1, num_design_vars = 3)
 
-  dirkobj = DIRK(system = smd1obj, tfinal = 10.0d0, h=1.0d-3, num_stages=3) 
-  
+  dirkobj = DIRK(system = smd1obj, tfinal = 10.0d-3, h=1.0d-3, num_stages=1, second_order = .true.) 
+
   call dirkobj % evalFuncGrad(num_func=1, func = KE, num_dv = 3, x = x, &
        & fvals = fval, dfdx= dfdx)
-  
+
   call dirkobj % writeSolution("dirksol.dat")
 
   call dirkobj % evalFDFuncGrad(num_func=1, func = KE, num_dv = 3, x = x, &
        & fvals = fval, dfdx= dfdxtmp, dh=dh)
 
   call dirkobj % finalize()  
-
+  
   print*, "fval         =", fval
   print*, "Adjoint dfdx =", dfdx
   print*, "FD      dfdx =", dfdxtmp
   print *, "Error       =", abs(dfdxtmp-dfdx)
-
+  
   ! Finalize the system
   call smd1obj % finalize()
 
   deallocate(X, dfdx, dfdxtmp)
-  
+
+  stop
+
   !===================================================================!
   !  Aeroelastic Oscillator
   !===================================================================!
-  
+
   allocate(X(2), dfdx(2), dfdxtmp(2))
 
   dfdx    = 0.0d0
@@ -115,21 +119,21 @@ program main
 
   x(1) = 9.0d0  ! dynamic pressure
   x(2) = 20.0d0 ! nonlinear stiffness coeff
-  
+
   ! Initialize the system
   call oscillator % initialize(num_state_vars = 2, num_design_vars = 2)
-  
-  bdfobj = BDF(system = oscillator, tfinal = 1.0d0, h=1.0d-3, max_bdf_order = 3) 
+
+  bdfobj = BDF(system = oscillator, tfinal = 1.0d0, h=1.0d-3, max_bdf_order = 1)
 
   call bdfobj % evalFuncGrad(num_func=1, func = pitch1,  num_dv = 2, x = x, &
        & fvals = fval, dfdx= dfdx)
-  
-!  call bdfobj % integrate()
+
+  !  call bdfobj % integrate()
   call bdfobj % writeSolution()
-  
+
   call bdfobj % evalFDFuncGrad(num_func=1, func = pitch1,  num_dv = 2, x = x, &
        & fvals = fval, dfdx= dfdxtmp, dh=1.0d-6)
-  
+
   call bdfobj % finalize()
 
   print*, "fval         =", fval
@@ -142,15 +146,15 @@ program main
 
   dfdx = 0.0d0
   dfdxtmp = 0.0d0
-  
+
   ! Initialize the system
   call oscillator % initialize(num_state_vars = 2, num_design_vars = 2)
-  
+
   dirkobj = DIRK(system = oscillator, tfinal = 1.d0, h=1.0d-3, num_stages=3) 
-  
+
   call dirkobj % evalFuncGrad(num_func = 1, func = pitch1, num_dv = 2, x = x, &
        & fvals = fval, dfdx= dfdx)
-  
+
   call dirkobj % writeSolution("dirksol.dat")
 
   call dirkobj % evalFDFuncGrad(num_func=1, func = pitch1, num_dv = 2, x = x, &
