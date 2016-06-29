@@ -673,16 +673,15 @@ contains
     this % nDVars = num_dv
 
     !-----------------------------------------------------------------!
-    ! Integrate forward in time to solve for the state variables
-    !-----------------------------------------------------------------!
-
-    call this % integrate()
-
-    !-----------------------------------------------------------------!
     ! Compute the objective/ constraint function value
     !-----------------------------------------------------------------!
 #if defined USE_COMPLEX
 #else
+    !-----------------------------------------------------------------!
+    ! Integrate forward in time to solve for the state variables
+    !-----------------------------------------------------------------!
+
+    call this % integrate()
     call this % evalFunc(x, fvals)
 #endif
    
@@ -693,7 +692,7 @@ contains
 
        ! Perturb the variable              
 #if defined USE_COMPLEX
-       x(m) = cmplx(dble(x(m)), 1.0d-20)
+       x(m) = cmplx(dble(x(m)), 1.0d-15)
 #else
        x(m) = x(m) + dh
 #endif
@@ -707,7 +706,7 @@ contains
 
        ! Find the FD derivative
 #if defined USE_COMPLEX
-       dfdx(m) = aimag(fvals_tmp)/1.0d-20
+       dfdx(m) = aimag(fvals_tmp)/1.0d-15
 #else
        dfdx(m) = (fvals_tmp-fvals)/dh
 #endif

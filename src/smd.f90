@@ -204,9 +204,9 @@ contains
 
     jac = 0.0d0 
 
-    jac(1,1) = uddot(1)
-    jac(1,2) = udot(1)
-    jac(1,3) = u(1)
+    jac(1,1) = scale*uddot(1)
+    jac(1,2) = scale*udot(1)
+    jac(1,3) = scale*u(1)
 
   end subroutine getResidualDVSens
 

@@ -823,12 +823,12 @@ contains
 
     do k = 2, this % num_steps
        do j = 1, this % num_stages
-          call this % system % getResidualDVSens(dRdX, ONE, this % T(j), &
+          call this % system % getResidualDVSens(dRdX, this % h * this % B(j), this % T(j), &
                & this % system % x, this % Q(k,j,:), this % QDOT(k,j,:), this % QDDOT(k,j,:))
 
 !          print*, this % B(j),drdx, this % lam (k,j,:)
 
-          dfdx = dfdx + this % h * this % B(j)* matmul(this % lam(k,j,:), dRdX) ! check order
+          dfdx = dfdx + matmul(this % lam(k,j,:), dRdX) ! check order
        end do
     end do
 
@@ -892,53 +892,66 @@ contains
     mat = 0.0d0
     rhs = 0.0d0
     
-    alpha    = this % h * this % A(1,1) * this % h * this % A(1,1)
+    alpha    = this % h * this % h * this % A(1,1) * this % A(1,1)
     beta     = this % h * this % A(1,1)
     gamma    = 1.0d0
     call this % system % assembleJacobian(mat(1:1,1:1), alpha, beta, gamma, &
          & this % T(1), this % q(2,1,:), this % qdot(2,1,:), this % qddot(2,1,:))
-    
-    alpha    = this % h * this % B(1) * this % h * this % A(1,1)
+
+    alpha    = this % h * this % h * this % A(1,1) * this % B(1)
     beta     = this % h * this % B(1)
     gamma    = this % B(1)
-    call this % system % assembleJacobian(mat(1:1,2:2), alpha, beta, gamma, &
+    call this % system % assembleJacobian(mat(2:2,1:1), alpha, beta, gamma, &
          & this % T(1), this % q(2,1,:), this % qdot(2,1,:), this % qddot(2,1,:))
 
-    alpha    = this % h * this % A(1,1) * this % h 
-    beta     = this % h
+!!$    alpha    = this % h * this % h * this % A(1,1) * this % A(1,1) / this % B(1)
+!!$    beta     = this % h * this % A(1,1) / this % B(1)
+!!$    gamma    = 1.0d0 / this % B(1)
+!!$    call this % system % assembleJacobian(mat(1:1,2:2), alpha, beta, gamma, &
+!!$         & this % time(2), this % u(2,:), this % udot(2,:), this % uddot(2,:))
+
+    alpha    = this % h * this % h * this % A(1,1)
+    beta     = this % h * this % B(1)
     gamma    = 1.0d0
     call this % system % assembleJacobian(mat(2:2,2:2), alpha, beta, gamma, &
          & this % time(2), this % u(2,:), this % udot(2,:), this % uddot(2,:))
 
+    mat = transpose(mat)
+
+    print *, mat
     !-----------------------------------------------------------------!
     ! Assemble the RHS
     !-----------------------------------------------------------------!
 
     ! First term
-    gamma = -1.0d0 
+    gamma = 1.0d0 
     call this % system % func % addDFdUDDot(rhs(1:1), gamma , this % T(1), &
          & this % system % x, this % Q(2,1,:), this % QDot(2,1,:), this % Qddot(2,1,:))
     
-    beta = - this % h * this % A(1,1)
+    beta = this % h * this % A(1,1)
     call this % system % func % addDFdUDot(rhs(1:1), beta , this % T(1), &
          & this % system % x, this % Q(2,1,:), this % QDot(2,1,:), this % Qddot(2,1,:))
 
-    alpha = - this % h * this % A(1,1)* this % h * this % A(1,1)
+    alpha = this % h * this % A(1,1)* this % h * this % A(1,1)
     call this % system % func % addDFdU(rhs(1:1), alpha , this % T(1), &
          & this % system % x, this % Q(2,1,:), this % QDot(2,1,:), this % Qddot(2,1,:))
     
     ! Second term
-    alpha = -this % h * this % A(1,1) * this % h 
+    alpha = this % h * this % A(1,1) * this % h 
     call this % system % func % addDFdU(rhs(2:2), alpha, this % time(2), &
          & this % system % x, this % U(2,:), this % UDOT(2,:), this % UDDOT(2,:))
 
-    beta  = -this % h
+    beta  = this % h * this % B(1)
     call this % system % func % addDFdUDOT(rhs(2:2), beta, this % time(2), &
          & this % system % x, this % U(2,:), this % UDOT(2,:), this % UDDOT(2,:))
     
-    gamma = -1.0d0
+    gamma = 1.0d0
     call this % system % func % addDFdUDDOT(rhs(2:2), gamma, this % time(2), &
          & this % system % x, this % U(2,:), this % UDOT(2,:), this % UDDOT(2,:))
+
+    rhs = rhs
+    ! print*, rhs(1)
+    ! print*, rhs(2)
 
     ! Call linear solve
 #if defined USE_COMPLEX
@@ -946,6 +959,10 @@ contains
 #else
     call DGESV(size, 1, mat, size, IPIV, rhs, size, INFO)
 #endif
+    if (info.ne.0) then
+       print *, info
+       stop"lapack error"
+    end if
 
     this % lam(2,1,1) = rhs(1)
 
@@ -965,11 +982,11 @@ contains
     allocate(dRdX(this % nSVars, this % nDVars))
     dRdX = 0.0d0
     
-    call this % system % getResidualDVSens(dRdX(1:1,1:3), ONE, this % T(1), &
+    call this % system % getResidualDVSens(dRdX, this % h * this % B(1), this % T(1), &
          & this % system % x, this % Q(2,1,:), this % QDOT(2,1,:), this % QDDOT(2,1,:))
 
-    dfdx = dfdx + this % h * this % B(1)* matmul(this % lam(2,1,1:1), dRdX) ! check order
-    
+    dfdx(:) = dfdx(:) + this % lam(2,1,1)*dRdX(1,:)
+
     deallocate(drdx)
 
   end subroutine testAdjoint
@@ -980,7 +997,7 @@ contains
     class(DIRK)                               :: this
     type(scalar), dimension(:), intent(in)    :: x
     type(scalar), intent(inout)               :: fval
-    type(scalar), dimension(this % num_steps) :: ftmp
+    type(scalar)                              :: ftmp
     integer                                   :: k, j
     
     fval = 0.0d0
@@ -996,9 +1013,9 @@ contains
 !!$   
     do concurrent(k = 2 : this % num_steps)
        do concurrent(j = 1 : this % num_stages)
-          call this % system % func % getFunctionValue(ftmp(k), this % T(j), x, &
+          call this % system % func % getFunctionValue(ftmp, this % T(j), x, &
                & this % Q(k,j,:), this % QDOT(k,j,:), this % QDDOT(k,j,:))
-          fval = fval +  this % h * this % B(j) * ftmp(k)
+          fval = fval +  this % h * this % B(j) * ftmp
        end do
     end do
 
