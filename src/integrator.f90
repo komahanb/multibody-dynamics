@@ -52,7 +52,7 @@ module integrator_class
      !----------------------------------------------------------------!
 
      integer  :: max_newton = 25
-     real(dp) :: atol = 1.0d-14, rtol = 1.0d-12
+     real(dp) :: atol = 1.0d-14, rtol = 1.0d-13
 
      !----------------------------------------------------------------!
      ! Track global time and states
@@ -97,7 +97,7 @@ module integrator_class
      !----------------------------------------------------------------!
 
      procedure(InterfaceAssembleRHS)    , private, deferred :: assembleRHS
-     procedure :: computeTotalDerivative
+     procedure(InterfaceTotalDerivative),  deferred :: computeTotalDerivative
      procedure(InterfaceMarch), public, deferred            :: integrate, marchBackwards
      procedure                                              :: adjointSolve
      procedure                                              :: evalFunc
@@ -124,15 +124,15 @@ module integrator_class
      !===================================================================!
      ! Interface routine to assemble the RHS of the adjoint systen
      !===================================================================!
-!!$     
-!!$     subroutine InterfaceTotalDerivative(this, dfdx)
-!!$
-!!$       import integrator
-!!$
-!!$       class(integrator)                     :: this
-!!$       type(scalar), dimension(:), intent(inout) :: dfdx
-!!$       
-!!$     end subroutine InterfaceTotalDerivative
+     
+     subroutine InterfaceTotalDerivative(this, dfdx)
+
+       import integrator
+
+       class(integrator)                     :: this
+       type(scalar), dimension(:), intent(inout) :: dfdx
+       
+     end subroutine InterfaceTotalDerivative
 
      !===================================================================!
      ! Interface routine to assemble the RHS of the adjoint systen
@@ -275,9 +275,9 @@ contains
     integer                                   :: info, size
    
  ! Norms for tracking progress
-    real(dp)                                  :: abs_res_norm = 0.0d0
-    real(dp)                                  :: rel_res_norm = 0.0d0
-    real(dp)                                  :: init_norm    = 0.0d0
+    real(dp)                                  :: abs_res_norm
+    real(dp)                                  :: rel_res_norm
+    real(dp)                                  :: init_norm
     
  ! Other Local variables
     type(scalar), allocatable, dimension(:)   :: res, dq
@@ -326,7 +326,7 @@ contains
              ! Compare the exact and approximate Jacobians and
              ! complain about the error in Jacobian if there is any
              jac_err = maxval(abs(fd_jac - jac))
-             if ( abs(jac_err) .gt. 1.0d-3) then
+             if ( abs(jac_err) .gt. 1.0d-3 ) then
                 print *, "q     =", q
                 print *, "qdot  =", qdot
                 print *, "qddot =", qddot
@@ -366,7 +366,6 @@ contains
 #else
        call DGESV(size, 1, jac, size, IPIV, dq, size, INFO)
 #endif
-
        if (INFO .ne. 0) then
           print*, "LAPACK ERROR:", info
           stop
@@ -552,22 +551,21 @@ contains
 
     ! Transpose the system
     jac = transpose(jac)
-    
+
     ! Call lapack to solve the stage values system
 #if defined USE_COMPLEX
     call ZGESV(size, 1, jac, size, IPIV, rhs, size, INFO)    
 #else
     call DGESV(size, 1, jac, size, IPIV, rhs, size, INFO)
 #endif
-    
     if (INFO .ne. 0) then
        print*, "LAPACK ERROR:", info
        stop
     end if
-
+    
     ! Store into the output array
     psi = rhs
-
+    
     if (allocated(ipiv)) deallocate(ipiv)
     if (allocated(rhs)) deallocate(rhs)
     if (allocated(jac)) deallocate(jac)
@@ -599,6 +597,8 @@ contains
     !-----------------------------------------------------------------!
     ! Set the number of variables, design variables into the system
     !-----------------------------------------------------------------!
+    
+    if (num_dv .ne. this % system % num_design_vars) stop "NDV mismatch"
 
     call this % system % setDesignVars(num_dv, x)
     this % nDVars = num_dv
@@ -649,17 +649,12 @@ contains
 
     class(integrator)                         :: this
     class(abstract_function)       , target   :: func
-
     integer, intent(in)                       :: num_func, num_dv
-
     type(scalar), dimension(:), intent(inout) :: x
     type(scalar), dimension(:), intent(inout) :: dfdx
     type(scalar), intent(inout)               :: fvals
-
     real(dp), intent(in)                      :: dh
-
     type(scalar)                              :: fvals_tmp, xtmp
-
     integer                                   :: m
 
     !-----------------------------------------------------------------!
@@ -671,6 +666,8 @@ contains
     !-----------------------------------------------------------------!
     ! Set the number of variables, design variables into the system
     !-----------------------------------------------------------------!
+    
+    if (num_dv .ne. this % system % num_design_vars) stop "NDV mismatch"
 
     call this % system % setDesignVars(num_dv, x)
     this % nDVars = num_dv
@@ -696,7 +693,7 @@ contains
 
        ! Perturb the variable              
 #if defined USE_COMPLEX
-       x(m) = cmplx(dble(x(m)), 1.0d-15)
+       x(m) = cmplx(dble(x(m)), 1.0d-20)
 #else
        x(m) = x(m) + dh
 #endif
@@ -710,7 +707,7 @@ contains
 
        ! Find the FD derivative
 #if defined USE_COMPLEX
-       dfdx(m) = aimag(fvals_tmp)/1.0d-15
+       dfdx(m) = aimag(fvals_tmp)/1.0d-20
 #else
        dfdx(m) = (fvals_tmp-fvals)/dh
 #endif
@@ -729,19 +726,16 @@ contains
     class(integrator)                         :: this
     type(scalar), dimension(:), intent(in)    :: x
     type(scalar), intent(inout)               :: fval
-    type(scalar), allocatable, dimension(:) :: ftmp
+    type(scalar), dimension(this % num_steps) :: ftmp
     integer                                   :: k
     
-    allocate(ftmp(this % num_steps))
-    ftmp = 0.0d0
-
-    do concurrent(k = 2 : this % num_steps)
+    do concurrent(k = 1 : this % num_steps)
        call this % system % func % getFunctionValue(ftmp(k), this % time(k), &
             & x, this % U(k,:), this % UDOT(k,:), this % UDDOT(k,:))
     end do
     
     ! fval = sum(ftmp)/dble(this % num_steps)
-    fval = this % h* sum(ftmp)
+    fval = this % h*sum(ftmp)
    
 !!$    do concurrent(k = 2 : this % num_steps)
 !!$       do concurrent(j = 1 : this % num_stages)
@@ -751,8 +745,6 @@ contains
 !!$       end do
 !!$    end do
 !!$    
-
-    deallocate(ftmp)
 
   end subroutine evalFunc
 
@@ -770,57 +762,5 @@ contains
     end do
     
   end function znorm2
-
-  !===================================================================!
-  ! Compute the total derivative of the function with respect to the
-  ! design variables and return the gradient 
-  !===================================================================!
-  
-  subroutine computeTotalDerivative( this, dfdx )
-    
-    class(integrator)                                         :: this
-    type(scalar) , dimension(:), intent(inout)             :: dfdx
-    type(scalar) , dimension(this % nSVars, this % nDVars) :: dRdX
-    type(scalar)                                           :: scale = 1.0d0
-    integer                                            :: k
-    
-!    scale = this % h
-    
-    dfdx = 0.0d0
-    
-    !-----------------------------------------------------------------!
-    ! Compute dfdx
-    !-----------------------------------------------------------------!
-
-    do k = 2, this % num_steps
-       call this % system % func % addDfdx(dfdx, scale, this % time(k), &
-            & this % system % x, this % u(k,:), this % udot(k,:), this % uddot(k,:) )
-    end do
-
-    ! Initial condition
-!!$    call this % system % func % addDfdx(dfdx, scale, this % time(1), &
-!!$         & this % system % x, this % u(1,:), this % udot(1,:), this % uddot(2,:) )
-    
-    !-----------------------------------------------------------------!
-    ! Compute the total derivative
-    !-----------------------------------------------------------------!
-
-    do k = 2, this % num_steps
-       call this % system % getResidualDVSens(dRdX, scale, this % time(k), &
-            & this % system % x, this % u(k,:), this % udot(k,:), this % uddot(k,:))
-       dfdx = dfdx + matmul(this % psi(k,:), dRdX) ! check order
-    end do
-
-    ! Add constraint contribution
-!!$    call this % system % getResidualDVSens(dRdX, scale, this % time(1), &
-!!$         & this % system % x, this % u(1,:), this % udot(1,:), this % uddot(2,:))
-!!$    dfdx = dfdx + matmul(this % psi(2,:), dRdX)
-
-    ! Finally multiply by the scalar
-    dfdx = this % h * dfdx
-
-    print*, "Check scaling of dfdx, and transpose"
-
-  end subroutine computeTotalDerivative
 
 end module integrator_class

@@ -1,8 +1,7 @@
 #include "scalar.fpp"
-
 !=====================================================================!
-! Backward Difference Formula integration module for first and second
-! order systems with adjoint derivative capabilities
+! Backward Difference Formula Integration Module for first and second
+! order systems with adjoint derivative capabilities.
 !
 ! Author: Komahan Boopathy (komahan@gatech.edu)
 !=====================================================================! 
@@ -27,10 +26,10 @@ module bdf_integrator
   
   type :: bdf_coeff
      
- ! Information
-     integer                                   :: max_order = 3
+     ! Information
+     integer                               :: max_order = 3
      
- ! Coeff values
+     ! Coeff values
      type(scalar)                              :: alpha
      type(scalar), dimension(:,:), allocatable :: beta
      type(scalar), dimension(:,:), allocatable :: gamma
@@ -58,7 +57,7 @@ module bdf_integrator
 ! BDF variables
      integer                                :: max_bdf_order = 3
      type(bdf_coeff)                        :: coeff
-     
+
    contains
 
  ! Routines for integration
@@ -67,9 +66,10 @@ module bdf_integrator
      procedure, private :: getLinearCoeff
 
  ! Routines for adjoint gradient
+
      procedure, public  :: marchBackwards
      procedure, private :: assembleRHS
-!     procedure, private :: computeTotalDerivative
+     procedure :: computeTotalDerivative
 
   end type BDF
   
@@ -85,9 +85,9 @@ contains
   
   subroutine getLinearCoeff( this, k, alpha, beta, gamma )
     
-    class(BDF), intent(inout)   :: this
-    integer, intent(in)         :: k
-    type(scalar), intent(inout) :: alpha, beta, gamma
+    class(BDF), intent(inout) :: this
+    integer, intent(in)       :: k
+    type(scalar), intent(inout)   :: alpha, beta, gamma
     
     alpha = this % coeff % alpha
 
@@ -122,12 +122,11 @@ contains
     ! Set the coefficients
 
     this % alpha = 1.0d0
-
-    this % gamma(0, 1:2) = (/ 1.0d0, -1.0d0 /)
+    this % gamma(0, 1:1) = 1.0d0
 
     if (this % max_order .eq. 3) then
 
-       this % beta (1, 1:2) = (/ 1.0d0, -1.0d0 /)
+       this % beta (1, 1:2) = (/ 1.0, -1.0 /)
        this % beta (2, 1:3) = (/ 1.5d0, -2.0d0, 0.5d0 /)
        this % beta (3, 1:4) = (/ 35.d0/24.0d0, -15.d0/8.0d0, 3.0d0/8.0d0, 1.0d0/24.0d0 /)
 
@@ -138,7 +137,7 @@ contains
 
     else if (this % max_order .eq. 2) then
 
-       this % beta (1, 1:2) = (/ 1.0d0, -1.0d0 /)
+       this % beta (1, 1:2) = (/ 1.0, -1.0 /)
        this % beta (2, 1:3) = (/ 1.5d0, -2.0d0, 0.5d0 /)
 
        this % gamma(1, 1:3) = (/ 1.0d0, -2.0d0, 1.0d0 /)
@@ -146,7 +145,7 @@ contains
 
     else if (this % max_order .eq. 1) then
 
-       this % beta (1, 1:2) = (/ 1.0d0, -1.0d0 /)
+       this % beta (1, 1:2) = (/ 1.0, -1.0 /)
        this % gamma(1, 1:3) = (/ 1.0d0, -2.0d0, 1.0d0 /)
     else 
        print *,  "Wrong max_bdf_order:", this % max_order
@@ -179,13 +178,65 @@ contains
     integer, intent(in)             :: k, d
 
     ! find the order of approximation
-    getOrder = (k-1)/d ! k = md + 1
+    getOrder = (k-1)/d  ! k = md + 1
 
-    ! do not let exceed the max order sought
+    ! Do not let exceed the max order sought
     if ( getOrder .gt. this % max_order ) getOrder = this % max_order
 
   end function getOrder
  
+  !===================================================================!
+  ! Compute the total derivative of the function with respect to the
+  ! design variables and return the gradient 
+  !===================================================================!
+  
+  subroutine computeTotalDerivative( this, dfdx )
+    
+    class(BDF)                                         :: this
+    type(scalar) , dimension(:), intent(inout)             :: dfdx
+    type(scalar) , dimension(this % nSVars, this % nDVars) :: dRdX
+    type(scalar)                                           :: scale = 1.0d0
+    integer                                            :: k
+    
+!    scale = this % h
+    
+    dfdx = 0.0d0
+    
+    !-----------------------------------------------------------------!
+    ! Compute dfdx
+    !-----------------------------------------------------------------!
+
+    do k = 2, this % num_steps
+       call this % system % func % addDfdx(dfdx, scale, this % time(k), &
+            & this % system % x, this % u(k,:), this % udot(k,:), this % uddot(k,:) )
+    end do
+    
+    ! Initial condition
+    call this % system % func % addDfdx(dfdx, scale, this % time(1), &
+         & this % system % x, this % u(1,:), this % udot(1,:), this % uddot(1,:) )
+    
+    !-----------------------------------------------------------------!
+    ! Compute the total derivative
+    !-----------------------------------------------------------------!
+    
+    do k = 2, this % num_steps
+       call this % system % getResidualDVSens(dRdX, scale, this % time(k), &
+            & this % system % x, this % u(k,:), this % udot(k,:), this % uddot(k,:))
+       dfdx = dfdx + matmul(this % psi(k,:), dRdX) ! check order
+    end do
+
+    ! Add constraint contribution
+    call this % system % getResidualDVSens(dRdX, scale, this % time(1), &
+         & this % system % x, this % u(1,:), this % udot(1,:), this % uddot(1,:))
+    dfdx = dfdx + matmul(this % psi(2,:), dRdX)
+
+    ! Finally multiply by the scalar
+    dfdx = this % h * dfdx
+
+    print*, "Check scaling of dfdx, and transpose"
+
+  end subroutine computeTotalDerivative
+
   !===================================================================!
   ! Initialize the BDF datatype and allocate required variables
   !===================================================================!
@@ -395,16 +446,10 @@ contains
        
        call this % adjointSolve(this % psi(k,:), alpha, beta, gamma, &
             & this % time(k), this % u(k,:), this % udot(k,:), this % uddot(k,:))
+       
+       ! print*, "k,psi=", k, this % psi(k,:)
 
     end do time
-
-    !-----------------------------------------------------------------!
-    ! Copy the adjoint multipliers from the next time step
-    !-----------------------------------------------------------------!
-
-    if ( this % num_steps .ge. 2 ) then
-       this % psi(1,:) = this % psi(2,:)
-    end if
     
   end subroutine marchBackwards
   
@@ -415,7 +460,7 @@ contains
   subroutine approximateStates( this )
 
     class(BDF), intent(inout) :: this
-    integer                   :: k, m, i
+    integer :: k, m, i
 
     k = this % current_step
     
@@ -471,17 +516,20 @@ contains
     type(scalar), dimension(:,:), allocatable :: jac
     type(scalar)                              :: scale
     integer                                   :: k, i, m1, m2, idx
-   
-    k = this % current_step 
-    allocate( jac(this % nSVars, this % nSVars) ) 
     
+    allocate( jac(this % nSVars, this % nSVars) )
+    
+    k = this % current_step 
     m1 = this % coeff % getOrder(k, 1)
-    m2 = this % coeff % getOrder(k, 2)
+    m2 = this % coeff % getOrder( k, 2)
 
+    if (m2 .eq. 0) m2 = 1
+
+    ! Zero the RHS first
     rhs = 0.0d0
-
+    
     !-----------------------------------------------------------------!
-    ! Add function contribution (dfdu, dfdudot, dfduddot)
+    ! Add function contribution (dfdu)
     !-----------------------------------------------------------------!
     
     call this % system % func % addDFdU(rhs, ONE, this % time(k), &
@@ -489,27 +537,26 @@ contains
 
     do i = 0, m1
        idx = k + i
-       if ( idx .le. this % num_steps ) then
+       if ( idx .le. this % num_steps) then
           scale = this % coeff % beta(m1, i+1)/this % h
           call this % system % func % addDFdUDot(rhs, scale, this % time(idx), &
                & this % system % x, this % u(idx,:), this % udot(idx,:), this % uddot(idx,:))
        end if
     end do
 
-
     do i = 0, 2*m2
        idx = k + i
-       if ( idx .le. this % num_steps ) then
+       if ( idx .le. this % num_steps) then
           scale = this % coeff % gamma(m2, i+1)/this % h/this % h
           call this % system % func % addDFdUDDot(rhs, scale, this % time(idx), &
                & this % system % x, this % u(idx,:), this % udot(idx,:), this % uddot(idx,:))
        end if
     end do
-    
+
     !-----------------------------------------------------------------!
     ! Add residual contribution
     !-----------------------------------------------------------------!
-
+    
     do i = 1, m1 
        idx = k + i
        if ( idx .le. this % num_steps) then
@@ -531,7 +578,7 @@ contains
     end do
     
     ! Negate the RHS
-    rhs = -Rhs
+    rhs = - rhs
     
     if(allocated(jac)) deallocate(jac)
     
