@@ -729,7 +729,7 @@ contains
     type(scalar), dimension(this % num_steps) :: ftmp
     integer                                   :: k
     
-    do concurrent(k = 1 : this % num_steps)
+    do concurrent(k = 2 : this % num_steps)
        call this % system % func % getFunctionValue(ftmp(k), this % time(k), &
             & x, this % U(k,:), this % UDOT(k,:), this % UDDOT(k,:))
     end do

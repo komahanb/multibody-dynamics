@@ -862,6 +862,7 @@ contains
     type(scalar) :: alpha, beta, gamma, dfdx(3)
     integer      :: size = 2 ,info, ipiv(2)
     type(scalar) , dimension(:,:), allocatable   :: dRdX
+    type(scalar) :: psi, lam
 
     !-----------------------------------------------------------------!
     ! Set the objective function into the system
@@ -899,7 +900,7 @@ contains
     
     alpha    = this % h * this % B(1) * this % h * this % A(1,1)
     beta     = this % h * this % B(1)
-    gamma    = 1.0d0
+    gamma    = this % B(1)
     call this % system % assembleJacobian(mat(1:1,2:2), alpha, beta, gamma, &
          & this % T(1), this % q(2,1,:), this % qdot(2,1,:), this % qddot(2,1,:))
 
@@ -946,11 +947,11 @@ contains
     call DGESV(size, 1, mat, size, IPIV, rhs, size, INFO)
 #endif
 
-    this % lam(2,1,1) = -rhs(1)
+    this % lam(2,1,1) = rhs(1)
 
-    print *, rhs(1)
-    print *, rhs(2)
-
+    print *, "lam1=", rhs(1)
+    print *, "lam2=", rhs(2)
+    
     !-----------------------------------------------------------------!
     ! Evaluate total derivative
     !-----------------------------------------------------------------!
@@ -961,7 +962,6 @@ contains
          & this % system % x, this % Q(2,1,:), this % QDOT(2,1,:), &
          & this % QDDOT(2,1,:) )
 
-    print*, dfdx
     allocate(dRdX(this % nSVars, this % nDVars))
     dRdX = 0.0d0
     
@@ -983,19 +983,17 @@ contains
     type(scalar), dimension(this % num_steps) :: ftmp
     integer                                   :: k, j
     
- !   print *, "EVALFUNC dirk"
-
     fval = 0.0d0
     ftmp = 0.0d0
 
-!!$    do concurrent(k = 1 : this % num_steps)
+!!$    do concurrent(k = 2 : this % num_steps)
 !!$       call this % system % func % getFunctionValue(ftmp(k), this % time(k), &
 !!$            & x, this % U(k,:), this % UDOT(k,:), this % UDDOT(k,:))
 !!$    end do
 !!$    
 !!$    ! fval = sum(ftmp)/dble(this % num_steps)
 !!$    fval = this % h*sum(ftmp)
-   
+!!$   
     do concurrent(k = 2 : this % num_steps)
        do concurrent(j = 1 : this % num_stages)
           call this % system % func % getFunctionValue(ftmp(k), this % T(j), x, &
@@ -1003,8 +1001,6 @@ contains
           fval = fval +  this % h * this % B(j) * ftmp(k)
        end do
     end do
-
-!    print *, "fval",fval
 
   end subroutine evalFuncDIRK
 
