@@ -97,7 +97,7 @@ module integrator_class
      !----------------------------------------------------------------!
 
      procedure(InterfaceAssembleRHS)    , private, deferred :: assembleRHS
-     procedure(InterfaceTotalDerivative), private, deferred :: computeTotalDerivative
+     procedure(InterfaceTotalDerivative),  deferred :: computeTotalDerivative
      procedure(InterfaceMarch), public, deferred            :: integrate, marchBackwards
      procedure                                              :: adjointSolve
      procedure                                              :: evalFunc
@@ -649,17 +649,12 @@ contains
 
     class(integrator)                         :: this
     class(abstract_function)       , target   :: func
-
     integer, intent(in)                       :: num_func, num_dv
-
     type(scalar), dimension(:), intent(inout) :: x
     type(scalar), dimension(:), intent(inout) :: dfdx
     type(scalar), intent(inout)               :: fvals
-
     real(dp), intent(in)                      :: dh
-
     type(scalar)                              :: fvals_tmp, xtmp
-
     integer                                   :: m
 
     !-----------------------------------------------------------------!
@@ -698,7 +693,7 @@ contains
 
        ! Perturb the variable              
 #if defined USE_COMPLEX
-       x(m) = cmplx(dble(x(m)), 1.0d-16)
+       x(m) = cmplx(dble(x(m)), 1.0d-20)
 #else
        x(m) = x(m) + dh
 #endif
@@ -712,7 +707,7 @@ contains
 
        ! Find the FD derivative
 #if defined USE_COMPLEX
-       dfdx(m) = aimag(fvals_tmp)/1.0d-16
+       dfdx(m) = aimag(fvals_tmp)/1.0d-20
 #else
        dfdx(m) = (fvals_tmp-fvals)/dh
 #endif

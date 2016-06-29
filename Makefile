@@ -12,7 +12,7 @@ FC = gfortran
 #------------------------------
 CC_FLAGS =  #-g #-Wall
 CX_FLAGS =  #-g #-Wall
-FC_FLAGS =  -g -cpp #-fbounds-check -ffree-form -Wall -cpp -dM -Wno-unused
+FC_FLAGS =  -g -cpp -fbounds-check #-fbounds-check -ffree-form -Wall -cpp -dM -Wno-unused
 
 TARGET = $(BIN_DIR)/test
 

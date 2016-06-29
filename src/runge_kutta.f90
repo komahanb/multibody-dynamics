@@ -75,6 +75,8 @@ module runge_kutta_integrator
      procedure(computeStageStateValues_interface), private, deferred :: ComputeStageStateValues
      procedure(buthcher_interface), private, deferred                :: SetupButcherTableau
 
+     procedure :: testAdjoint
+
   end type RK
 
   !-------------------------------------------------------------------!  
@@ -88,15 +90,15 @@ module runge_kutta_integrator
      private
 
      procedure :: setupButcherTableau => ButcherDIRK
-     procedure :: computeStageStateValues
+     procedure, private :: computeStageStateValues
 
      !----------------------------------------------------------------!
      ! Adjoint procedures
      !----------------------------------------------------------------!
      procedure, public  :: marchBackwards
      procedure, private :: assembleRHS
-     procedure, private :: computeTotalDerivative
-
+     procedure, public :: computeTotalDerivative
+     procedure, public :: evalFunc => evalFuncDIRK
   end type DIRK
 
   !===================================================================!
@@ -508,14 +510,13 @@ contains
        this % C(1)      = half
 
        this % order     = 2
-
+       
 !!$       ! Implicit Euler (Backward Euler) but first order accurate
 !!$       this % A(1,1) = one
 !!$       this % B(1)   = one
 !!$       this % C(1)   = one
 !!$       this % order  = 1
-
-
+       
     else if (this % num_stages .eq. 2) then
 
        ! Crouzeix formula (A-stable)
@@ -793,11 +794,11 @@ contains
   
   subroutine computeTotalDerivative( this, dfdx )
 
-    class(DIRK)                              :: this
+    class(DIRK)                                  :: this
     type(scalar) , dimension(:), intent(inout)   :: dfdx
     type(scalar) , dimension(:,:), allocatable   :: dRdX
-    integer                                  :: k, j
-
+    integer                                      :: k, j
+  
     allocate(dRdX(this % nSVars, this % nDVars))
 
     dfdx = 0.0d0
@@ -824,7 +825,9 @@ contains
        do j = 1, this % num_stages
           call this % system % getResidualDVSens(dRdX, ONE, this % T(j), &
                & this % system % x, this % Q(k,j,:), this % QDOT(k,j,:), this % QDDOT(k,j,:))
+
 !          print*, this % B(j),drdx, this % lam (k,j,:)
+
           dfdx = dfdx + this % h * this % B(j)* matmul(this % lam(k,j,:), dRdX) ! check order
        end do
     end do
@@ -844,5 +847,161 @@ contains
     deallocate(dRdX)
  
   end subroutine computeTotalDerivative
+
+  
+  subroutine testAdjoint(this, num_func, func, num_dv, x, dfdx)
+
+    use function_class , only : abstract_function
+
+    class(RK)    :: this
+    class(abstract_function) ::func
+    type(scalar), dimension(:), intent(in)           :: x
+    integer, intent(in)                              :: num_func, num_dv
+    type(scalar) :: mat(2,2) = 0.0d0
+    type(scalar) :: rhs(2) = 0.0d0
+    type(scalar) :: alpha, beta, gamma, dfdx(3)
+    integer      :: size = 2 ,info, ipiv(2)
+    type(scalar) , dimension(:,:), allocatable   :: dRdX
+    type(scalar) :: psi, lam
+
+    !-----------------------------------------------------------------!
+    ! Set the objective function into the system
+    !-----------------------------------------------------------------!
+
+    call this % system % setFunction(func)
+
+    !-----------------------------------------------------------------!
+    ! Set the number of variables, design variables into the system
+    !-----------------------------------------------------------------!
+    
+    if (num_dv .ne. this % system % num_design_vars) stop "NDV mismatch"
+
+    call this % system % setDesignVars(num_dv, x)
+    this % nDVars = num_dv
+    
+    !-----------------------------------------------------------------!
+    ! Integrate forward in time to solve for the state variables
+    !-----------------------------------------------------------------!
+
+    call this % integrate()
+    
+    !-----------------------------------------------------------------!
+    ! Matrix
+    !-----------------------------------------------------------------!
+    
+    mat = 0.0d0
+    rhs = 0.0d0
+    
+    alpha    = this % h * this % A(1,1) * this % h * this % A(1,1)
+    beta     = this % h * this % A(1,1)
+    gamma    = 1.0d0
+    call this % system % assembleJacobian(mat(1:1,1:1), alpha, beta, gamma, &
+         & this % T(1), this % q(2,1,:), this % qdot(2,1,:), this % qddot(2,1,:))
+    
+    alpha    = this % h * this % B(1) * this % h * this % A(1,1)
+    beta     = this % h * this % B(1)
+    gamma    = this % B(1)
+    call this % system % assembleJacobian(mat(1:1,2:2), alpha, beta, gamma, &
+         & this % T(1), this % q(2,1,:), this % qdot(2,1,:), this % qddot(2,1,:))
+
+    alpha    = this % h * this % A(1,1) * this % h 
+    beta     = this % h
+    gamma    = 1.0d0
+    call this % system % assembleJacobian(mat(2:2,2:2), alpha, beta, gamma, &
+         & this % time(2), this % u(2,:), this % udot(2,:), this % uddot(2,:))
+
+    !-----------------------------------------------------------------!
+    ! Assemble the RHS
+    !-----------------------------------------------------------------!
+
+    ! First term
+    gamma = -1.0d0 
+    call this % system % func % addDFdUDDot(rhs(1:1), gamma , this % T(1), &
+         & this % system % x, this % Q(2,1,:), this % QDot(2,1,:), this % Qddot(2,1,:))
+    
+    beta = - this % h * this % A(1,1)
+    call this % system % func % addDFdUDot(rhs(1:1), beta , this % T(1), &
+         & this % system % x, this % Q(2,1,:), this % QDot(2,1,:), this % Qddot(2,1,:))
+
+    alpha = - this % h * this % A(1,1)* this % h * this % A(1,1)
+    call this % system % func % addDFdU(rhs(1:1), alpha , this % T(1), &
+         & this % system % x, this % Q(2,1,:), this % QDot(2,1,:), this % Qddot(2,1,:))
+    
+    ! Second term
+    alpha = -this % h * this % A(1,1) * this % h 
+    call this % system % func % addDFdU(rhs(2:2), alpha, this % time(2), &
+         & this % system % x, this % U(2,:), this % UDOT(2,:), this % UDDOT(2,:))
+
+    beta  = -this % h
+    call this % system % func % addDFdUDOT(rhs(2:2), beta, this % time(2), &
+         & this % system % x, this % U(2,:), this % UDOT(2,:), this % UDDOT(2,:))
+    
+    gamma = -1.0d0
+    call this % system % func % addDFdUDDOT(rhs(2:2), gamma, this % time(2), &
+         & this % system % x, this % U(2,:), this % UDOT(2,:), this % UDDOT(2,:))
+
+    ! Call linear solve
+#if defined USE_COMPLEX
+    call ZGESV(size, 1, mat, size, IPIV, rhs, size, INFO)
+#else
+    call DGESV(size, 1, mat, size, IPIV, rhs, size, INFO)
+#endif
+
+    this % lam(2,1,1) = rhs(1)
+
+    print *, "lam1=", rhs(1)
+    print *, "lam2=", rhs(2)
+    
+    !-----------------------------------------------------------------!
+    ! Evaluate total derivative
+    !-----------------------------------------------------------------!
+    dfdx = 0.0d0
+    
+    call this % system % func % addDFDX(dfdx, this % h * this % B(1),&
+         &  this % T(1),  &
+         & this % system % x, this % Q(2,1,:), this % QDOT(2,1,:), &
+         & this % QDDOT(2,1,:) )
+
+    allocate(dRdX(this % nSVars, this % nDVars))
+    dRdX = 0.0d0
+    
+    call this % system % getResidualDVSens(dRdX(1:1,1:3), ONE, this % T(1), &
+         & this % system % x, this % Q(2,1,:), this % QDOT(2,1,:), this % QDDOT(2,1,:))
+
+    dfdx = dfdx + this % h * this % B(1)* matmul(this % lam(2,1,1:1), dRdX) ! check order
+    
+    deallocate(drdx)
+
+  end subroutine testAdjoint
+
+
+  subroutine evalFuncDIRK(this, x, fval)
+
+    class(DIRK)                               :: this
+    type(scalar), dimension(:), intent(in)    :: x
+    type(scalar), intent(inout)               :: fval
+    type(scalar), dimension(this % num_steps) :: ftmp
+    integer                                   :: k, j
+    
+    fval = 0.0d0
+    ftmp = 0.0d0
+
+!!$    do concurrent(k = 2 : this % num_steps)
+!!$       call this % system % func % getFunctionValue(ftmp(k), this % time(k), &
+!!$            & x, this % U(k,:), this % UDOT(k,:), this % UDDOT(k,:))
+!!$    end do
+!!$    
+!!$    ! fval = sum(ftmp)/dble(this % num_steps)
+!!$    fval = this % h*sum(ftmp)
+!!$   
+    do concurrent(k = 2 : this % num_steps)
+       do concurrent(j = 1 : this % num_stages)
+          call this % system % func % getFunctionValue(ftmp(k), this % T(j), x, &
+               & this % Q(k,j,:), this % QDOT(k,j,:), this % QDDOT(k,j,:))
+          fval = fval +  this % h * this % B(j) * ftmp(k)
+       end do
+    end do
+
+  end subroutine evalFuncDIRK
 
 end module runge_kutta_integrator

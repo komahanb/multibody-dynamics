@@ -69,7 +69,7 @@ module bdf_integrator
 
      procedure, public  :: marchBackwards
      procedure, private :: assembleRHS
-     procedure, private :: computeTotalDerivative
+     procedure :: computeTotalDerivative
 
   end type BDF
   
@@ -212,8 +212,8 @@ contains
     end do
     
     ! Initial condition
-    call this % system % func % addDfdx(dfdx, scale, this % time(1), &
-         & this % system % x, this % u(1,:), this % udot(1,:), this % uddot(1,:) )
+!!$    call this % system % func % addDfdx(dfdx, scale, this % time(1), &
+!!$         & this % system % x, this % u(1,:), this % udot(1,:), this % uddot(1,:) )
     
     !-----------------------------------------------------------------!
     ! Compute the total derivative
@@ -225,10 +225,10 @@ contains
        dfdx = dfdx + matmul(this % psi(k,:), dRdX) ! check order
     end do
 
-    ! Add constraint contribution
-    call this % system % getResidualDVSens(dRdX, scale, this % time(1), &
-         & this % system % x, this % u(1,:), this % udot(1,:), this % uddot(1,:))
-    dfdx = dfdx + matmul(this % psi(2,:), dRdX)
+!!$    ! Add constraint contribution
+!!$    call this % system % getResidualDVSens(dRdX, scale, this % time(1), &
+!!$         & this % system % x, this % u(1,:), this % udot(1,:), this % uddot(1,:))
+!!$    dfdx = dfdx + matmul(this % psi(2,:), dRdX)
 
     ! Finally multiply by the scalar
     dfdx = this % h * dfdx
@@ -447,7 +447,7 @@ contains
        call this % adjointSolve(this % psi(k,:), alpha, beta, gamma, &
             & this % time(k), this % u(k,:), this % udot(k,:), this % uddot(k,:))
        
-       ! print*, "k,psi=", k, this % psi(k,:)
+       print*, "k,psi=", k, this % psi(k,:)
 
     end do time
     

@@ -96,7 +96,8 @@ contains
     real(dp), intent(in)                      :: time
     type(scalar)                              :: scale
     
-!    res(1) = res(1) + scale*x(2)*udot(1) ! wrt to udot(1)
+
+    res(1) = res(1) !+ scale*x(2)*udot(1) ! wrt to udot(1)
 
   end subroutine addDFdUDot
   
@@ -112,7 +113,7 @@ contains
     real(dp), intent(in)                      :: time
     type(scalar)                              :: scale
     
- !   res(1) = res(1) + scale*x(1)*uddot(1) ! wrt to uddot(1)
+    res(1) = res(1) !+ scale*x(1)*uddot(1) ! wrt to uddot(1)
 
   end subroutine addDfdUDDot
 
