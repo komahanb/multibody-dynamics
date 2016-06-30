@@ -692,11 +692,10 @@ contains
 
        ! Perturb the variable              
 #if defined USE_COMPLEX
-       x(m) = cmplx(dble(x(m)), 1.0d-15)
+       x(m) = cmplx(dble(x(m)), 1.0d-20)
 #else
        x(m) = x(m) + dh
 #endif
-
        call this % system % setDesignVars(num_dv, x)
        call this % integrate()
        call this % evalFunc(x, fvals_tmp)
@@ -706,7 +705,7 @@ contains
 
        ! Find the FD derivative
 #if defined USE_COMPLEX
-       dfdx(m) = aimag(fvals_tmp)/1.0d-15
+       dfdx(m) = aimag(fvals_tmp)/1.0d-20
 #else
        dfdx(m) = (fvals_tmp-fvals)/dh
 #endif
@@ -728,14 +727,12 @@ contains
     type(scalar), dimension(this % num_steps) :: ftmp
     integer                                   :: k
     
-    do concurrent(k = 1 : this % num_steps)
+    do concurrent(k = 2 : this % num_steps)
        call this % system % func % getFunctionValue(ftmp(k), this % time(k), &
             & x, this % U(k,:), this % UDOT(k,:), this % UDDOT(k,:))
     end do
+    fval = this % h * sum(ftmp)
     
-    ! fval = sum(ftmp)/dble(this % num_steps)
-    fval = this % h*sum(ftmp)
-   
 !!$    do concurrent(k = 2 : this % num_steps)
 !!$       do concurrent(j = 1 : this % num_stages)
 !!$          call this % system % func % getFunctionValue(ftmp, this % T(j), &

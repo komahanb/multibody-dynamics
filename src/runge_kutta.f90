@@ -76,6 +76,7 @@ module runge_kutta_integrator
      procedure(buthcher_interface), private, deferred                :: SetupButcherTableau
 
      procedure :: testAdjoint
+     procedure :: testAdjoint2
 
   end type RK
 
@@ -98,7 +99,7 @@ module runge_kutta_integrator
      procedure, public  :: marchBackwards
      procedure, private :: assembleRHS
      procedure, public :: computeTotalDerivative
-     procedure, public :: evalFunc => evalFuncDIRK
+!     procedure, public :: evalFunc => evalFuncDIRK
   end type DIRK
 
   !===================================================================!
@@ -811,7 +812,7 @@ contains
     do k = 2, this % num_steps
        do j = 1, this % num_stages
           call this % system % func % addDFDX(dfdx, this % h * this % B(j),&
-               &  this % T(j),  &
+               & this % T(j),  &
                & this % system % x, this % Q(k,j,:), this % QDOT(k,j,:), &
                & this % QDDOT(k,j,:) )
        end do
@@ -848,7 +849,117 @@ contains
  
   end subroutine computeTotalDerivative
 
-  
+  subroutine testAdjoint2(this, num_func, func, num_dv, x, dfdx)
+
+    use function_class , only : abstract_function
+
+    class(RK)                                  :: this
+    class(abstract_function)                   :: func
+    type(scalar), dimension(:), intent(in)     :: x
+    integer, intent(in)                        :: num_func, num_dv
+    type(scalar)                               :: mat(1,1) = 0.0d0
+    type(scalar)                               :: rhs(1) = 0.0d0
+    type(scalar)                               :: alpha, beta, gamma, dfdx(3), dfdxTmp(3)
+    integer                                    :: size = 2 ,info, ipiv, k
+    type(scalar) , dimension(:,:), allocatable :: dRdX
+    type(scalar)                               :: scale = 0.0d0
+
+    !-----------------------------------------------------------------!
+    ! Set the objective function into the system
+    !-----------------------------------------------------------------!
+
+    call this % system % setFunction(func)
+
+    !-----------------------------------------------------------------!
+    ! Set the number of variables, design variables into the system
+    !-----------------------------------------------------------------!
+
+    if (num_dv .ne. this % system % num_design_vars) stop "NDV mismatch"
+
+    call this % system % setDesignVars(num_dv, x)
+    this % nDVars = num_dv
+
+    !-----------------------------------------------------------------!
+    ! Integrate forward in time to solve for the state variables
+    !-----------------------------------------------------------------!
+
+    call this % integrate()
+
+    !-----------------------------------------------------------------!
+    ! Matrix
+    !-----------------------------------------------------------------!
+
+    do k = this % num_steps, 2, -1
+
+       mat = 0.0d0
+       
+       alpha    = this % h * this % h * this % A(1,1)
+       beta     = this % h
+       gamma    = 1.0d0
+       call this % system % assembleJacobian(mat(1:1,1:1), alpha, beta, gamma, &
+            & this % time(k), this % u(k,:), this % udot(k,:), this % uddot(k,:))
+
+       rhs = 0.0d0
+
+       alpha = this % h * this % A(1,1) * this % h 
+       call this % system % func % addDFdU(rhs(1:1), alpha, this % time(k), &
+            & this % system % x, this % U(k,:), this % UDOT(k,:), this % UDDOT(k,:))
+
+       beta  = this % h
+       call this % system % func % addDFdUDOT(rhs(1:1), beta, this % time(k), &
+            & this % system % x, this % U(k,:), this % UDOT(k,:), this % UDDOT(k,:))
+
+       gamma = 1.0d0
+       call this % system % func % addDFdUDDOT(rhs(1:1), gamma, this % time(k), &
+            & this % system % x, this % U(k,:), this % UDOT(k,:), this % UDDOT(k,:))
+
+       if ( k + 1 .le. this % num_steps ) then
+          alpha    = 1.0d0 + this % h * this % B(1)
+          beta     = 1.0d0
+          gamma    = 0.0d0       
+          call this % system % assembleJacobian(mat(1:1,1:1), alpha, beta, gamma, &
+               & this % time(k+1), this % u(k+1,:), this % udot(k+1,:), this % uddot(k+1,:))
+          rhs = rhs + mat(1,1) * this % psi(k+1,:)
+       end if
+
+       this % psi(k,:) = -rhs(1)/mat(1,1)
+
+!       print*, "psi=", k, this % psi(k,:)
+       
+    end do
+
+    ! Compute total derivative    
+
+    dfdx = 0.0d0
+
+    allocate(dRdX(this % nSVars, this % nDVars))
+
+    scale = this % h * this % B(1)
+
+    do k = this % num_steps,  2, -1
+
+       dfdxTmp = 0.0d0
+
+       call this % system % func % addDFDX(dfdxtmp, scale, &
+            & this % Time(k),  &
+            & this % system % x, this % U(k,:), this % UDOT(k,:), &
+            & this % UDDOT(k,:) )
+
+       dRdX = 0.0d0
+
+       call this % system % getResidualDVSens(dRdX, scale, &
+            & this % Time(k), &
+            & this % system % x, this % U(k,:), this % UDOT(k,:), &
+            & this % UDDOT(k,:))
+
+       dfdx(:) = dfdx + dfdxTmp(:) + this % psi(k,1) * dRdX(1,:)
+
+    end do
+
+    deallocate(drdx)
+
+  end subroutine testAdjoint2
+
   subroutine testAdjoint(this, num_func, func, num_dv, x, dfdx)
 
     use function_class , only : abstract_function
@@ -873,25 +984,25 @@ contains
     !-----------------------------------------------------------------!
     ! Set the number of variables, design variables into the system
     !-----------------------------------------------------------------!
-    
+
     if (num_dv .ne. this % system % num_design_vars) stop "NDV mismatch"
 
     call this % system % setDesignVars(num_dv, x)
     this % nDVars = num_dv
-    
+
     !-----------------------------------------------------------------!
     ! Integrate forward in time to solve for the state variables
     !-----------------------------------------------------------------!
 
     call this % integrate()
-    
+
     !-----------------------------------------------------------------!
     ! Matrix
     !-----------------------------------------------------------------!
-    
+
     mat = 0.0d0
     rhs = 0.0d0
-    
+
     alpha    = this % h * this % h * this % A(1,1) * this % A(1,1)
     beta     = this % h * this % A(1,1)
     gamma    = 1.0d0
@@ -911,7 +1022,7 @@ contains
 !!$         & this % time(2), this % u(2,:), this % udot(2,:), this % uddot(2,:))
 
     alpha    = this % h * this % h * this % A(1,1)
-    beta     = this % h * this % B(1)
+    beta     = this % h
     gamma    = 1.0d0
     call this % system % assembleJacobian(mat(2:2,2:2), alpha, beta, gamma, &
          & this % time(2), this % u(2,:), this % udot(2,:), this % uddot(2,:))
@@ -927,7 +1038,7 @@ contains
     gamma = 1.0d0 
     call this % system % func % addDFdUDDot(rhs(1:1), gamma , this % T(1), &
          & this % system % x, this % Q(2,1,:), this % QDot(2,1,:), this % Qddot(2,1,:))
-    
+
     beta = this % h * this % A(1,1)
     call this % system % func % addDFdUDot(rhs(1:1), beta , this % T(1), &
          & this % system % x, this % Q(2,1,:), this % QDot(2,1,:), this % Qddot(2,1,:))
@@ -935,16 +1046,16 @@ contains
     alpha = this % h * this % A(1,1)* this % h * this % A(1,1)
     call this % system % func % addDFdU(rhs(1:1), alpha , this % T(1), &
          & this % system % x, this % Q(2,1,:), this % QDot(2,1,:), this % Qddot(2,1,:))
-    
+
     ! Second term
     alpha = this % h * this % A(1,1) * this % h 
     call this % system % func % addDFdU(rhs(2:2), alpha, this % time(2), &
          & this % system % x, this % U(2,:), this % UDOT(2,:), this % UDDOT(2,:))
 
-    beta  = this % h * this % B(1)
+    beta  = this % h
     call this % system % func % addDFdUDOT(rhs(2:2), beta, this % time(2), &
          & this % system % x, this % U(2,:), this % UDOT(2,:), this % UDDOT(2,:))
-    
+
     gamma = 1.0d0
     call this % system % func % addDFdUDDOT(rhs(2:2), gamma, this % time(2), &
          & this % system % x, this % U(2,:), this % UDOT(2,:), this % UDDOT(2,:))
@@ -968,12 +1079,12 @@ contains
 
     print *, "lam1=", rhs(1)
     print *, "lam2=", rhs(2)
-    
+
     !-----------------------------------------------------------------!
     ! Evaluate total derivative
     !-----------------------------------------------------------------!
     dfdx = 0.0d0
-    
+
     call this % system % func % addDFDX(dfdx, this % h * this % B(1),&
          &  this % T(1),  &
          & this % system % x, this % Q(2,1,:), this % QDOT(2,1,:), &
@@ -981,7 +1092,7 @@ contains
 
     allocate(dRdX(this % nSVars, this % nDVars))
     dRdX = 0.0d0
-    
+
     call this % system % getResidualDVSens(dRdX, this % h * this % B(1), this % T(1), &
          & this % system % x, this % Q(2,1,:), this % QDOT(2,1,:), this % QDDOT(2,1,:))
 

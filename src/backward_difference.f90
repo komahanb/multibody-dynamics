@@ -443,7 +443,7 @@ contains
        !--------------------------------------------------------------!
        ! Solve the adjoint equation at each step
        !--------------------------------------------------------------!
-       
+
        call this % adjointSolve(this % psi(k,:), alpha, beta, gamma, &
             & this % time(k), this % u(k,:), this % udot(k,:), this % uddot(k,:))
        
