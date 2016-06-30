@@ -207,12 +207,12 @@ contains
     !-----------------------------------------------------------------!
 
     do k = 2, this % num_steps
-       call this % system % func % addDfdx(dfdx, scale, this % time(k), &
+       call this % system % func % addFuncDVSens(dfdx, scale, this % time(k), &
             & this % system % x, this % u(k,:), this % udot(k,:), this % uddot(k,:) )
     end do
     
     ! Initial condition
-!!$    call this % system % func % addDfdx(dfdx, scale, this % time(1), &
+!!$    call this % system % func % addFuncDVSens(dfdx, scale, this % time(1), &
 !!$         & this % system % x, this % u(1,:), this % udot(1,:), this % uddot(1,:) )
     
     !-----------------------------------------------------------------!

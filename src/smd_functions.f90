@@ -22,11 +22,12 @@ module smd_functions_class
 
    contains  
 
-     procedure :: getFunctionValue ! function value at t, X, U, Udot, Uddot
-     procedure :: addDFdX          ! partial derivative
-     procedure :: addDFdU          ! partial derivative
-     procedure :: addDFdUDot       ! partial derivative
-     procedure :: addDFdUDDot      ! partial derivative
+     procedure :: getFunctionValue
+     procedure :: addFuncDVSens
+     procedure :: addFuncSVSens 
+     procedure :: addDFdU
+     procedure :: addDFdUDot
+     procedure :: addDFdUDDot
 
   end type kinetic_energy
 
@@ -54,7 +55,7 @@ contains
   ! Evaluate  dF/dX
   ! -------------------------------------------------------------------!
 
-  subroutine addDfdX(this, res, scale, time, x, u, udot, uddot)
+  subroutine addFuncDVSens(this, res, scale, time, x, u, udot, uddot)
 
     class(kinetic_energy)                     :: this
     type(scalar), intent(inout), dimension(:) :: res
@@ -66,8 +67,25 @@ contains
 !    res(2) = res(2) + scale*0.5d0*udot(1)**2 ! wrt to c
     res(3) = res(3) + scale*0.5d0*u(1)**2 ! wrt to k
     
-  end subroutine addDfdX
+  end subroutine addFuncDVSens
   
+  !-------------------------------------------------------------------!
+  ! Evaluate alpha dF/dU + beta dF/dUDot + gamma dF/dUDDOT
+  ! -------------------------------------------------------------------!
+
+  subroutine addFuncSVSens(this, res, alpha, beta, gamma, &
+       & time, x, u, udot, uddot)
+
+    class(kinetic_energy)                     :: this
+    type(scalar), intent(inout), dimension(:) :: res
+    real(dp), intent(in)                      :: time
+    type(scalar), intent(in), dimension(:)    :: x, u, udot, uddot
+    type(scalar), intent(in)                  :: alpha, beta, gamma
+
+    res(1) = res(1) + alpha*x(3)*u(1) + beta * 0.0d0 + gamma * 0.0d0 !to u(1)
+    
+  end subroutine addFuncSVSens
+
   !-------------------------------------------------------------------!
   ! Evaluate  dF/dU
   ! -------------------------------------------------------------------!

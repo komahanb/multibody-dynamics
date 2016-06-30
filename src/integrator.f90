@@ -580,13 +580,12 @@ contains
   subroutine evalFuncGrad( this, num_func, func, &
        & num_dv, x, fvals, dfdx )
     
-    class(integrator)                                :: this
-    class(abstract_function)       , target          :: func
-    type(scalar), dimension(:), intent(in)               :: x
-    integer, intent(in)                              :: num_func, num_dv
-    type(scalar), dimension(:), intent(inout), OPTIONAL  :: dfdx
-    type(scalar), intent(inout), OPTIONAL                :: fvals
-
+    class(integrator)                                   :: this
+    class(abstract_function)       , target             :: func
+    type(scalar), dimension(:), intent(in)              :: x
+    integer, intent(in)                                 :: num_func, num_dv
+    type(scalar), dimension(:), intent(inout), OPTIONAL :: dfdx
+    type(scalar), intent(inout), OPTIONAL               :: fvals
    
     !-----------------------------------------------------------------!
     ! Set the objective function into the system
@@ -673,18 +672,17 @@ contains
     this % nDVars = num_dv
 
     !-----------------------------------------------------------------!
-    ! Compute the objective/ constraint function value
-    !-----------------------------------------------------------------!
-#if defined USE_COMPLEX
-#else
-    !-----------------------------------------------------------------!
     ! Integrate forward in time to solve for the state variables
     !-----------------------------------------------------------------!
 
     call this % integrate()
+
+    !-----------------------------------------------------------------!
+    ! Compute the objective/ constraint function value
+    !-----------------------------------------------------------------!
+
     call this % evalFunc(x, fvals)
-#endif
-   
+    
     do m = 1, this % ndvars
 
        ! Store the original x value
@@ -709,7 +707,6 @@ contains
 #else
        dfdx(m) = (fvals_tmp-fvals)/dh
 #endif
- 
     end do
 
   end subroutine evalFDFuncGrad

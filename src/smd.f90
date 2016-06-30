@@ -24,9 +24,9 @@ module spring_mass_damper_class
      ! Define constants and other parameters needed for residual and
      ! jacobian assembly here
 
-     type(scalar) :: m = 1.0d0
-     type(scalar) :: c = 0.02d0
-     type(scalar) :: k = 5.0d0
+     type(scalar) :: m = 0.0d0
+     type(scalar) :: c = 0.00d0
+     type(scalar) :: k = 0.d0
 
    contains
 

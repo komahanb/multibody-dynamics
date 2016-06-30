@@ -32,7 +32,8 @@ module function_class
    contains
 
      procedure(interface_evaluate), deferred :: getFunctionValue ! function value at t, X, U, Udot, Uddot
-     procedure(interface_gradient), deferred :: addDFdX          ! partial derivative
+     procedure(interface_gradient), deferred :: addFuncDVSens    ! partial derivative
+     procedure(interface_sv_gradient), deferred :: addFuncSVSens    ! partial derivative
      procedure(interface_gradient), deferred :: addDFdU          ! partial derivative
      procedure(interface_gradient), deferred :: addDFdUDot       ! partial derivative
      procedure(interface_gradient), deferred :: addDFdUDDot      ! partial derivative
@@ -50,9 +51,9 @@ module function_class
        import abstract_function
 
        class(abstract_function), intent(inout) :: this
-       type(scalar), intent(inout)                  :: f
-       real(dp), intent(in)                     :: time
-       type(scalar), intent(in), dimension(:)       :: x, u, udot, uddot
+       type(scalar), intent(inout)             :: f
+       real(dp), intent(in)                    :: time
+       type(scalar), intent(in), dimension(:)  :: x, u, udot, uddot
 
      end subroutine interface_evaluate
 
@@ -64,13 +65,31 @@ module function_class
 
        import abstract_function
 
-       class(abstract_function)             :: this
+       class(abstract_function)                  :: this
        type(scalar), intent(inout), dimension(:) :: res
-       real(dp), intent(in)                  :: time
+       real(dp), intent(in)                      :: time
        type(scalar), intent(in), dimension(:)    :: x, u, udot, uddot
        type(scalar)                              :: scale
 
      end subroutine interface_gradient
+
+
+     !----------------------------------------------------------------!
+     ! Interface for evaluating the gradient for t, x, U, Udot, Uddot
+     !----------------------------------------------------------------!
+     
+     subroutine interface_sv_gradient(this, res, alpha, beta, gamma, &
+          &  time, x, u, udot, uddot)
+
+       import abstract_function
+
+       class(abstract_function)                  :: this
+       type(scalar), intent(inout), dimension(:) :: res
+       real(dp), intent(in)                      :: time
+       type(scalar), intent(in), dimension(:)    :: x, u, udot, uddot
+       type(scalar), intent(in)                  :: alpha, beta, gamma
+
+     end subroutine interface_sv_gradient
 
   end interface
   

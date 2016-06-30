@@ -29,10 +29,11 @@ module oscillator_functions_class
    contains  
 
      procedure :: getFunctionValue ! function value at t, X, U, Udot, Uddot
-     procedure :: addDFdX          ! partial derivative
+     procedure :: addFuncDVSens          ! partial derivative
      procedure :: addDFdU          ! partial derivative
      procedure :: addDFdUDot       ! partial derivative
      procedure :: addDFdUDDot      ! partial derivative
+     procedure :: addFuncSVSens
 
   end type pitch
 
@@ -57,7 +58,7 @@ contains
   ! Evaluate  dF/dX
   !-------------------------------------------------------------------!
 
-  subroutine addDfdX(this, res, scale, time, x, u, udot, uddot)
+  subroutine addFuncDVSens(this, res, scale, time, x, u, udot, uddot)
 
     class(pitch)                         :: this
     type(scalar), intent(inout), dimension(:) :: res
@@ -67,8 +68,25 @@ contains
     
  !  res = 0.0d0
 
-  end subroutine addDfdX
-  
+  end subroutine addFuncDVSens
+
+    !-------------------------------------------------------------------!
+  ! Evaluate alpha dF/dU + beta dF/dUDot + gamma dF/dUDDOT
+  ! -------------------------------------------------------------------!
+
+  subroutine addFuncSVSens(this, res, alpha, beta, gamma, &
+       & time, x, u, udot, uddot)
+
+    class(pitch)                     :: this
+    type(scalar), intent(inout), dimension(:) :: res
+    real(dp), intent(in)                      :: time
+    type(scalar), intent(in), dimension(:)    :: x, u, udot, uddot
+    type(scalar), intent(in)                  :: alpha, beta, gamma
+
+    stop"unimplemented"
+    
+  end subroutine addFuncSVSens
+
   !-------------------------------------------------------------------!
   ! Evaluate  dF/dU
   ! -------------------------------------------------------------------!

@@ -77,6 +77,7 @@ module runge_kutta_integrator
 
      procedure :: testAdjoint
      procedure :: testAdjoint2
+     procedure :: testAdjoint3
 
   end type RK
 
@@ -99,7 +100,8 @@ module runge_kutta_integrator
      procedure, public  :: marchBackwards
      procedure, private :: assembleRHS
      procedure, public :: computeTotalDerivative
-!     procedure, public :: evalFunc => evalFuncDIRK
+     procedure, public :: evalFunc => evalFuncDIRK
+
   end type DIRK
 
   !===================================================================!
@@ -650,7 +652,7 @@ contains
        else
           gamma = 0.0d0
           beta  = 1.0d0
-          alpha = this % h * this%A(j,j)
+          alpha = this % h * this % A(j,j)
        end if
 
        call this % newtonSolve(alpha, beta, gamma, &
@@ -801,6 +803,7 @@ contains
     integer                                      :: k, j
   
     allocate(dRdX(this % nSVars, this % nDVars))
+    dRdX = 0.0d0
 
     dfdx = 0.0d0
 
@@ -811,7 +814,7 @@ contains
     ! always use scale
     do k = 2, this % num_steps
        do j = 1, this % num_stages
-          call this % system % func % addDFDX(dfdx, this % h * this % B(j),&
+          call this % system % func % addFuncDVSens(dfdx, this % h * this % B(j),&
                & this % T(j),  &
                & this % system % x, this % Q(k,j,:), this % QDOT(k,j,:), &
                & this % QDDOT(k,j,:) )
@@ -827,7 +830,7 @@ contains
           call this % system % getResidualDVSens(dRdX, this % h * this % B(j), this % T(j), &
                & this % system % x, this % Q(k,j,:), this % QDOT(k,j,:), this % QDDOT(k,j,:))
 
-!          print*, this % B(j),drdx, this % lam (k,j,:)
+!          print*, "Adding:", drdx, this % lam (k,j,:)
 
           dfdx = dfdx + matmul(this % lam(k,j,:), dRdX) ! check order
        end do
@@ -838,7 +841,7 @@ contains
     ! for the second time step)
     !-----------------------------------------------------------------!
 
-!!$    call this % system % func % addDfdx(dfdx, 1.0d0, this % time(1), &
+!!$    call this % system % func % addFuncDVSens(dfdx, 1.0d0, this % time(1), &
 !!$         & this % system % x, this % u(1,:), this % udot(1,:), this % uddot(2,:) )
 !!$    
 !!$    call this % system % getResidualDVSens(dRdX, 1.0d0, this % time(1), &
@@ -848,6 +851,140 @@ contains
     deallocate(dRdX)
  
   end subroutine computeTotalDerivative
+
+  ! First order test code
+  subroutine testAdjoint3(this, num_func, func, num_dv, x, dfdx, dfdxTmp)
+
+    use function_class , only : abstract_function
+
+    class(RK)                                  :: this
+    class(abstract_function)                   :: func
+    type(scalar), dimension(:), intent(inout)  :: x
+    integer, intent(in)                        :: num_func, num_dv
+    type(scalar)                               :: mat(1,1) = 0.0d0, tmpmat(1,1) = 0.0d0
+    type(scalar)                               :: rhs(1) = 0.0d0
+    type(scalar)                               :: alpha, beta, gamma, dfdx(3), dfdxTmp(3)
+    integer                                    :: size = 2 ,info, ipiv, k
+    type(scalar) , dimension(:,:), allocatable :: dRdX
+    type(scalar)                               :: fvals, fvalstmp, scale
+
+    !-----------------------------------------------------------------!
+    ! Set the objective function into the system
+    !-----------------------------------------------------------------!
+
+    call this % system % setFunction(func)
+
+    !-----------------------------------------------------------------!
+    ! Set the number of variables, design variables into the system
+    !-----------------------------------------------------------------!
+
+    if (num_dv .ne. this % system % num_design_vars) stop "NDV mismatch"
+
+    call this % system % setDesignVars(num_dv, x)
+    this % nDVars = num_dv
+
+    !-----------------------------------------------------------------!
+    ! Integrate forward in time to solve for the state variables
+    !-----------------------------------------------------------------!
+    
+    call this % integrate()
+    
+    !-----------------------------------------------------------------!
+    ! Solve for psi2
+    !-----------------------------------------------------------------!
+
+    this % psi (2,:) = 0.0d0
+
+    !-----------------------------------------------------------------!
+    ! LAMBDA 22
+    !-----------------------------------------------------------------!
+
+    ! Assemble Jacobian
+    mat      = 0.0d0
+    alpha    = this % h * this % A(2,2)
+    beta     = 1.0d0
+    gamma    = 0.0d0
+    call this % system % assembleJacobian(mat(1:1,1:1), alpha, beta, gamma, &
+         & this % T(2), this % Q(2,2,:), this % qdot(2,2,:), this % qddot(2,2,:))
+
+    ! Assemble RHS
+    rhs = 0.0d0
+    scale  = 1.0d0 !this % h * this % B(2) ! use only if the LHS is scaled too
+    call this % system % func % addFuncSVSens(rhs(1:1), alpha*scale, beta*scale, gamma*scale,  &
+         & this % T(2), this % system % X, &
+         & this % Q(2,2,:), this % qdot(2,2,:), this % qddot(2,2,:))
+
+    ! Solve for lambda22
+    this % lam(2,2,:) = -rhs(1)/mat(1,1)
+
+    print *, "LAMBDA 22: ", this % lam(2,2,:)
+
+    !-----------------------------------------------------------------!
+    ! LAMBDA 21
+    !-----------------------------------------------------------------!
+
+    ! Assemble Jacobian
+    mat = 0.0d0
+    alpha    = this % h * this % A(1,1) 
+    beta     = 1.0d0
+    gamma    = 0.0d0
+    call this % system % assembleJacobian(mat(1:1,1:1), alpha, beta, gamma, &
+         & this % T(1), this % Q(2,1,:), this % qdot(2,1,:), this % qddot(2,1,:))
+
+    ! Assemble RHS
+    rhs = 0.0d0
+    scale    = 1.0d0 !this % h * this % B(1) 
+    call this % system % func % addFuncSVSens(rhs(1:1), alpha*scale, beta*scale, gamma*scale,  &
+         & this % T(1), this % system % x, &
+         & this % Q(2,1,:), this % qdot(2,1,:), this % qddot(2,1,:))
+ 
+    ! Add RHS contribution from the next stage
+    alpha    = this % h * this % A(2,1)
+    beta     = 0.0d0
+    gamma    = 0.0d0
+    call this % system % assembleJacobian(tmpmat(1:1,1:1), alpha, beta, gamma, &
+         & this % T(2), this % Q(2,2,:), this % qdot(2,2,:), this % qddot(2,2,:))
+
+    rhs = rhs + this % lam(2,2,:)*tmpmat(1,1)
+    
+    ! Solve for lambda21
+    this % lam(2,1,:) = -rhs(1)/mat(1,1)
+
+    print *, "LAMBDA 21: ", this % lam(2,1,:)
+
+    ! Compute the adjoint otal derivative
+    call this % computeTotalDerivative(dfdx)
+
+    !-----------------------------------------------------------------!
+    ! CSD check
+    !-----------------------------------------------------------------!
+
+    call this % evalFunc(x, fvals)
+    print *, "FV=", fvals
+
+    x(1) = cmplx(dble(x(1)), 1.0d-20)
+    call this % system % setDesignVars(num_dv, x)
+    call this % integrate()
+    call this % evalFunc(x, fvalstmp)
+    dfdxtmp(1) = aimag(fvalstmp)/1.0d-20
+    x(1) = cmplx(dble(x(1)), 0.0d0)
+
+    x(2) = cmplx(dble(x(2)), 1.0d-20)
+    call this % system % setDesignVars(num_dv, x)
+    call this % integrate()
+    call this % evalFunc(x, fvalstmp)
+    dfdxtmp(2) = aimag(fvalstmp)/1.0d-20
+    x(2) = cmplx(dble(x(2)), 0.0d0)
+
+    x(3) = cmplx(dble(x(3)), 1.0d-20)
+    call this % system % setDesignVars(num_dv, x)
+    call this % integrate()
+    call this % evalFunc(x, fvalstmp)
+    dfdxtmp(3) = aimag(fvalstmp)/1.0d-20
+    x(3) = cmplx(dble(x(3)), 0.0d0)
+    call this % system % setDesignVars(num_dv, x)
+
+  end subroutine testAdjoint3
 
   subroutine testAdjoint2(this, num_func, func, num_dv, x, dfdx)
 
@@ -940,7 +1077,7 @@ contains
 
        dfdxTmp = 0.0d0
 
-       call this % system % func % addDFDX(dfdxtmp, scale, &
+       call this % system % func % addFuncDVSens(dfdxtmp, scale, &
             & this % Time(k),  &
             & this % system % x, this % U(k,:), this % UDOT(k,:), &
             & this % UDDOT(k,:) )
@@ -1085,7 +1222,7 @@ contains
     !-----------------------------------------------------------------!
     dfdx = 0.0d0
 
-    call this % system % func % addDFDX(dfdx, this % h * this % B(1),&
+    call this % system % func % addFuncDVSens(dfdx, this % h * this % B(1),&
          &  this % T(1),  &
          & this % system % x, this % Q(2,1,:), this % QDOT(2,1,:), &
          & this % QDDOT(2,1,:) )
