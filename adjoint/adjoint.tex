@@ -1,0 +1,167 @@
+\documentclass{beamer}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%                  Themes and such                         %%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\mode<presentation>
+{
+  %\usetheme{Copenhagen}  
+ \usetheme{Warsaw}  
+  %\usetheme{Malmoe}  
+%    \setbeamertemplate{headline}{}
+  %make my huge toc fit on one slide (and not look horrible)
+%  \setbeamerfont{subsection in toc}{series=\bfseries}
+%  \setbeamerfont{subsection in toc}{size=\tiny,series=\bfseries}
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%                       Packages                           %%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage{multimedia}
+\usepackage{multirow}
+\usepackage{subfigure}
+\usepackage{amsmath}
+% Define commands 
+
+ \newcommand{\half}{\ensuremath{\frac{1}{2}}}
+
+ \newcommand{\bea}{\begin{eqnarray}}
+ \newcommand{\eea}{\end{eqnarray}}
+ \newcommand{\beq}{\begin{equation}}
+ \newcommand{\eeq}{\end{equation}}
+ \newcommand{\bed}{\begin{displaymath}}
+ \newcommand{\eed}{\end{displaymath}}
+\newcommand{\pd}[2]{\frac{\partial #1}{\partial #2}}
+\newcommand{\pf}[2]{\frac{d #1}{d #2}}
+\newcommand{\pdt}[2]{\frac{\partial^2 #1}{\partial #2^2}}
+\newcommand{\pft}[2]{\frac{d^2 #1}{d #2^2}}
+\newcommand{\pdtno}[2]{\frac{\partial^2 #1}{\partial #2}}
+\newcommand{\pdd}[3]{\frac{\partial^2 #1}{\partial #2 \partial #3}}
+\newcommand{\pff}[3]{\frac{d^2 #1}{d #2 d #3}}
+\graphicspath{{../figures/}}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%                     Title Info                           %%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\title[\hspace{-0.2cm} DIRK Adjoint]
+{
+Discrete Adjoint -- Diagonally Implicit Runge Kutta
+}
+
+\author[Komahan Boopathy]
+{
+  \Large {Komahan Boopathy}\\
+}
+
+\institute
+{
+ \large Georgia Institute of Technology\\
+ School of Aerospace Engineering\\
+Atlanta, GA
+}
+
+\date
+{
+\small \today
+}
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+%\begin{frame}
+%  \frametitle{Outline}
+%  \tableofcontents
+%\end{frame}
+
+\begin{frame}
+\frametitle{Problem Setup}
+
+\begin{block}{States}
+\centering{
+  $\mathbf{q_1} \xrightarrow[\dot{q}_{11},\dot{q}_{12}\ldots\dot{q}_{1s}]{q_{11},q_{12}\ldots q_{1s}} \mathbf{q_2} \xrightarrow[\dot{q}_{21},\dot{q}_{22}\ldots\dot{q}_{2s}]{q_{21},q_{22}\ldots q_{2s}} \mathbf{q_3} \xrightarrow[\dot{q}_{N-1,1},\dot{q}_{N-1,2}\ldots\dot{q}_{N-1,s}]{q_{N-1,1},q_{N-1,2}\ldots q_{N-1,s}} \mathbf{q_N}$
+}
+\end{block}
+
+\begin{block}{Objective Function}
+  \begin{equation}\nonumber
+    F_{ki} =  h b_i f_{ki}(q_{ki},t_{ki})
+  \end{equation}
+\end{block}
+
+\begin{block}{Governing Equation}
+  \begin{equation}\nonumber
+    R_{ki} = R_{ki}(\dot{q_{ki}},q_{ki},t_{ki})
+  \end{equation}
+\end{block}
+
+\begin{block}{Lagrangian}
+  \begin{equation}\nonumber
+    {\cal{L}} = \sum_{k=1}^{N-1} \sum_{i=1}^s h b_i f_{ki} + \sum_{k=1}^N \psi_k^T S_k+  \sum_{k=1}^{N-1} \sum_{i=1}^s\lambda_{ki}^T  h b_i R_{ki}
+  \end{equation}
+\end{block}
+
+\end{frame}
+
+\begin{frame}[allowframebreaks] \frametitle{2 Stage 3 Steps}
+
+\begin{block}{States}
+\centering{
+  $\mathbf{q_1} \xrightarrow[\dot{q}_{11},\dot{q}_{12}]{q_{11},q_{12}} \mathbf{q_2} \xrightarrow[\dot{q}_{21},\dot{q}_{22}]{q_{21},q_{22}} \mathbf{q_3}$
+}
+\end{block}
+
+\begin{block}{Lagrangian}
+  \begin{equation}\nonumber
+    \begin{split}
+      {\cal{L}} = &  hb_1f_{11} + hb_2f_{12} + hb_1f_{21} + hb_2f_{22}  + hb_1f_{31} + hb_2f_{32} \\
+      & + \psi_1^T S_1 + \psi_2^T S_2 + \psi_3^T S_3 \\
+      & + h b_1 \lambda_{11}^TR_{11} + h b_2 \lambda_{12}^TR_{12} \\
+      & + h b_1 \lambda_{21}^TR_{21} + h b_2 \lambda_{22}^TR_{22} \\
+      & + h b_1 \lambda_{31}^TR_{31} + h b_2 \lambda_{32}^TR_{32}
+    \end{split}
+  \end{equation}
+\end{block}
+
+\framebreak
+
+\begin{block}{Governing Equations (Initial Cond. $k=1$)}
+\begin{eqnarray}\nonumber
+S_1({q_1} - u(x))\\\nonumber
+\end{eqnarray}
+\end{block}
+
+\begin{block}{Governing Equations (First Step $k=2$)}
+\begin{eqnarray}\nonumber
+R_{21}\left( \underline{\dot{q_{11}}}, q_1 + h a_{11} \underline{\dot{q_{11}}}  \right)\\ \nonumber
+R_{22}( \underline{\dot{q_{12}}}, q_1 + h (a_{11} \dot{q_{11}} + a_{12} \underline{\dot{q_{12}}}) )\\ \nonumber
+S_2(\underline{q_2} - q_1 + h ( b_1\dot{q_{11}} + b_2\dot{q_{12}} ))\\\nonumber
+\end{eqnarray}
+\end{block}
+
+\begin{block}{Governing Equations (Last Step $k=3$)}
+\begin{eqnarray}\nonumber
+R_{31}\left( \underline{\dot{q_{21}}}, q_2 + h a_{11} \underline{\dot{q_{21}}}  \right)\\ \nonumber
+R_{32}( \underline{\dot{q_{22}}}, q_2 + h (a_{11} \dot{q_{21}} + a_{12} \underline{\dot{q_{22}}}) )\\ \nonumber
+S_3(\underline{q_3} - q_2 + h ( b_1\dot{q_{21}} + b_2\dot{q_{22}} ))\\\nonumber
+\end{eqnarray}
+\end{block}
+
+\end{frame}
+
+\begin{frame}
+\begin{columns}
+\column{6cm}
+\begin{block}{\centering{\huge  Any Questions?}}
+\centerline{ 
+\includegraphics[width=0.5\textwidth]{Question.png} 
+}
+\end{block}
+\end{columns}
+\end{frame}
+
+\end{document}
+
+
