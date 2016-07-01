@@ -920,7 +920,7 @@ contains
     print *, "LAMBDA 22: ", this % lam(2,2,:)
 
     !-----------------------------------------------------------------!
-    ! LAMBDA 21
+    ! [dR/dQdot21] LAMBDA 21 = -dF/dQdot21 -lam22 dR21/dqdot22
     !-----------------------------------------------------------------!
 
     ! Assemble Jacobian
@@ -931,13 +931,18 @@ contains
     call this % system % assembleJacobian(mat(1:1,1:1), alpha, beta, gamma, &
          & this % T(1), this % Q(2,1,:), this % qdot(2,1,:), this % qddot(2,1,:))
 
+    !-----------------------------------------------------------------!
     ! Assemble RHS
+    !-----------------------------------------------------------------!
+
+    ! Add function contribution from this stage
     rhs = 0.0d0
     scale = 1.0d0 !this % h * this % B(1) 
     call this % system % func % addFuncSVSens(rhs(1:1), alpha*scale, beta*scale, gamma*scale,  &
          & this % T(1), this % system % x, &
          & this % Q(2,1,:), this % qdot(2,1,:), this % qddot(2,1,:))
-
+    
+    ! Add function contribution from next stage
     alpha    = this % h * this % A(2,1) 
     beta     = 0.0d0
     gamma    = 0.0d0
@@ -969,25 +974,25 @@ contains
     call this % evalFunc(x, fvals)
     print *, "FV=", fvals
 
-    x(1) = cmplx(dble(x(1)), 1.0d-20)
+    x(1) = cmplx(dble(x(1)), 1.0d-16)
     call this % system % setDesignVars(num_dv, x)
     call this % integrate()
     call this % evalFunc(x, fvalstmp)
-    dfdxtmp(1) = aimag(fvalstmp)/1.0d-20
+    dfdxtmp(1) = aimag(fvalstmp)/1.0d-16
     x(1) = cmplx(dble(x(1)), 0.0d0)
 
-    x(2) = cmplx(dble(x(2)), 1.0d-20)
+    x(2) = cmplx(dble(x(2)), 1.0d-16)
     call this % system % setDesignVars(num_dv, x)
     call this % integrate()
     call this % evalFunc(x, fvalstmp)
-    dfdxtmp(2) = aimag(fvalstmp)/1.0d-20
+    dfdxtmp(2) = aimag(fvalstmp)/1.0d-16
     x(2) = cmplx(dble(x(2)), 0.0d0)
 
-    x(3) = cmplx(dble(x(3)), 1.0d-20)
+    x(3) = cmplx(dble(x(3)), 1.0d-16)
     call this % system % setDesignVars(num_dv, x)
     call this % integrate()
     call this % evalFunc(x, fvalstmp)
-    dfdxtmp(3) = aimag(fvalstmp)/1.0d-20
+    dfdxtmp(3) = aimag(fvalstmp)/1.0d-16
     x(3) = cmplx(dble(x(3)), 0.0d0)
     call this % system % setDesignVars(num_dv, x)
 
