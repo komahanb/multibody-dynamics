@@ -933,10 +933,17 @@ contains
 
     ! Assemble RHS
     rhs = 0.0d0
-    scale    = 1.0d0 !this % h * this % B(1) 
+    scale = 1.0d0 !this % h * this % B(1) 
     call this % system % func % addFuncSVSens(rhs(1:1), alpha*scale, beta*scale, gamma*scale,  &
          & this % T(1), this % system % x, &
          & this % Q(2,1,:), this % qdot(2,1,:), this % qddot(2,1,:))
+
+    alpha    = this % h * this % A(2,1) 
+    beta     = 0.0d0
+    gamma    = 0.0d0
+    call this % system % func % addFuncSVSens(rhs(1:1), alpha*scale, beta*scale, gamma*scale,  &
+         & this % T(2), this % system % x, &
+         & this % Q(2,2,:), this % qdot(2,2,:), this % qddot(2,2,:))
  
     ! Add RHS contribution from the next stage
     alpha    = this % h * this % A(2,1)
