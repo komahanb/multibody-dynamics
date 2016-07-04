@@ -690,7 +690,7 @@ contains
 
        ! Perturb the variable              
 #if defined USE_COMPLEX
-       x(m) = cmplx(dble(x(m)), 1.0d-20)
+       x(m) = cmplx(dble(x(m)), 1.0d-25)
 #else
        x(m) = x(m) + dh
 #endif
@@ -703,7 +703,7 @@ contains
 
        ! Find the FD derivative
 #if defined USE_COMPLEX
-       dfdx(m) = aimag(fvals_tmp)/1.0d-20
+       dfdx(m) = aimag(fvals_tmp)/1.0d-25
 #else
        dfdx(m) = (fvals_tmp-fvals)/dh
 #endif

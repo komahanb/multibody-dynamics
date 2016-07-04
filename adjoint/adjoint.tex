@@ -207,20 +207,31 @@ Discrete Adjoint -- Diagonally Implicit Runge Kutta
       $
   \end{block}
 
+  \framebreak
+
   \begin{block}{}\centering
-\scriptsize{
+    $\pd{{\cal L}}{\dot{q}_{2}}=0$
+  \end{block}
+
+  \begin{block}{}\centering
+    \begin{equation}\nonumber
+      \pd{S_2}{{q}_{2}}    + hb_1\pd{R_{31}}{q_2} + hb_2 \pd{R_{32}}{q_2} +
+      hb_1\pd{f_{31}}{q_2} + hb_2\pd{f_{32}}{q_2} +\pd{S_3}{q_2} = 0
+    \end{equation}
+  \end{block}
+
+  \begin{block}{}\centering
     \begin{equation}\nonumber
       \begin{split}
-        hb_1 \left[ \pd{R_{31}}{\dot{q}_{31}} + ha_{11}  \pd{R_{31}}{{q}_{31}} \right]^T\lambda_{31}  = &
-        - hb_1 \left[ \pd{f_{31}}{\dot{q}_{31}} + ha_{11}  \pd{f_{31}}{{q}_{31}} \right]^T \\
-        &- hb_2 ha_{21}  \pd{f_{32}}{{q}_{32}}^T \\
-        &- hb_2 ha_{21}  \pd{R_{32}}{{q}_{32}}^T \lambda_{32}\\
-        &- hb_1I \psi_3 
+        \pd{S_2}{q_2}  =  & - hb_1\lambda_{31} \pd{R_{31}}{q_{31}} \\
+        &- hb_2 \lambda_{32} \pd{R_{32}}{q_{32}} \\
+        &- hb_1\pd{f_{31}}{q_{31}} \\ 
+        &- hb_2\pd{f_{32}}{q_{32}} \\ 
+        &- I \psi_3
       \end{split}
     \end{equation}
-}
   \end{block}
-    
+
 \end{frame}
 
 \begin{frame}
