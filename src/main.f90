@@ -67,7 +67,7 @@ program main
 !!$  call bdfobj % writeSolution()
 !!$ 
 !!$  call bdfobj % evalFDFuncGrad(num_func=1, func = KE,  num_dv = 3, x = x, &
-!!$       & fvals = fval, dfdx= dfdxtmp, dh=dh)
+!!$       & fvals = fval, dfdx= dfundxtmp, dh=dh)
 !!$  
 !!$  call bdfobj % finalize()
 !!$
@@ -87,8 +87,8 @@ program main
 
   dirkobj = DIRK(system = smd1obj, tfinal = 3.0d-3, h=1.0d-3, num_stages=2, second_order=.false.) 
 
-  !  call dirkobj % testAdjoint( num_func = 1, func = KE, num_dv = 3, x = x,dfdx= dfdx)
-  call dirkobj % testAdjoint5( num_func = 1, func = KE, num_dv = 3, &
+  !  call dirkobj % testAdjointr( num_func = 1, func = KE, num_dv = 3, x = x,dfdx= dfdx)
+  call dirkobj % testAdjoint4( num_func = 1, func = KE, num_dv = 3, &
        & x = x, dfdx= dfdx, dfdxtmp=dfdxtmp )
 
   !  call dirkobj % testAdjoint2( num_func = 1, func = KE, num_dv = 3, x = x,dfdx= dfdx)

@@ -884,6 +884,7 @@ contains
     if (num_dv .ne. this % system % num_design_vars) stop "NDV mismatch"
 
     call this % system % setDesignVars(num_dv, x)
+
     this % nDVars = num_dv
 
     !-----------------------------------------------------------------!
@@ -908,6 +909,7 @@ contains
     alpha    = this % h * this % A(2,2)
     beta     = 1.0d0
     gamma    = 0.0d0
+
     call this % system % assembleJacobian(mat(1:1,1:1), alpha, beta, gamma, &
          & this % T(2), this % Q(4,2,:), this % qdot(4,2,:), this % qddot(4,2,:))
 
@@ -1275,6 +1277,7 @@ contains
     if (num_dv .ne. this % system % num_design_vars) stop "NDV mismatch"
 
     call this % system % setDesignVars(num_dv, x)
+
     this % nDVars = num_dv
 
     !-----------------------------------------------------------------!
@@ -1283,36 +1286,37 @@ contains
 
     call this % integrate()
 
-
     do k = this % num_steps, 2, -1
        
        if (k .lt. this % num_steps) then
 
-          this % psi(k,:) = this % psi(k+1,:)
-
           rhs = 0.0d0
+
+          rhs  = this % psi(k+1,:) ! note the positive sign
 
           do ii = this % num_stages, 1, -1
 
+             scale = this % h * this % B(ii)
+
              mat = 0.0d0
 
-             alpha    = this % h * this % B(ii)
+             alpha    = 1.0d0
              beta     = 0.0d0
              gamma    = 0.0d0
 
-             call this % system % assembleJacobian(mat(1:1,1:1), alpha, beta, gamma, &
+             call this % system % assembleJacobian(mat(1:1,1:1), alpha*scale, beta*scale, gamma*scale, &
                   & this % T(ii), this % Q(k+1,ii,:), this % qdot(k+1,ii,:), this % qddot(k+1,ii,:))
-
+             
              rhs = rhs + mat(1,1)*this % lam(k+1,ii,:)
 
-             ! Add function contributions too?
+             ! Add function contributions too
              call this % system % func % addFuncSVSens(rhs(1:1), alpha*scale, beta*scale, gamma*scale, &
                   & this % T(ii), this % system % x, &
                   & this % Q(k+1,ii,:), this % qdot(k+1,ii,:), this % qddot(k+1,ii,:))
 
           end do
 
-          this % psi(k,:) = rhs/1.0d0
+          this % psi(k,:) = rhs/1.0d0 ! note the positive sign
 
        else
 
