@@ -63,6 +63,7 @@ module integrator_class
      type(scalar), dimension(:,:), allocatable :: UDOT
      type(scalar), dimension(:,:), allocatable :: UDDOT
      type(scalar) , dimension(:,:), allocatable :: psi
+     type(scalar) , dimension(:,:), allocatable :: phi
 
      !----------------------------------------------------------------!
      ! Miscellaneous variables

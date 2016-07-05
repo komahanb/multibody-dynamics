@@ -85,14 +85,13 @@ program main
   ! Initialize the system
   call smd1obj % initialize(num_state_vars = 1, num_design_vars = 3)
 
-  dirkobj = DIRK(system = smd1obj, tfinal = 3.0d-3, h=1.0d-3, num_stages=2, second_order=.false.) 
+  dirkobj = DIRK(system = smd1obj, tfinal = 2.0d-3, h=1.0d-3, num_stages=2, second_order=.true.) 
 
   !  call dirkobj % testAdjointr( num_func = 1, func = KE, num_dv = 3, x = x,dfdx= dfdx)
-  call dirkobj % testAdjoint4( num_func = 1, func = KE, num_dv = 3, &
+  call dirkobj % testAdjoint6 ( num_func = 1, func = KE, num_dv = 3, &
        & x = x, dfdx= dfdx, dfdxtmp=dfdxtmp )
 
   !  call dirkobj % testAdjoint2( num_func = 1, func = KE, num_dv = 3, x = x,dfdx= dfdx)
-
   call dirkobj % writeSolution("dirksol.dat")
 
   !   call dirkobj % evalFuncGrad( num_func=1, func = KE, num_dv = 3, x = x, &

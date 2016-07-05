@@ -45,7 +45,7 @@ contains
     type(scalar), intent(in), dimension(:) :: x, u, udot, uddot
     real(dp), intent(in)                   :: time
 
-    !    f = 0.5d0*x(1)*uddot(1)**2 + 0.5d0*x(2)*udot(1)**2 + 0.5d0*x(3)*u(1)**2
+    ! f = 0.5d0*x(1)*uddot(1)**2 + 0.5d0*x(2)*udot(1)**2 + 0.5d0*x(3)*u(1)**2
     
     f = 0.5d0*x(3)*u(1)**2
     
