@@ -934,11 +934,10 @@ contains
 
           rhs  = this % phi(k+1,:) ! note the positive sign
 
-          ! Add phi contribution from next step          
+          ! Add psi contribution from next step          
           do ii = 1, this % num_stages
              rhs = rhs + this % h * this % B(ii) * this % psi(k+1,:)
           end do
-
 
           do ii = this % num_stages, 1, -1
 
@@ -948,7 +947,7 @@ contains
              if ( ii .eq. 1) then
                 alpha    = this % h * this % A(1,1)
              else
-                alpha    = this % h * this % A(2,1) * this % h * this % A(2,2)
+                alpha    = this % h * this % A(2,1) + this % h * this % A(2,2)
              end if
              beta     = 1.0d0
              gamma    = 0.0d0
@@ -976,6 +975,8 @@ contains
 
        print *, "PSI: ", k, this % psi(k,:)
        print *, "PHI: ", k, this % phi(k,:)
+
+       ! Now determine stage multipliers
 
        do ii = this % num_stages, 1, -1
           
@@ -1007,7 +1008,7 @@ contains
              scale = 1.0d0
 
              ! Add RHS contribution from the next stage
-             alpha    = this % B(ii+1) * this % h**2 * (this % A(2,1) * this % A(1,1) + this % A(2,1) * this % A(2,2))
+             alpha    = this % B(ii+1) * this % h**2 * ( this % A(2,1) * this % A(1,1) + this % A(2,1) * this % A(2,2) )
              beta     = this % B(ii+1) * this % h * this % A(ii+1,ii)
              gamma    = 0.0d0
 
