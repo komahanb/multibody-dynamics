@@ -410,9 +410,9 @@ contains
           !--------------------------------------------------------------!
           
           if (this % second_order) then
-             gamma = 1.0d0
-             beta  = this % h * this % A(i,i)
-             alpha = this % h * this % h * this % A(i,i) * this % A(i,i) 
+             gamma = this % B(i) * 1.0d0
+             beta  = this % B(i) * this % h * this % A(i,i)
+             alpha = this % B(i) * this % h * this % h * this % A(i,i) * this % A(i,i) 
           else
              stop "Reformualte first order"
              gamma = 0
@@ -911,8 +911,9 @@ contains
     call this % system % assembleJacobian(mat(1:1,1:1), alpha, beta, gamma, &
          & this % T(2), this % Q(4,2,:), this % qdot(4,2,:), this % qddot(4,2,:))
 
-    ! Assemble RHS
     rhs = 0.0d0
+
+    ! Assemble RHS
     scale  = 1.0d0 !this % h * this % B(2) ! use only if the LHS is scaled too
     call this % system % func % addFuncSVSens(rhs(1:1), alpha*scale, beta*scale, gamma*scale,  &
          & this % T(2), this % system % X, this % Q(4,2,:), this % qdot(4,2,:), this % qddot(4,2,:))
@@ -1007,7 +1008,7 @@ contains
          & this % T(2), this % Q(4,2,:), this % qdot(4,2,:), this % qddot(4,2,:))
 
     rhs = rhs + mat(1,1) * this % lam(4,2,:)
-
+    
     this % psi (3,:) = rhs/1.0d0 ! negative sign cancels
 
     print *, "PSI3=", this % psi(3,:)
@@ -1127,6 +1128,8 @@ contains
          & this % T(2), this % Q(3,2,:), this % qdot(3,2,:), this % qddot(3,2,:))
 
     rhs = rhs + mat(1,1) * this % lam(3,2,:)
+
+    rhs = rhs + this % psi(3,:) !# missed it
 
     this % psi (2,:) = rhs/1.0d0 ! negative sign cancels
 
