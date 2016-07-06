@@ -861,6 +861,7 @@ contains
     deallocate(dRdX)
  
   end subroutine computeTotalDerivative
+
   ! write out the steps
   subroutine testAdjoint7(this, num_func, func, num_dv, x, dfdx, dfdxTmp)
 
@@ -948,8 +949,8 @@ contains
          & this % Q(2,1,:), this % QDOT(2,1,:), this % QDDOT(2,1,:))
 
     ! Add contribution from the previous stage
-    alpha    = this % B(2) * this % h**2 * ( this % A(2,1) * this % A(1,1) + this % A(2,1) * this % A(2,2) ) ! # check this
-    beta     = this % B(2) * this % h * this % A(2,2) ! # check this
+    alpha    = this % B(2) * this % h**2 * ( this % A(2,1) * this % A(1,1) + this % A(2,2) * this % A(2,1) ) ! # check this
+    beta     = this % B(2) * this % h * this % A(2,1) ! # check this
     gamma    = 0.0d0
 
     call this % system % assembleJacobian(tmpmat(1:1,1:1), alpha, beta, gamma, &
@@ -970,37 +971,9 @@ contains
     ! Compute the adjoint total derivative
     call this % computeTotalDerivative(dfdx)
 
-    !-----------------------------------------------------------------!
-    ! CSD check
-    !-----------------------------------------------------------------!
-
-    call this % evalFunc(x, fvals)
-    print *, "FV=", fvals
-
-    x(1) = cmplx(dble(x(1)), 1.0d-16)
-    call this % system % setDesignVars(num_dv, x)
-    call this % integrate()
-    call this % evalFunc(x, fvalstmp)
-    dfdxtmp(1) = aimag(fvalstmp)/1.0d-16
-    x(1) = cmplx(dble(x(1)), 0.0d0)
-
-    x(2) = cmplx(dble(x(2)), 1.0d-16)
-    call this % system % setDesignVars(num_dv, x)
-    call this % integrate()
-    call this % evalFunc(x, fvalstmp)
-    dfdxtmp(2) = aimag(fvalstmp)/1.0d-16
-    x(2) = cmplx(dble(x(2)), 0.0d0)
-
-    x(3) = cmplx(dble(x(3)), 1.0d-16)
-    call this % system % setDesignVars(num_dv, x)
-    call this % integrate()
-    call this % evalFunc(x, fvalstmp)
-    dfdxtmp(3) = aimag(fvalstmp)/1.0d-16
-    x(3) = cmplx(dble(x(3)), 0.0d0)
-    call this % system % setDesignVars(num_dv, x)
-
   end subroutine testAdjoint7
 
+  ! loop second order
   subroutine testAdjoint6(this, num_func, func, num_dv, x, dfdx, dfdxTmp)
 
     use function_class , only : abstract_function
@@ -1080,7 +1053,7 @@ contains
           end do
 
           do ii = this % num_stages, 1, -1
-
+             
              scale = this % h * this % B(ii)
 
              ! Add the phi terms
@@ -1115,11 +1088,13 @@ contains
 
        print *, "PSI: ", k, this % psi(k,:)
        print *, "PHI: ", k, this % phi(k,:)
-
-       ! Now determine stage multipliers
+       
+       !-----------------------------------------------------------!
+       ! Compute the stage adjoint varaibles
+       !-----------------------------------------------------------!
 
        do ii = this % num_stages, 1, -1
-          
+
           !-----------------------------------------------------------------!
           ! LAMBDA 22
           !-----------------------------------------------------------------!
@@ -1146,7 +1121,7 @@ contains
              
              ! Add contribution from the previous stage
              alpha    = this % B(2) * this % h**2 * ( this % A(2,1) * this % A(1,1) + this % A(2,1) * this % A(2,2) ) ! # check this
-             beta     = this % B(2) * this % h * this % A(2,2) ! # check this
+             beta     = this % B(2) * this % h * this % A(2,1) ! # check this
              gamma    = 0.0d0
 
              call this % system % assembleJacobian(tmpmat(1:1,1:1), alpha, beta, gamma, &
@@ -1161,8 +1136,8 @@ contains
 
           end if
           
-          rhs = rhs + this % B(ii) * this % phi(k,:)
-          rhs = rhs + this % B(ii) * this % h * this % A(ii,ii) * this % psi(k,:)
+!          rhs = rhs + this % B(ii) * this % phi(k,:)
+!          rhs = rhs + this % B(ii) * this % h * this % A(ii,ii) * this % psi(k,:)
 
           ! Solve for lambda22
           this % lam(k,ii,:) = -rhs(1)/mat(1,1)
@@ -1175,35 +1150,6 @@ contains
 
     ! Compute the adjoint total derivative
     call this % computeTotalDerivative(dfdx)
-
-    !-----------------------------------------------------------------!
-    ! CSD check
-    !-----------------------------------------------------------------!
-
-    call this % evalFunc(x, fvals)
-    print *, "FV=", fvals
-
-    x(1) = cmplx(dble(x(1)), 1.0d-16)
-    call this % system % setDesignVars(num_dv, x)
-    call this % integrate()
-    call this % evalFunc(x, fvalstmp)
-    dfdxtmp(1) = aimag(fvalstmp)/1.0d-16
-    x(1) = cmplx(dble(x(1)), 0.0d0)
-
-    x(2) = cmplx(dble(x(2)), 1.0d-16)
-    call this % system % setDesignVars(num_dv, x)
-    call this % integrate()
-    call this % evalFunc(x, fvalstmp)
-    dfdxtmp(2) = aimag(fvalstmp)/1.0d-16
-    x(2) = cmplx(dble(x(2)), 0.0d0)
-
-    x(3) = cmplx(dble(x(3)), 1.0d-16)
-    call this % system % setDesignVars(num_dv, x)
-    call this % integrate()
-    call this % evalFunc(x, fvalstmp)
-    dfdxtmp(3) = aimag(fvalstmp)/1.0d-16
-    x(3) = cmplx(dble(x(3)), 0.0d0)
-    call this % system % setDesignVars(num_dv, x)
 
   end subroutine testAdjoint6
   
