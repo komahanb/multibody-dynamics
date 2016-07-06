@@ -1026,7 +1026,7 @@ contains
           end if
 
           ! Solve for lambda22
-          this % lam(k,ii,:) = -rhs(1)/mat(1,1)
+          this % lam(k,ii,:) = - rhs(1)/mat(1,1)
 
 !          print *, "LAMBDA: ", k,ii, this % lam(k,ii,:)
           
