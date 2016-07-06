@@ -837,11 +837,6 @@ contains
        do j = 1, this % num_stages
           call this % system % getResidualDVSens(dRdX, this % h * this % B(j), this % T(j), &
                & this % system % x, this % Q(k,j,:), this % QDOT(k,j,:), this % QDDOT(k,j,:))
-
-          print*, "Adding:", realpart(this % lam (k,j,:))
-          print*, "Adding:", realpart(drdx)
-          print*, "Adding:", realpart(dfdx)
-
           dfdx = dfdx + matmul(this % lam(k,j,:), dRdX) ! check order
        end do
     end do
@@ -861,6 +856,188 @@ contains
     deallocate(dRdX)
  
   end subroutine computeTotalDerivative
+
+
+  ! loop second order
+  subroutine testAdjoint6(this, num_func, func, num_dv, x, dfdx, dfdxTmp)
+
+    use function_class , only : abstract_function
+
+    class(RK)                                  :: this
+    class(abstract_function)                   :: func
+    type(scalar), dimension(:), intent(inout)  :: x
+    integer, intent(in)                        :: num_func, num_dv
+    type(scalar)                               :: mat(1,1) = 0.0d0, tmpmat(1,1) = 0.0d0
+    type(scalar)                               :: rhs(1) = 0.0d0
+    type(scalar)                               :: alpha, beta, gamma, dfdx(3), dfdxTmp(3)
+    integer                                    :: size = 2 ,info, ipiv
+    type(scalar) , dimension(:,:), allocatable :: dRdX
+    type(scalar)                               :: fvals, fvalstmp
+    integer                                    :: k, ii
+
+    !-----------------------------------------------------------------!
+    ! Set the objective function into the system
+    !-----------------------------------------------------------------!
+
+    call this % system % setFunction(func)
+
+    !-----------------------------------------------------------------!
+    ! Set the number of variables, design variables into the system
+    !-----------------------------------------------------------------!
+
+    if (num_dv .ne. this % system % num_design_vars) stop "NDV mismatch"
+
+    call this % system % setDesignVars(num_dv, x)
+
+    this % nDVars = num_dv
+
+    !-----------------------------------------------------------------!
+    ! Integrate forward in time to solve for the state variables
+    !-----------------------------------------------------------------!
+
+    call this % integrate()
+
+    do k = this % num_steps, 2, -1
+       
+       if (k .lt. this % num_steps) then
+
+          rhs  = this % psi(k+1,:) ! note the positive sign
+
+          do ii = this % num_stages, 1, -1
+
+             ! Add the psi terms
+             alpha    = this % h * this % B(ii)
+             beta     = 0.0d0
+             gamma    = 0.0d0
+
+             call this % system % assembleJacobian(mat(1:1,1:1), alpha, beta, gamma, &
+                  & this % T(ii), this % Q(k+1,ii,:), this % qdot(k+1,ii,:), this % qddot(k+1,ii,:))
+             
+             rhs = rhs + mat(1,1)*this % lam(k+1,ii,:)
+
+             ! Add function contributions too
+             call this % system % func % addFuncSVSens(rhs(1:1), alpha, beta, gamma, &
+                  & this % T(ii), this % system % x, &
+                  & this % Q(k+1,ii,:), this % qdot(k+1,ii,:), this % qddot(k+1,ii,:))
+
+          end do
+          
+          this % psi(k,:) = rhs/1.0d0 ! note the positive sign
+          
+          !-----------------------------------------------------------!
+          ! Add the phi terms
+          !-----------------------------------------------------------!
+
+          rhs  = this % phi(k+1,:) ! note the positive sign
+
+          ! Add psi contribution from next step          
+          do ii = 1, this % num_stages
+             rhs = rhs + this % h * this % B(ii) * this % psi(k+1,:)
+          end do
+          
+          do ii = this % num_stages, 1, -1
+
+             ! Add the phi terms
+             if ( ii .eq. 1) then
+                alpha    = this % h * this % B(1) *this % h * this % A(1,1)
+             else
+                alpha    = this % h * this % B(ii) * this % h * (this % A(2,1) + this % A(2,2))
+             end if
+             beta     = this % h * this % B(ii)
+             gamma    = 0.0d0
+
+             call this % system % assembleJacobian(mat(1:1,1:1), alpha, beta, gamma, &
+                  & this % T(ii), this % Q(k+1,ii,:), this % qdot(k+1,ii,:), this % qddot(k+1,ii,:))
+
+             rhs = rhs + mat(1,1)*this % lam(k+1,ii,:)
+
+             ! Add function contributions too
+             call this % system % func % addFuncSVSens(rhs(1:1), alpha, beta, gamma, &
+                  & this % T(ii), this % system % x, &
+                  & this % Q(k+1,ii,:), this % qdot(k+1,ii,:), this % qddot(k+1,ii,:))
+
+          end do
+          
+          this % phi(k,:) = rhs/1.0d0 ! note the positive sign
+
+       else
+
+          this % psi (k,:) = 0.0d0
+          this % phi (k,:) = 0.0d0
+
+       end if
+
+!       print *, "PSI: ", k, this % psi(k,:)
+!       print *, "PHI: ", k, this % phi(k,:)
+       
+       !-----------------------------------------------------------!
+       ! Compute the stage adjoint variables
+       !-----------------------------------------------------------!
+
+       do ii = this % num_stages, 1, -1
+
+          !-----------------------------------------------------------------!
+          ! LAMBDA 22
+          !-----------------------------------------------------------------!
+
+          ! Assemble Jacobian
+          mat      = 0.0d0
+
+          alpha    = this % B(ii) * this % h * this % A(ii,ii) * this % h * this % A(ii,ii)
+          beta     = this % B(ii) * this % h * this % A(ii,ii)
+          gamma    = this % B(ii) * 1.0d0
+
+          call this % system % assembleJacobian(mat(1:1,1:1), alpha, beta, gamma, &
+               & this % T(ii), this % Q(k,ii,:), this % QDOT(k,ii,:), this % QDDOT(k,ii,:))
+          
+          ! Assemble RHS
+          rhs = 0.0d0
+
+          call this % system % func % addFuncSVSens(rhs(1:1), alpha, beta, gamma,  &
+               & this % T(ii), this % system % X, &
+               & this % Q(k,ii,:), this % QDOT(k,ii,:), this % QDDOT(k,ii,:))
+
+          if ( ii .lt. this % num_stages) then
+
+             ! Add contribution from the previous stage
+             alpha    = this % B(2) * this % h**2 * ( this % A(2,1) * this % A(1,1) + this % A(2,1) * this % A(2,2) ) ! # check this
+             beta     = this % B(2) * this % h * this % A(2,1) ! # check this
+             gamma    = 0.0d0
+
+             call this % system % assembleJacobian(tmpmat(1:1,1:1), alpha, beta, gamma, &
+                  & this % T(2), this % Q(k,2,:), this % qdot(k,2,:), this % qddot(k,2,:))
+
+             rhs = rhs + this % lam(k,2,:)*tmpmat(1,1)
+
+             ! Add function contribution from next stage
+             call this % system % func % addFuncSVSens(rhs(1:1), alpha, beta, gamma,  &
+                  & this % T(2), this % system % x, &
+                  & this % Q(k,2,:), this % qdot(k,2,:), this % qddot(k,2,:))
+
+          end if
+          
+          rhs = rhs + this % B(ii) * this % phi(k,:)
+
+          if ( ii .eq. 1) then
+             rhs = rhs + this % B(1) * this % h * this % A(1,1) * this % psi(k,:)
+             rhs = rhs + this % B(2) * this % h * this % A(2,1) * this % psi(k,:)
+          else
+             rhs = rhs + this % B(2) * this % h * this % A(2,2) * this % psi(k,:)
+          end if
+
+          ! Solve for lambda22
+          this % lam(k,ii,:) = -rhs(1)/mat(1,1)
+
+!          print *, "LAMBDA: ", k,ii, this % lam(k,ii,:)
+          
+       end do
+
+    end do
+
+    ! Compute the adjoint total derivative
+    call this % computeTotalDerivative(dfdx)
+
+  end subroutine testAdjoint6
 
   ! write out the steps
   subroutine testAdjoint7(this, num_func, func, num_dv, x, dfdx, dfdxTmp)
@@ -900,7 +1077,153 @@ contains
     !-----------------------------------------------------------------!
 
     call this % integrate()
+
+    this % psi = 0.0d0
+    this % phi = 0.0d0
+
+    print *, "psi3=", this % psi(3,:)
+    print *, "phi3=", this % phi(3,:)
+
+    !=================================================================!
+    ! LAMBDA 32
+    !-----------------------------------------------------------------!
     
+    ! Assemble Jacobian
+    mat      = 0.0d0
+
+    alpha    = this % B(2) * this % h * this % A(2,2) * this % h * this % A(2,2)
+    beta     = this % B(2) * this % h * this % A(2,2)
+    gamma    = this % B(2) * 1.0d0
+
+    call this % system % assembleJacobian(mat(1:1,1:1), alpha, beta, gamma, &
+         & this % T(2), this % Q(3,2,:), this % QDOT(3,2,:), this % QDDOT(3,2,:))
+
+    ! Assemble RHS
+    rhs = 0.0d0
+
+    call this % system % func % addFuncSVSens(rhs(1:1), alpha, beta, gamma,  &
+         & this % T(2), this % system % X, &
+         & this % Q(3,2,:), this % QDOT(3,2,:), this % QDDOT(3,2,:))
+
+    ! Solve for lambda22
+    this % lam(3,2,:) = -rhs(1)/mat(1,1)
+
+    print *, "lambda32=", this % lam(3,2,:)
+
+    !-----------------------------------------------------------------!
+    ! LAMBDA 31
+    !-----------------------------------------------------------------!
+
+    ! Assemble Jacobian
+    mat      = 0.0d0
+
+    alpha    = this % B(1) * this % h * this % A(1,1) * this % h * this % A(1,1)
+    beta     = this % B(1) * this % h * this % A(1,1)
+    gamma    = this % B(1) * 1.0d0
+
+    call this % system % assembleJacobian(mat(1:1,1:1), alpha, beta, gamma, &
+         & this % T(1), this % Q(3,1,:), this % QDOT(3,1,:), this % QDDOT(3,1,:))
+
+    ! Assemble RHS
+    rhs = 0.0d0
+
+    call this % system % func % addFuncSVSens(rhs(1:1), alpha, beta, gamma,  &
+         & this % T(1), this % system % X, &
+         & this % Q(3,1,:), this % QDOT(3,1,:), this % QDDOT(3,1,:))
+
+    ! Add contribution from the previous stage
+    alpha    = this % B(2) * this % h**2 * ( this % A(2,1) * this % A(1,1) + this % A(2,2) * this % A(2,1) ) ! # check this
+    beta     = this % B(2) * this % h * this % A(2,1) ! # check this
+    gamma    = 0.0d0
+    
+    call this % system % assembleJacobian(tmpmat(1:1,1:1), alpha, beta, gamma, &
+         & this % T(2), this % Q(3,2,:), this % qdot(3,2,:), this % qddot(3,2,:))
+
+    rhs = rhs + this % lam(3,2,:)*tmpmat(1,1)
+
+    ! Add function contribution from next stage
+    call this % system % func % addFuncSVSens(rhs(1:1), alpha, beta, gamma,  &
+         & this % T(2), this % system % x, &
+         & this % Q(3,2,:), this % qdot(3,2,:), this % qddot(3,2,:))
+
+    ! Solve for lambda22
+    this % lam(3,1,:) = -rhs(1)/mat(1,1)
+
+    print *, "lambda31=", this % lam(3,1,:)
+
+    !=================================================================!
+    
+    rhs = this % phi(3,:)
+
+    rhs = rhs + this % h * (this % B(1) + this % B(2)) * this % psi(3,:)
+
+    ! Add first stage contribution
+    alpha = 0.0d0
+    beta  = this % h * this % B(1) 
+    gamma = 0.0d0
+    
+    call this % system % assembleJacobian(mat(1:1,1:1), alpha, beta, gamma, &
+         & this % T(1), this % Q(3,1,:), this % QDOT(3,1,:), this % qddot(3,1,:))
+    
+    rhs = rhs + mat(1,1) * this % lam(3,1,:)
+    
+    call this % system % func % addFuncSVSens(rhs(1:1), alpha, beta, gamma,  &
+         & this % T(1), this % system % x, &
+         & this % Q(3,1,:), this % qdot(3,1,:), this % qddot(3,1,:))
+    
+    ! Add second stage contribution
+    alpha  = this % h * this % B(2) * this % h * (this % A(2,1) + this % A(2,2))
+    beta = this % h * this % B(2)
+    gamma = 0.0d0
+
+    call this % system % assembleJacobian(mat(1:1,1:1), alpha, beta, gamma, &
+         & this % T(2), this % Q(3,2,:), this % qdot(3,2,:), this % qddot(3,2,:))
+
+    rhs = rhs + mat(1,1) * this % lam(3,2,:)
+
+    call this % system % func % addFuncSVSens(rhs(1:1), alpha, beta, gamma,  &
+         & this % T(2), this % system % x, &
+         & this % Q(3,2,:), this % qdot(3,2,:), this % qddot(3,2,:))
+
+    this % phi(2,:) = rhs/1.0d0
+
+    print *, "phi2=", this % phi(2,:)
+
+    ! Find psi2
+    rhs = this % psi(3,:)
+
+    ! Add contribution from first stage
+    alpha = this % h * this % B(1)
+    beta  = 0.0d0
+    gamma = 0.0d0
+
+    call this % system % assembleJacobian(mat(1:1,1:1), alpha, beta, gamma, &
+         & this % T(1), this % Q(3,1,:), this % qdot(3,1,:), this % qddot(3,1,:))
+
+    rhs = rhs + mat(1,1) * this % lam(3,1,:)
+
+    call this % system % func % addFuncSVSens(rhs(1:1), alpha, beta, gamma,  &
+         & this % T(1), this % system % x, &
+         & this % Q(3,1,:), this % qdot(3,1,:), this % qddot(3,1,:))
+
+    ! Add contribution from second stage
+    alpha = this % h * this % B(2)
+    beta  = 0.0d0
+    gamma = 0.0d0
+
+    call this % system % assembleJacobian(mat(1:1,1:1), alpha, beta, gamma, &
+         & this % T(2), this % Q(3,2,:), this % qdot(3,2,:), this % qddot(3,2,:))
+
+    rhs = rhs + mat(1,1) * this % lam(3,2,:)
+
+    call this % system % func % addFuncSVSens(rhs(1:1), alpha, beta, gamma,  &
+         & this % T(2), this % system % x, &
+         & this % Q(3,2,:), this % qdot(3,2,:), this % qddot(3,2,:))
+
+    this % psi(2,:) = rhs/1.0d0
+
+    print *, "psi2=", this % psi(2,:)
+
     !-----------------------------------------------------------------!
     ! LAMBDA 22
     !-----------------------------------------------------------------!
@@ -922,8 +1245,14 @@ contains
          & this % T(2), this % system % X, &
          & this % Q(2,2,:), this % QDOT(2,2,:), this % QDDOT(2,2,:))
 
+    ! Add contribution from phi2
+    rhs = rhs + this % B(2) * this % phi(2,:)
+
+    ! Add contribution from psi2
+    rhs = rhs + this % B(2) * this % h * this % A(2,2) * this % psi(2,:)
+
     ! Solve for lambda22
-    this % lam(2,2,:) = -rhs(1)/mat(1,1)
+    this % lam(2,2,:) = - rhs(1)/mat(1,1) 
 
     print *, "lambda22=", this % lam(2,2,:)
 
@@ -963,6 +1292,13 @@ contains
          & this % T(2), this % system % x, &
          & this % Q(2,2,:), this % qdot(2,2,:), this % qddot(2,2,:))
 
+    ! Add contribution from phi2
+    rhs = rhs + this % B(1) * this % phi(2,:)
+
+    ! Add contribution from psi2
+    rhs = rhs + this % B(1) * this % h * this % A(1,1) * this % psi(2,:)
+    rhs = rhs + this % B(2) * this % h * this % A(2,1) * this % psi(2,:)
+
     ! Solve for lambda22
     this % lam(2,1,:) = -rhs(1)/mat(1,1)
 
@@ -973,185 +1309,6 @@ contains
 
   end subroutine testAdjoint7
 
-  ! loop second order
-  subroutine testAdjoint6(this, num_func, func, num_dv, x, dfdx, dfdxTmp)
-
-    use function_class , only : abstract_function
-
-    class(RK)                                  :: this
-    class(abstract_function)                   :: func
-    type(scalar), dimension(:), intent(inout)  :: x
-    integer, intent(in)                        :: num_func, num_dv
-    type(scalar)                               :: mat(1,1) = 0.0d0, tmpmat(1,1) = 0.0d0
-    type(scalar)                               :: rhs(1) = 0.0d0
-    type(scalar)                               :: alpha, beta, gamma, dfdx(3), dfdxTmp(3)
-    integer                                    :: size = 2 ,info, ipiv
-    type(scalar) , dimension(:,:), allocatable :: dRdX
-    type(scalar)                               :: fvals, fvalstmp, scale
-    integer                                    :: k, ii
-
-    !-----------------------------------------------------------------!
-    ! Set the objective function into the system
-    !-----------------------------------------------------------------!
-
-    call this % system % setFunction(func)
-
-    !-----------------------------------------------------------------!
-    ! Set the number of variables, design variables into the system
-    !-----------------------------------------------------------------!
-
-    if (num_dv .ne. this % system % num_design_vars) stop "NDV mismatch"
-
-    call this % system % setDesignVars(num_dv, x)
-
-    this % nDVars = num_dv
-
-    !-----------------------------------------------------------------!
-    ! Integrate forward in time to solve for the state variables
-    !-----------------------------------------------------------------!
-
-    call this % integrate()
-
-    do k = this % num_steps, 2, -1
-       
-       if (k .lt. this % num_steps) then
-
-          rhs  = this % psi(k+1,:) ! note the positive sign
-
-          do ii = this % num_stages, 1, -1
-
-             ! Add the psi terms
-             scale =  this % h * this % B(ii)
-
-             alpha    = 1.0d0
-             beta     = 0.0d0
-             gamma    = 0.0d0
-
-             call this % system % assembleJacobian(mat(1:1,1:1), alpha*scale, beta*scale, gamma*scale, &
-                  & this % T(ii), this % Q(k+1,ii,:), this % qdot(k+1,ii,:), this % qddot(k+1,ii,:))
-             
-             rhs = rhs + mat(1,1)*this % lam(k+1,ii,:)
-
-             ! Add function contributions too
-             call this % system % func % addFuncSVSens(rhs(1:1), alpha*scale, beta*scale, gamma*scale, &
-                  & this % T(ii), this % system % x, &
-                  & this % Q(k+1,ii,:), this % qdot(k+1,ii,:), this % qddot(k+1,ii,:))
-
-          end do
-          
-          this % psi(k,:) = rhs/1.0d0 ! note the positive sign
-          
-          !-----------------------------------------------------------!
-          ! Add the phi terms
-          !-----------------------------------------------------------!
-
-          rhs  = this % phi(k+1,:) ! note the positive sign
-
-          ! Add psi contribution from next step          
-          do ii = 1, this % num_stages
-             rhs = rhs + this % h * this % B(ii) * this % psi(k+1,:)
-          end do
-
-          do ii = this % num_stages, 1, -1
-             
-             scale = this % h * this % B(ii)
-
-             ! Add the phi terms
-             if ( ii .eq. 1) then
-                alpha    = this % h * this % A(1,1)
-             else
-                alpha    = this % h * this % A(2,1) + this % h * this % A(2,2)
-             end if
-             beta     = 1.0d0
-             gamma    = 0.0d0
-
-             call this % system % assembleJacobian(mat(1:1,1:1), alpha*scale, beta*scale, gamma*scale, &
-                  & this % T(ii), this % Q(k+1,ii,:), this % qdot(k+1,ii,:), this % qddot(k+1,ii,:))
-
-             rhs = rhs + mat(1,1)*this % lam(k+1,ii,:)
-
-             ! Add function contributions too
-             call this % system % func % addFuncSVSens(rhs(1:1), alpha*scale, beta*scale, gamma*scale, &
-                  & this % T(ii), this % system % x, &
-                  & this % Q(k+1,ii,:), this % qdot(k+1,ii,:), this % qddot(k+1,ii,:))
-
-          end do
-          
-          this % phi(k,:) = rhs/1.0d0 ! note the positive sign
-
-       else
-
-          this % psi (k,:) = 0.0d0
-          this % phi (k,:) = 0.0d0
-
-       end if
-
-       print *, "PSI: ", k, this % psi(k,:)
-       print *, "PHI: ", k, this % phi(k,:)
-       
-       !-----------------------------------------------------------!
-       ! Compute the stage adjoint varaibles
-       !-----------------------------------------------------------!
-
-       do ii = this % num_stages, 1, -1
-
-          !-----------------------------------------------------------------!
-          ! LAMBDA 22
-          !-----------------------------------------------------------------!
-
-          ! Assemble Jacobian
-          mat      = 0.0d0
-
-          alpha    = this % B(ii) * this % h * this % A(ii,ii) * this % h * this % A(ii,ii)
-          beta     = this % B(ii) * this % h * this % A(ii,ii)
-          gamma    = this % B(ii) * 1.0d0
-
-          call this % system % assembleJacobian(mat(1:1,1:1), alpha, beta, gamma, &
-               & this % T(ii), this % Q(k,ii,:), this % QDOT(k,ii,:), this % QDDOT(k,ii,:))
-          
-          ! Assemble RHS
-          rhs = 0.0d0
-
-          call this % system % func % addFuncSVSens(rhs(1:1), alpha, beta, gamma,  &
-               & this % T(ii), this % system % X, &
-               & this % Q(k,ii,:), this % QDOT(k,ii,:), this % QDDOT(k,ii,:))
-
-          if ( ii .lt. this % num_stages) then
-             
-             
-             ! Add contribution from the previous stage
-             alpha    = this % B(2) * this % h**2 * ( this % A(2,1) * this % A(1,1) + this % A(2,1) * this % A(2,2) ) ! # check this
-             beta     = this % B(2) * this % h * this % A(2,1) ! # check this
-             gamma    = 0.0d0
-
-             call this % system % assembleJacobian(tmpmat(1:1,1:1), alpha, beta, gamma, &
-                  & this % T(2), this % Q(2,2,:), this % qdot(2,2,:), this % qddot(2,2,:))
-
-             rhs = rhs + this % lam(2,2,:)*tmpmat(1,1)
-
-             ! Add function contribution from next stage
-             call this % system % func % addFuncSVSens(rhs(1:1), alpha, beta, gamma,  &
-                  & this % T(2), this % system % x, &
-                  & this % Q(2,2,:), this % qdot(2,2,:), this % qddot(2,2,:))
-
-          end if
-          
-!          rhs = rhs + this % B(ii) * this % phi(k,:)
-!          rhs = rhs + this % B(ii) * this % h * this % A(ii,ii) * this % psi(k,:)
-
-          ! Solve for lambda22
-          this % lam(k,ii,:) = -rhs(1)/mat(1,1)
-
-          print *, "LAMBDA: ", k,ii, this % lam(k,ii,:)
-          
-       end do
-
-    end do
-
-    ! Compute the adjoint total derivative
-    call this % computeTotalDerivative(dfdx)
-
-  end subroutine testAdjoint6
   
   subroutine testAdjoint5(this, num_func, func, num_dv, x, dfdx, dfdxTmp)
 
