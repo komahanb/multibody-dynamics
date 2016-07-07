@@ -126,7 +126,7 @@ Discrete Adjoint -- Diagonally Implicit Runge Kutta
   \end{columns}
 \end{frame}
 
-\begin{frame}[allowframebreaks]{Second Order DIRK : Three Steps}
+\begin{frame}[allowframebreaks]{Second Order DIRK : Two Stages Three Steps}
 
 \tiny{
   \begin{block}{Step 2}
@@ -194,12 +194,12 @@ Discrete Adjoint -- Diagonally Implicit Runge Kutta
 
 \framebreak
 
-\begin{block}{Adjoint Variables Step 3}
+\begin{block}{Adjoint Variables Step 3: $\phi_3,\psi_3,\lambda_{31},\lambda_{32}$}
   \begin{table}[h]
     \centering
     \label{adjoint_step3}
     \begin{tabular}{c|c}
-      $\pd{{\mathcal L}}{\dot{q}_{3}}  = 0$  & $ \pd{{T_3}}{\dot{q}_{3}}^T \phi_2 = 0$  \\
+      $\pd{{\mathcal L}}{\dot{q}_{3}}  = 0$  & $ \pd{{T_3}}{\dot{q}_{3}}^T \phi_3 = 0$  \\
       &\\
       $\pd{{\mathcal L}}{{q}_{3}}  = 0$      & $\pd{S_3}{q_3}^T \psi_3 = 0$ \\
       &\\
@@ -242,14 +242,14 @@ Discrete Adjoint -- Diagonally Implicit Runge Kutta
 
 \framebreak
 
-\begin{block}{Adjoint Variables Step 2}
+\begin{block}{Adjoint Variables Step 2: $\phi_2,\psi_2,\lambda_{31},\lambda_{32}$ }
   \begin{table}[h]
     \centering
     \label{adjoint_step2}
     \begin{tabular}{c|c}
-      $\pd{{\mathcal L}}{\dot{q}_{2}}  = 0$  & $ \pd{{T_2}}{\dot{q}_{2}}^T \phi_2 + \lambda_{31} h b_1 \pd{R_{31}}{\dot{q}_2} + \lambda_{32} hb_2 \pd{R_{32}}{\dot{q}_2} + + \lambda_{31} h b_1 \pd{f_{31}}{\dot{q}_2} + \lambda_{32} hb_2 \pd{f_{32}}{\dot{q}_2} + \psi_3^T \pd{S_3}{\dot{q}_2} + \phi_3^T \pd{T_3}{\dot{q}_2} = 0$  \\
+      $\pd{{\mathcal L}}{\dot{q}_{2}}  = 0$  & $ \pd{{T_2}}{\dot{q}_{2}}^T \phi_2 + h b_1 \pd{R_{31}}{\dot{q}_2}^T \lambda_{31} + hb_2 \pd{R_{32}}{\dot{q}_2}^T \lambda_{32} + h b_1 \pd{f_{31}}{\dot{q}_2}^T + hb_2 \pd{f_{32}}{\dot{q}_2}^T + \pd{S_3}{\dot{q}_2}^T\psi_3 + \pd{T_3}{\dot{q}_2}^T \phi_3 = 0$  \\
       &\\
-      $\pd{{\mathcal L}}{{q}_{2}}  = 0$      & $\pd{S_2}{q_2}^T \psi_2 + hb_1\pd{R_{31}}{q_2}^T\lambda_{31} + hb_2\pd{R_{32}}{q_2}^T \lambda_{32} + hb_1\pd{f_{31}}{q_2}^T\lambda_{31} + hb_2\pd{f_{32}}{q_2}^T \lambda_{32} + \pd{S_3}{q_2}^T \psi_3  = 0$ \\
+      $\pd{{\mathcal L}}{{q}_{2}}  = 0$      & $\pd{S_2}{q_2}^T \psi_2 + hb_1\pd{R_{31}}{q_2}^T\lambda_{31} + hb_2\pd{R_{32}}{q_2}^T \lambda_{32} + hb_1\pd{f_{31}}{q_2}^T + hb_2\pd{f_{32}}{q_2}^T + \pd{S_3}{q_2}^T \psi_3  = 0$ \\
       &\\
       $\pd{{\mathcal L}}{\ddot{q}_{22}} = 0$ & $hb_2\pd{R_{22}}{\ddot{q}_{22}}^T\lambda_{22}+ \pd{S_2}{\ddot{q}_{22}}^T \psi_2 + \pd{T_2}{\ddot{q}_{22}}^T \phi_2 + hb_2\pd{f_{22}}{\ddot{q}_{22}}^T = 0$ \\
       &\\
@@ -296,6 +296,282 @@ Discrete Adjoint -- Diagonally Implicit Runge Kutta
 
 \end{frame}
 
+\begin{frame}[allowframebreaks]{Second Order DIRK : Three Stages -- Three Steps}
+\tiny{
+\begin{block}{Step 3}
+  \begin{minipage}{1.0\textwidth}
+    \begin{minipage}{1.0\textwidth}
+      \begin{equation}\nonumber
+        \begin{split}
+          &\lambda_{31}^T h b_1 \mathbf{R_{31}}\left(\underline{\mathbf{\ddot{q}_{31}}},
+          \mathbf{\dot{q}_{31}}(\dot{q_2},\ddot{q_{31}}),
+              \mathbf{{q}_{31}}(q_2,\dot{q_{31}}(\dot{q_2},\ddot{q_{31}}))\right) = 0 \\
+          &\lambda_{32}^T h b_2  \mathbf{R_{32}}\left(\underline{\mathbf{\ddot{q}_{32}}},
+              \mathbf{\dot{q}_{32}}(\dot{q_2},\ddot{q_{31}},\ddot{q_{32}}),
+          \mathbf{{q}_{32}}(q_2,\dot{q_{31}}(\dot{q_2},\ddot{q_{31}}),\dot{q_{32}}(\dot{q_2},\ddot{q_{31}},\ddot{q_{32}}))\right) = 0 \\
+          &\lambda_{33}^T h b_3 \mathbf{R_{33}} \left(\underline{\mathbf{\ddot{q}_{33}}},
+              \mathbf{\dot{q}_{33}}(\dot{q_2},\ddot{q_{31}},\ddot{q_{32}},\ddot{q_{33}}),
+          \mathbf{{q}_{33}}(q_2,\dot{q_{31}}(\dot{q_2},\ddot{q_{31}}),\dot{q_{32}}(\dot{q_2},\ddot{q_{31}},\ddot{q_{32}}),\dot{q_{33}}(\dot{q_2},\ddot{q_{31}},\ddot{q_{32}},\ddot{q_{33}}))\right) = 0\\
+          &h b_1 \mathbf{f_{31}}\left(\underline{\mathbf{\ddot{q}_{31}}},
+          \mathbf{\dot{q}_{31}}(\dot{q_2},\ddot{q_{31}}),
+              \mathbf{{q}_{31}}(q_2,\dot{q_{31}}(\dot{q_2},\ddot{q_{31}}))\right) = 0 \\
+          &h b_2 \mathbf{f_{32}}\left(\underline{\mathbf{\ddot{q}_{32}}},
+              \mathbf{\dot{q}_{32}}(\dot{q_2},\ddot{q_{31}},\ddot{q_{32}}),
+          \mathbf{{q}_{32}}(q_2,\dot{q_{31}}(\dot{q_2},\ddot{q_{31}}),\dot{q_{32}}(\dot{q_2},\ddot{q_{31}},\ddot{q_{32}}))\right) = 0\\
+          &h b_3 \mathbf{f_{33}}\left(\underline{\mathbf{\ddot{q}_{33}}},
+              \mathbf{\dot{q}_{33}}(\dot{q_2},\ddot{q_{31}},\ddot{q_{33}},\ddot{q_{33}}),
+          \mathbf{{q}_{32}}(q_2,\dot{q_{31}}(\dot{q_2},\ddot{q_{31}}),\dot{q_{32}}(\dot{q_2},\ddot{q_{31}},\ddot{q_{32}}),\dot{q_{33}}(\dot{q_2},\ddot{q_{31}},\ddot{q_{32}},\ddot{q_{33}}))\right) = 0\\
+          &\psi_3^T \mathbf{S_3}(q_2 + h b_1 \dot{q}_{31}(\dot{q}_2,\ddot{q_{31}}) +  h b_2 \dot{q}_{32}(\dot{q}_2,\ddot{q_{31}},\ddot{q_{32}}) +  h b_3 \dot{q}_{33}(\dot{q}_2,\ddot{q_{31}},\ddot{q_{32}},\ddot{q_{33}}) - \underline{\mathbf{q_3}} ) = 0\\
+          &\phi_3^T \mathbf{T_3}(\dot{q}_2 + h b_1 \ddot{q}_{31} +  h b_2 \ddot{q}_{32}  +  h b_3 \ddot{q}_{33} - \underline{\mathbf{\dot{q}_3}} ) = 0\\
+        \end{split}
+      \end{equation}
+    \end{minipage}
+  \end{minipage}
+\end{block}
+\begin{minipage}{1.0\textwidth}
+  \begin{equation}\nonumber
+    \begin{split}
+      q_{31} &= q_2 + h a_{11} \dot{q}_{31} \\
+      q_{32} &= q_2 + h a_{21} \dot{q}_{31} + h a_{22} \dot{q}_{32} \\
+      q_{33} &= q_2 + h a_{31} \dot{q}_{31} + h a_{32} \dot{q}_{32}+ h a_{33} \dot{q}_{33}  \\\hline
+      \dot{q}_{31} &= \dot{q}_2 + h a_{11} \ddot{q}_{31} \\
+      \dot{q}_{32} &= \dot{q}_2 + h a_{21} \ddot{q}_{31} + h a_{22} \ddot{q}_{32} \\
+      \dot{q}_{33} &= \dot{q}_2 + h a_{31} \ddot{q}_{31} + h a_{32} \ddot{q}_{32} + h a_{33} \ddot{q}_{33} \\
+    \end{split}
+  \end{equation}
+\end{minipage}
+}
+
+\framebreak
+
+\begin{block}{Adjoint Variables Step 3: $\phi_3,\psi_3,\lambda_{31},\lambda_{32},\lambda_{33}$}
+  \begin{table}[h]
+    \centering
+    \label{adjoint_step3}
+    \begin{tabular}{l|l}
+      $\pd{{\mathcal L}}{\dot{q}_{3}}  = 0$  & $ \pd{{T_3}}{\dot{q}_{3}}^T \phi_3 = 0$  \\
+      &\\
+      $\pd{{\mathcal L}}{{q}_{3}}  = 0$      & $\pd{S_3}{q_3}^T \psi_3 = 0$ \\
+      &\\
+      $\pd{{\mathcal L}}{\ddot{q}_{33}} = 0$ & $hb_3\pd{R_{33}}{\ddot{q}_{33}}^T\lambda_{33} + \pd{S_3}{\ddot{q}_{33}}^T \psi_3 + \pd{T_3}{\ddot{q}_{33}}^T \phi_3 + hb_3\pd{f_{33}}{\ddot{q}_{33}}^T = 0$ \\
+      &\\
+      $\pd{{\mathcal L}}{\ddot{q}_{32}} = 0$ & $hb_2\pd{R_{32}}{\ddot{q}_{32}}^T\lambda_{32} + hb_3\pd{R_{33}}{\ddot{q}_{32}}^T\lambda_{33} + \pd{S_3}{\ddot{q}_{32}}^T \psi_3 + \pd{T_3}{\ddot{q}_{32}}^T \phi_3 + hb_2\pd{f_{32}}{\ddot{q}_{32}}^T + + hb_3\pd{f_{33}}{\ddot{q}_{32}}^T= 0$ \\
+      &\\
+      $\pd{{\mathcal L}}{\ddot{q}_{31}} = 0$ & $hb_1 \pd{R_{31}}{\ddot{q}_{31}}^T \lambda_{31} +  h b_2 \pd{R_{32}}{\ddot{q}_{31}}^T \lambda_{32} + h b_3 \pd{R_{33}}{\ddot{q}_{31}}^T \lambda_{33}  + \pd{T_3}{\ddot{q}_{31}}^T \phi_3 + \pd{S_3}{\ddot{q}_{31}}^T \psi_3 + $ \\ 
+      & $ h b_1 \pd{f_{31}}{\ddot{q}_{31}}^T +  h b_2 \pd{f_{32}}{\ddot{q}_{31}}^T +  h b_3 \pd{f_{33}}{\ddot{q}_{31}}^T = 0  $ \\
+    \end{tabular}
+  \end{table}
+\end{block}
+
+\framebreak
+
+\begin{equation}
+  \phi_3 = 0
+\end{equation}
+
+\begin{equation}
+  \psi_3 = 0
+\end{equation}
+
+% equation for lamda 33
+\begin{equation}
+  \begin{split}
+    hb_3\left[\pd{R_{33}}{\ddot{q}_{33}} + ha_{33}\pd{R_{33}}{\dot{q}_{33}} + h^2a_{33}^2 \pd{R_{33}}{{q}_{33}} \right]^T \lambda_{33} = & - hb_3 \left[\pd{f_{33}}{\ddot{q}_{33}} + ha_{33}\pd{f_{33}}{\dot{q}_{33}} + h^2a_{33}^2 \pd{f_{33}}{{q}_{33}} \right]^T \\ 
+    & - hb_3 I \phi_3 \\ 
+    & - hb_3ha_{33} I  \psi_3
+  \end{split}
+\end{equation}
+
+% equation for lamda 32
+\begin{equation}
+  \begin{split}
+    hb_2\left[\pd{R_{32}}{\ddot{q}_{32}} + ha_{22}\pd{R_{32}}{\dot{q}_{32}} + h^2a_{22}^2 \pd{R_{32}}{{q}_{32}} \right]^T \lambda_{32} = & - hb_2 \left[\pd{f_{32}}{\ddot{q}_{32}} + ha_{22}\pd{f_{32}}{\dot{q}_{32}} + h^2a_{22}^2 \pd{f_{32}}{{q}_{32}} \right]^T \\ 
+    & - hb_3 \left[ha_{32}\pd{f_{33}}{\dot{q}_{33}} + (ha_{32}ha_{22} + ha_{33}ha_{32}) \pd{f_{33}}{{q}_{33}} \right]^T \\  
+    & - hb_3 \left[ha_{32}\pd{R_{33}}{\dot{q}_{33}} + (ha_{32}ha_{22} + ha_{33}ha_{32}) \pd{R_{33}}{{q}_{33}} \right]^T\lambda_{33} \\  
+    & - hb_2 I \phi_3 \\ 
+    & - (hb_2ha_{22} + hb_3 ha_{32}) I  \psi_3
+  \end{split}
+\end{equation}
+
+% equation for lamda 31
+\begin{equation}
+  \begin{split}
+    hb_1\left[\pd{R_{31}}{\ddot{q}_{31}} + ha_{11}\pd{R_{31}}{\dot{q}_{31}} + h^2a_{11}^2 \pd{R_{31}}{{q}_{31}} \right]^T \lambda_{31} = & - hb_1 \left[\pd{f_{31}}{\ddot{q}_{31}} + ha_{11}\pd{f_{31}}{\dot{q}_{31}} + h^2a_{11}^2 \pd{f_{31}}{{q}_{31}} \right]^T \\ 
+    & - hb_2 \left[ ha_{21} \pd{R_{32}}{\dot{q}_{32}} + (ha_{21}ha_{11} + ha_{22}ha_{21}) \pd{R_{32}}{{q}_{32}} \right]\lambda_{32} \\
+    & - hb_2 \left[ ha_{21} \pd{f_{32}}{\dot{q}_{32}} + (ha_{21}ha_{11} + ha_{22}ha_{21}) \pd{f_{32}}{{q}_{32}} \right] \\
+    & - hb_3 \left[ ha_{31} \pd{R_{33}}{\dot{q}_{33}} + (ha_{31}ha_{11} + ha_{32}ha_{21} + ha_{33}ha_{31}) \pd{R_{33}}{{q}_{33}} \right] \lambda_{33} \\
+    & - hb_3 \left[ ha_{31} \pd{f_{33}}{\dot{q}_{33}} + (ha_{31}ha_{11} + ha_{32}ha_{21} + ha_{33}ha_{31}) \pd{f_{33}}{{q}_{33}} \right] \\
+    & - hb_1I \phi_3 \\ 
+    & - (hb_1ha_{11} + hb_2ha_{21}+ hb_3ha_{31}) I \psi_3
+  \end{split}
+\end{equation}
+
+\framebreak
+
+% Second step
+  \begin{block}{Step 2}
+    \begin{minipage}{1.0\textwidth}
+      \begin{minipage}{1.0\textwidth}
+        \begin{equation}\nonumber
+          \begin{split}
+            &\lambda_{21}^T h b_1 \mathbf{R_{21}}\left(\underline{\mathbf{\ddot{q}_{21}}},\mathbf{\dot{q}_{21}}(\dot{q_1},\ddot{q_{21}}),\mathbf{{q}_{21}}({q_1},\dot{q_{21}}(\dot{q_1},\ddot{q_{21}}))\right) = 0 \\
+            &\lambda_{22}^T h b_2 \mathbf{R_{22}}\left(\underline{\mathbf{\ddot{q}_{22}}},\mathbf{\dot{q}_{22}}(\dot{q_1},\ddot{q_{21}},\ddot{q_{22}}),\mathbf{{q}_{22}}({q_1},\dot{q_{21}}(\dot{q_1},\ddot{q_{21}}),\dot{q_{22}}(\dot{q_1},\ddot{q_{21}},\ddot{q_{22}}))\right) = 0 \\
+            &\lambda_{22}^T h b_3 \mathbf{R_{23}}\left(\underline{\mathbf{\ddot{q}_{23}}},
+\mathbf{\dot{q}_{23}}(\dot{q_1},\ddot{q_{21}},\ddot{q_{22}},\ddot{q_{23}}),
+\mathbf{{q}_{23}}({q_1},\dot{q_{21}}(\dot{q_1},\ddot{q_{21}}),\dot{q_{22}}(\dot{q_1},\ddot{q_{21}},\ddot{q_{22}}),\dot{q_{23}}(\dot{q_1},\ddot{q_{21}},\ddot{q_{22}},\ddot{q_{23}}))\right) = 0 \\
+            &h b_1 \mathbf{f_{21}}\left(\underline{\mathbf{\ddot{q}_{21}}},\mathbf{\dot{q}_{21}}(\dot{q_1},\ddot{q_{21}}),\mathbf{{q}_{21}}({q_1},\dot{q_{21}}(q_1,\ddot{q_{21}}))\right) = 0 \\
+            &h b_2 \mathbf{f_{22}}\left(\underline{\mathbf{\ddot{q}_{22}}},\mathbf{\dot{q}_{22}}(\dot{q_1},\ddot{q_{21}},\ddot{q_{22}}),\mathbf{{q}_{22}}({q_1},\dot{q_{21}}(\dot{q_1},\ddot{q_{21}}),\dot{q_{22}}(\dot{q_1},\ddot{q_{21}},\ddot{q_{22}}))\right) = 0 \\
+            &h b_3 \mathbf{f_{23}}\left(\underline{\mathbf{\ddot{q}_{23}}},\mathbf{\dot{q}_{23}}(\dot{q_1},\ddot{q_{21}},\ddot{q_{22}},\ddot{q_{23}}),\mathbf{{q}_{23}}({q_1},\dot{q_{21}}(\dot{q_1},\ddot{q_{21}}),\dot{q_{22}}(\dot{q_1},\ddot{q_{21}},\ddot{q_{22}}),\dot{q_{23}}(\dot{q_1},\ddot{q_{21}},\ddot{q_{22}},\ddot{q_{23}}))\right) = 0 \\
+            &\psi_2^T \mathbf{S_2}\left(q_1 + h b_1 \dot{q}_{21}(\dot{q_1},\ddot{q_{21}}) +  h b_2 \dot{q}_{22} (\dot{q_1},\ddot{q_{21}},\ddot{q_{22}}) +  h b_3 \dot{q}_{23} (\dot{q_1},\ddot{q_{21}},\ddot{q_{22}},\ddot{q_{23}}) - \underline{\mathbf{q_2}} \right) = 0\\
+            &\phi_2^T \mathbf{T_2}\left(\dot{q}_1 + h b_1 \ddot{q}_{21} +  h b_2 \ddot{q}_{22} +  h b_2 \ddot{q}_{23} - \underline{\mathbf{\dot{q}_2}} \right) = 0 \\
+          \end{split}
+        \end{equation}
+      \end{minipage}
+    \end{minipage}
+    \begin{minipage}{1.0\textwidth}
+      \begin{equation}\nonumber
+        \begin{split}
+          q_{21} &= q_1 + h a_{11} \dot{q}_{21} \\
+          q_{22} &= q_1 + h a_{21} \dot{q}_{21} + h a_{22} \dot{q}_{22} \\
+          q_{23} &= q_1 + h a_{31} \dot{q}_{21} + h a_{32} \dot{q}_{22} + h a_{33} \dot{q}_{23} \\\hline
+          \dot{q}_{21} &= \dot{q}_1 + h a_{11} \ddot{q}_{21} \\
+          \dot{q}_{22} &= \dot{q}_1 + h a_{21} \ddot{q}_{21} + h a_{22} \ddot{q}_{22} \\
+          \dot{q}_{23} &= \dot{q}_1 + h a_{31} \ddot{q}_{21} + h a_{32} \ddot{q}_{22} + h a_{33} \ddot{q}_{23} \\
+        \end{split}
+      \end{equation}
+    \end{minipage}
+  \end{block}
+
+  \framebreak
+  
+  \begin{block}{Adjoint Variables Step 2: $\phi_2,\psi_2,\lambda_{31},\lambda_{32},\lambda_{33}$}
+    \begin{table}[h]
+    \centering
+    \label{adjoint_step2}
+    \begin{tabular}{c|c}
+      $\pd{{\mathcal L}}{\dot{q}_{2}}   = 0$ & $\pd{{T_2}}{\dot{q}_{2}}^T \phi_2 + h b_1 \pd{R_{31}}{\dot{q}_2}^T\lambda_{31} +  hb_2 \pd{R_{32}}{\dot{q}_2}^T \lambda_{32}  +  hb_3 \pd{R_{33}}{\dot{q}_2}^T \lambda_{33}$ \\
+      & $ + h b_1 \pd{f_{31}}{\dot{q}_2}^T + h b_2 \pd{f_{32}}{\dot{q}_2}^T + h b_3 \pd{f_{33}}{\dot{q}_2}^T + \pd{S_3}{\dot{q}_2}^T \psi_3 + \pd{T_3}{\dot{q}_2}^T \phi_3 = 0$  \\
+      &\\
+      $\pd{{\mathcal L}}{{q}_{2}}       = 0$ & $\pd{S_2}{q_2}^T \psi_2 + hb_1\pd{R_{31}}{q_2}^T\lambda_{31} + hb_2\pd{R_{32}}{q_2}^T \lambda_{32} + hb_3\pd{R_{33}}{q_2}^T \lambda_{33}$\\ 
+      &$  + hb_1\pd{f_{31}}{q_2}^T + hb_2\pd{f_{32}}{q_2}^T + hb_3\pd{f_{33}}{q_2}^T + \pd{S_3}{q_2}^T \psi_3  = 0$ \\
+      &\\
+      $\pd{{\mathcal L}}{\ddot{q}_{23}} = 0$ & $hb_3\pd{R_{23}}{\ddot{q}_{23}}^T\lambda_{23} + \pd{S_2}{\ddot{q}_{23}}^T \psi_2 + \pd{T_2}{\ddot{q}_{23}}^T \phi_2 + hb_3\pd{f_{23}}{\ddot{q}_{23}}^T = 0$ \\
+      &\\
+      $\pd{{\mathcal L}}{\ddot{q}_{22}} = 0$ & $hb_2\pd{R_{22}}{\ddot{q}_{22}}^T\lambda_{22} + hb_3\pd{R_{23}}{\ddot{q}_{22}}^T\lambda_{23} + \pd{S_3}{\ddot{q}_{22}}^T \psi_3 + \pd{T_3}{\ddot{q}_{22}}^T \phi_3 + hb_2\pd{f_{22}}{\ddot{q}_{22}}^T + + hb_3\pd{f_{23}}{\ddot{q}_{22}}^T= 0$ \\
+      &\\
+      $\pd{{\mathcal L}}{\ddot{q}_{21}} = 0$ & $hb_1 \pd{R_{21}}{\ddot{q}_{21}}^T \lambda_{21} +  h b_2 \pd{R_{22}}{\ddot{q}_{21}}^T \lambda_{22} + h b_3 \pd{R_{23}}{\ddot{q}_{21}}^T \lambda_{23}  + \pd{T_3}{\ddot{q}_{21}}^T \phi_3 + \pd{S_3}{\ddot{q}_{21}}^T \psi_3 + $ \\ 
+      & $ h b_1 \pd{f_{21}}{\ddot{q}_{21}}^T +  h b_2 \pd{f_{22}}{\ddot{q}_{21}}^T +  h b_3 \pd{f_{23}}{\ddot{q}_{21}}^T = 0  $ \\
+    \end{tabular}
+  \end{table}
+\end{block}
+
+\framebreak
+
+% equation for phi2
+\begin{equation}
+  \begin{split}
+    I \phi_2 =  & I \phi_3 + (hb_1 + hb_2 + hb_3) I \psi_3  \\ 
+    & + hb_1 \left[ \pd{R_{31}}{\dot{q}_{31}} + ha_{11} \pd{R_{31}}{q_{31}}  \right]^T \lambda_{31} + hb_1 \left[ \pd{f_{31}}{\dot{q}_{31}} + ha_{11} \pd{f_{31}}{{q}_{31}} \right]^T \\
+    & + hb_2 \left[ \pd{R_{32}}{\dot{q_{32}}} + (ha_{21} + ha_{22}) \pd{R_{32}}{q_{32}} \right]^T \lambda_{32} + hb_2 \left[ \pd{f_{32}}{\dot{q_{32}}} + (ha_{21} + ha_{22}) \pd{f_{32}}{q_{32}} \right]^T \\               
+    & + hb_3 \left[ \pd{R_{33}}{\dot{q_{33}}} + (ha_{31} + ha_{32} + ha_{33}) \pd{R_{33}}{q_{33}} \right]^T \lambda_{33} + hb_3 \left[ \pd{f_{33}}{\dot{q_{33}}} + (ha_{31} + ha_{32} + ha_{33}) \pd{f_{33}}{q_{33}} \right]^T
+  \end{split}
+\end{equation}
+
+% equation for psi2
+\begin{equation}
+  \begin{split}
+    I \psi_2 = I \psi_3 + hb_1 \pd{R_{31}}{q_{31}}^T \lambda_{31} + hb_1 \pd{f_{31}}{q_{31}}^T + hb_2 \pd{R_{32}}{q_{32}}^T \lambda_{32} + hb_2 \pd{f_{32}}{q_{32}}^T + hb_3 \pd{R_{33}}{q_{33}}^T \lambda_{33} + hb_3 \pd{f_{33}}{q_{33}}^T \\
+  \end{split}
+\end{equation}
+
+% equation for lamda 23
+\begin{equation}
+  \begin{split}
+    hb_3\left[\pd{R_{23}}{\ddot{q}_{23}} + ha_{33}\pd{R_{23}}{\dot{q}_{23}} + h^2a_{33}^2 \pd{R_{23}}{{q}_{23}} \right]^T \lambda_{23} = & - hb_3 \left[\pd{f_{23}}{\ddot{q}_{23}} + ha_{33}\pd{f_{23}}{\dot{q}_{23}} + h^2a_{33}^2 \pd{f_{23}}{{q}_{23}} \right]^T \\ 
+    & - hb_3 I \phi_3 \\ 
+    & - hb_3ha_{33} I  \psi_3
+  \end{split}
+\end{equation}
+
+% equation for lamda 22
+\begin{equation}
+  \begin{split}
+    hb_2\left[\pd{R_{22}}{\ddot{q}_{22}} + ha_{22}\pd{R_{22}}{\dot{q}_{22}} + h^2a_{22}^2 \pd{R_{22}}{{q}_{22}} \right]^T \lambda_{22} = & - hb_2 \left[\pd{f_{22}}{\ddot{q}_{22}} + ha_{22}\pd{f_{22}}{\dot{q}_{22}} + h^2a_{22}^2 \pd{f_{22}}{{q}_{22}} \right]^T \\ 
+    & - hb_3 \left[ha_{32}\pd{f_{23}}{\dot{q}_{23}} + (ha_{32}ha_{22} + ha_{33}ha_{32}) \pd{f_{23}}{{q}_{23}} \right]^T \\  
+    & - hb_3 \left[ha_{32}\pd{R_{23}}{\dot{q}_{23}} + (ha_{32}ha_{22} + ha_{33}ha_{32}) \pd{R_{23}}{{q}_{23}} \right]^T\lambda_{23} \\  
+    & - hb_2 I \phi_3 \\ 
+    & - (hb_2ha_{22} + hb_3 ha_{32}) I  \psi_3
+  \end{split}
+\end{equation}
+
+% equation for lamda 21
+\begin{equation}
+  \begin{split}
+    hb_1\left[\pd{R_{21}}{\ddot{q}_{21}} + ha_{11}\pd{R_{21}}{\dot{q}_{21}} + h^2a_{11}^2 \pd{R_{21}}{{q}_{21}} \right]^T \lambda_{21} = & - hb_1 \left[\pd{f_{21}}{\ddot{q}_{21}} + ha_{11}\pd{f_{21}}{\dot{q}_{21}} + h^2a_{11}^2 \pd{f_{21}}{{q}_{21}} \right]^T \\ 
+    & - hb_2 \left[ ha_{21} \pd{R_{22}}{\dot{q}_{22}} + (ha_{21}ha_{11} + ha_{22}ha_{21}) \pd{R_{22}}{{q}_{22}} \right]\lambda_{22} \\
+    & - hb_2 \left[ ha_{21} \pd{f_{22}}{\dot{q}_{22}} + (ha_{21}ha_{11} + ha_{22}ha_{21}) \pd{f_{22}}{{q}_{22}} \right] \\
+    & - hb_3 \left[ ha_{31} \pd{R_{23}}{\dot{q}_{23}} + (ha_{31}ha_{11} + ha_{32}ha_{21} + ha_{33}ha_{31}) \pd{R_{23}}{{q}_{23}} \right] \lambda_{23} \\
+    & - hb_3 \left[ ha_{31} \pd{f_{23}}{\dot{q}_{23}} + (ha_{31}ha_{11} + ha_{32}ha_{21} + ha_{33}ha_{31}) \pd{f_{23}}{{q}_{23}} \right] \\
+    & - hb_1I \phi_3 \\ 
+    & - (hb_1ha_{11} + hb_2ha_{21}+ hb_3ha_{31}) I \psi_3
+  \end{split}
+\end{equation}
+
+\end{frame}
+
+\begin{frame}[allowframebreaks] \frametitle{General Adjoint Formulae}
+  \vspace{-0.25cm}
+  \scriptsize{
+    \begin{block}{Time Dependency Adjoint 1}
+      \begin{equation}\nonumber
+        \begin{split}
+          \phi_k = & \phi_{k+1} + \left(h\sum_{i=1}^s b_i\right) \psi_{k+1}  + h \sum_{i=1}^sb_i \left[\pd{R_{k+1,i}}{\dot{q}_{k+1,i}} + \left( h \sum_{j=1}^i a_{ij} \right) \pd{R_{k+1,i}}{q_{k+1,i}} \right]^T \lambda_{k+1,i}  \\
+          & + h \sum_{i=1}^sb_i \left[\pd{f_{k+1,i}}{\dot{q}_{k+1,i}} + \left( h \sum_{j=1}^i a_{ij} \right) \pd{f_{k+1,i}}{q_{k+1,i}} \right]^T
+        \end{split}
+      \end{equation}
+      Noting that $\sum_{i=1}^s b_i = 1$, and $\sum_{j=1}^i a_{ij} = c_i$,
+      \begin{equation}\nonumber
+        \begin{split}
+          \phi_k = & \phi_{k+1} + h \psi_{k+1}  + h \sum_{i=1}^sb_i \left[\pd{R_{k+1,i}}{\dot{q}_{k+1,i}} + hc_i \pd{R_{k+1,i}}{q_{k+1,i}} \right]^T \lambda_{k+1,i}  \\ &+ h \sum_{i=1}^sb_i \left[\pd{f_{k+1,i}}{\dot{q}_{k+1,i}} +hc_i \pd{f_{k+1,i}}{q_{k+1,i}} \right]^T
+        \end{split}
+      \end{equation}
+      Therefore  $$\alpha = hb_i, \beta = \alpha hc_i, \gamma = 0 .$$
+    \end{block}
+  }
+
+  \framebreak
+
+  \normalsize{
+    \begin{block}{Time Dependency Adjoint 2}
+      \begin{equation}\nonumber
+        \psi_k = \psi_{k+1} + h \sum_{i=1}^s b_i \left[ \pd{R_{k+1,i}}{q_{k+1,i}} \right]^T \lambda_{k+1,i} + h \sum_{i=1}^s b_i \left[ \pd{f_{k+1,i}}{q_{k+1,i}} \right]^T
+      \end{equation}
+      Here, $$ \alpha = hb_i, \beta = 0, \gamma = 0$$
+    \end{block}
+  }
+
+  \framebreak
+
+  \scriptsize{
+    \begin{block}{Stage Adjoint}
+      \begin{equation}\nonumber
+        \begin{split}
+          \left[ \pd{R_{ki}}{\ddot{q}_{ki}} + ha_{ii} \pd{R_{ki}}{\dot{q}_{ki}} + h^2 a_{ii}^2 \pd{R_{ki}}{{q}_{ki}} \right]^T \lambda_{ki} = & -\left[ \pd{R_{ki}}{\ddot{q}_{ki}} + h^2a_{ii}^2 \pd{R_{ki}}{\dot{q}_{ki}} + h^2a_{ii}^2 \pd{R_{ki}}{{q}_{ki}} \right]^T \\
+          & - h\sum_{j=i+1}^s b_j \left[ ha_{ji} \pd{R_{kj}}{\dot{q}_{kj}} 
+            +  (\sum_{p=i}^j a_{jp}a_{pi}) 
+            \pd{R_{kj}}{{q}_{kj}} \right]^T \lambda_{kj} \\
+          & - h \sum_{j=i+1}^s b_j \left[ ha_{ji} \pd{f_{kj}}{\dot{q}_{kj}} 
+            +  (\sum_{p=i}^j a_{jp}a_{pi}) 
+            \pd{f_{kj}}{{q}_{kj}} \right]^T  \\
+          & -  h (\sum_{j=i}^s b_j a_{ji}) \psi_{k+1}  \\
+          &  - hb_i \phi_{k+1} 
+        \end{split}
+      \end{equation}
+    \end{block}
+  }
+\end{frame}
+
+% Questions
 \begin{frame}
   \begin{columns}
     \column{6cm}
