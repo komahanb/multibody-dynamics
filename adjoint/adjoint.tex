@@ -488,8 +488,8 @@ Discrete Adjoint -- Diagonally Implicit Runge Kutta
 \begin{equation}
   \begin{split}
     hb_3\left[\pd{R_{23}}{\ddot{q}_{23}} + ha_{33}\pd{R_{23}}{\dot{q}_{23}} + h^2a_{33}^2 \pd{R_{23}}{{q}_{23}} \right]^T \lambda_{23} = & - hb_3 \left[\pd{f_{23}}{\ddot{q}_{23}} + ha_{33}\pd{f_{23}}{\dot{q}_{23}} + h^2a_{33}^2 \pd{f_{23}}{{q}_{23}} \right]^T \\ 
-    & - hb_3 I \phi_3 \\ 
-    & - hb_3ha_{33} I  \psi_3
+    & - hb_3 I \phi_2 \\ 
+    & - hb_3ha_{33} I  \psi_2
   \end{split}
 \end{equation}
 
@@ -499,8 +499,8 @@ Discrete Adjoint -- Diagonally Implicit Runge Kutta
     hb_2\left[\pd{R_{22}}{\ddot{q}_{22}} + ha_{22}\pd{R_{22}}{\dot{q}_{22}} + h^2a_{22}^2 \pd{R_{22}}{{q}_{22}} \right]^T \lambda_{22} = & - hb_2 \left[\pd{f_{22}}{\ddot{q}_{22}} + ha_{22}\pd{f_{22}}{\dot{q}_{22}} + h^2a_{22}^2 \pd{f_{22}}{{q}_{22}} \right]^T \\ 
     & - hb_3 \left[ha_{32}\pd{f_{23}}{\dot{q}_{23}} + (ha_{32}ha_{22} + ha_{33}ha_{32}) \pd{f_{23}}{{q}_{23}} \right]^T \\  
     & - hb_3 \left[ha_{32}\pd{R_{23}}{\dot{q}_{23}} + (ha_{32}ha_{22} + ha_{33}ha_{32}) \pd{R_{23}}{{q}_{23}} \right]^T\lambda_{23} \\  
-    & - hb_2 I \phi_3 \\ 
-    & - (hb_2ha_{22} + hb_3 ha_{32}) I  \psi_3
+    & - hb_2 I \phi_2 \\ 
+    & - (hb_2ha_{22} + hb_3 ha_{32}) I  \psi_2
   \end{split}
 \end{equation}
 
@@ -512,15 +512,17 @@ Discrete Adjoint -- Diagonally Implicit Runge Kutta
     & - hb_2 \left[ ha_{21} \pd{f_{22}}{\dot{q}_{22}} + (ha_{21}ha_{11} + ha_{22}ha_{21}) \pd{f_{22}}{{q}_{22}} \right] \\
     & - hb_3 \left[ ha_{31} \pd{R_{23}}{\dot{q}_{23}} + (ha_{31}ha_{11} + ha_{32}ha_{21} + ha_{33}ha_{31}) \pd{R_{23}}{{q}_{23}} \right] \lambda_{23} \\
     & - hb_3 \left[ ha_{31} \pd{f_{23}}{\dot{q}_{23}} + (ha_{31}ha_{11} + ha_{32}ha_{21} + ha_{33}ha_{31}) \pd{f_{23}}{{q}_{23}} \right] \\
-    & - hb_1I \phi_3 \\ 
-    & - (hb_1ha_{11} + hb_2ha_{21}+ hb_3ha_{31}) I \psi_3
+    & - hb_1I \phi_2 \\ 
+    & - (hb_1ha_{11} + hb_2ha_{21}+ hb_3ha_{31}) I \psi_2
   \end{split}
 \end{equation}
 
 \end{frame}
 
 \begin{frame}[allowframebreaks] \frametitle{General Adjoint Formulae}
+
   \vspace{-0.25cm}
+
   \scriptsize{
     \begin{block}{Time Dependency Adjoint 1}
       \begin{equation}\nonumber
@@ -535,7 +537,7 @@ Discrete Adjoint -- Diagonally Implicit Runge Kutta
           \phi_k = & \phi_{k+1} + h \psi_{k+1}  + h \sum_{i=1}^sb_i \left[\pd{R_{k+1,i}}{\dot{q}_{k+1,i}} + hc_i \pd{R_{k+1,i}}{q_{k+1,i}} \right]^T \lambda_{k+1,i}  \\ &+ h \sum_{i=1}^sb_i \left[\pd{f_{k+1,i}}{\dot{q}_{k+1,i}} +hc_i \pd{f_{k+1,i}}{q_{k+1,i}} \right]^T
         \end{split}
       \end{equation}
-      Therefore  $$\alpha = hb_i, \beta = \alpha hc_i, \gamma = 0 .$$
+      Therefore  $$\beta = hb_i, \alpha = \beta hc_i, \gamma = 0.$$
     \end{block}
   }
 
@@ -563,8 +565,8 @@ Discrete Adjoint -- Diagonally Implicit Runge Kutta
           & - h \sum_{j=i+1}^s b_j \left[ ha_{ji} \pd{f_{kj}}{\dot{q}_{kj}} 
             +  (\sum_{p=i}^j a_{jp}a_{pi}) 
             \pd{f_{kj}}{{q}_{kj}} \right]^T  \\
-          & -  h (\sum_{j=i}^s b_j a_{ji}) \psi_{k+1}  \\
-          &  - hb_i \phi_{k+1} 
+          & -  h (\sum_{j=i}^s b_j a_{ji}) \psi_{k}  \\
+          &  - hb_i \phi_{k} 
         \end{split}
       \end{equation}
     \end{block}

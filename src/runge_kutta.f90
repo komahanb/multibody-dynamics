@@ -873,7 +873,7 @@ contains
     integer                                    :: size = 2 ,info, ipiv
     type(scalar) , dimension(:,:), allocatable :: dRdX
     type(scalar)                               :: fvals, fvalstmp
-    integer                                    :: k, ii
+    integer                                    :: k, ii, j, p
 
     !-----------------------------------------------------------------!
     ! Set the objective function into the system
@@ -901,9 +901,9 @@ contains
        
        if (k .lt. this % num_steps) then
 
-          rhs  = this % psi(k+1,:) ! note the positive sign
-
-          do ii = this % num_stages, 1, -1
+          rhs  = this % psi(k+1,:)
+          
+          do ii = 1, this % num_stages
 
              ! Add the psi terms
              alpha    = this % h * this % B(ii)
@@ -928,28 +928,20 @@ contains
           ! Add the phi terms
           !-----------------------------------------------------------!
 
-          rhs  = this % phi(k+1,:) ! note the positive sign
-
-          ! Add psi contribution from next step          
-          do ii = 1, this % num_stages
-             rhs = rhs + this % h * this % B(ii) * this % psi(k+1,:)
-          end do
+          rhs  = this % phi(k+1,:)
           
-          do ii = this % num_stages, 1, -1
+          rhs = rhs + this % h * this % psi(k+1,:)
 
-             ! Add the phi terms
-             if ( ii .eq. 1) then
-                alpha    = this % h * this % B(1) *this % h * this % A(1,1)
-             else
-                alpha    = this % h * this % B(ii) * this % h * (this % A(2,1) + this % A(2,2))
-             end if
-             beta     = this % h * this % B(ii)
-             gamma    = 0.0d0
+          do ii = 1, this % num_stages
+             
+             alpha = this % h * this % B(ii) * this % h * this % C(ii)
+             beta  = this % h * this % B(ii)
+             gamma = 0.0d0
 
              call this % system % assembleJacobian(mat(1:1,1:1), alpha, beta, gamma, &
                   & this % T(ii), this % Q(k+1,ii,:), this % qdot(k+1,ii,:), this % qddot(k+1,ii,:))
 
-             rhs = rhs + mat(1,1)*this % lam(k+1,ii,:)
+             rhs = rhs + mat(1,1) * this % lam(k+1,ii,:)
 
              ! Add function contributions too
              call this % system % func % addFuncSVSens(rhs(1:1), alpha, beta, gamma, &
@@ -959,7 +951,7 @@ contains
           end do
           
           this % phi(k,:) = rhs/1.0d0 ! note the positive sign
-
+          
        else
 
           this % psi (k,:) = 0.0d0
@@ -996,39 +988,39 @@ contains
           call this % system % func % addFuncSVSens(rhs(1:1), alpha, beta, gamma,  &
                & this % T(ii), this % system % X, &
                & this % Q(k,ii,:), this % QDOT(k,ii,:), this % QDDOT(k,ii,:))
+          
+          do j = ii+1, this % num_stages
 
-          if ( ii .lt. this % num_stages) then
-
-             ! Add contribution from the previous stage
-             alpha    = this % B(2) * this % h**2 * ( this % A(2,1) * this % A(1,1) + this % A(2,1) * this % A(2,2) ) ! # check this
-             beta     = this % B(2) * this % h * this % A(2,1) ! # check this
-             gamma    = 0.0d0
-
+             gamma = 0.0d0
+             beta  = this % B(j) * this % h * this % A(j,ii)
+             alpha = 0.0d0
+             do p = ii, j
+                alpha = alpha + this % A(j,p) * this % A(p,ii)
+             end do
+             alpha = alpha * this % h**2 * this % b(j)
+             
              call this % system % assembleJacobian(tmpmat(1:1,1:1), alpha, beta, gamma, &
-                  & this % T(2), this % Q(k,2,:), this % qdot(k,2,:), this % qddot(k,2,:))
+                  & this % T(j), this % Q(k,j,:), this % qdot(k,j,:), this % qddot(k,j,:))
 
-             rhs = rhs + this % lam(k,2,:)*tmpmat(1,1)
+             rhs = rhs + this % lam(k,j,:)*tmpmat(1,1)
 
              ! Add function contribution from next stage
              call this % system % func % addFuncSVSens(rhs(1:1), alpha, beta, gamma,  &
-                  & this % T(2), this % system % x, &
-                  & this % Q(k,2,:), this % qdot(k,2,:), this % qddot(k,2,:))
+                  & this % T(j), this % system % x, &
+                  & this % Q(k,j,:), this % qdot(k,j,:), this % qddot(k,j,:))
 
-          end if
-          
+          end do
+
           rhs = rhs + this % B(ii) * this % phi(k,:)
-
-          if ( ii .eq. 1) then
-             rhs = rhs + this % B(1) * this % h * this % A(1,1) * this % psi(k,:)
-             rhs = rhs + this % B(2) * this % h * this % A(2,1) * this % psi(k,:)
-          else
-             rhs = rhs + this % B(2) * this % h * this % A(2,2) * this % psi(k,:)
-          end if
+          
+          do j = ii, this % num_stages
+             rhs = rhs + this % h * this % B(j) * this % A(j,ii) * this % psi(k,:)
+          end do
 
           ! Solve for lambda22
           this % lam(k,ii,:) = - rhs(1)/mat(1,1)
 
-!          print *, "LAMBDA: ", k,ii, this % lam(k,ii,:)
+          !          print *, "LAMBDA: ", k,ii, this % lam(k,ii,:)
           
        end do
 
