@@ -558,15 +558,15 @@ Discrete Adjoint -- Diagonally Implicit Runge Kutta
     \begin{block}{Stage Adjoint}
       \begin{equation}\nonumber
         \begin{split}
-          \left[ \pd{R_{ki}}{\ddot{q}_{ki}} + ha_{ii} \pd{R_{ki}}{\dot{q}_{ki}} + h^2 a_{ii}^2 \pd{R_{ki}}{{q}_{ki}} \right]^T \lambda_{ki} = & -\left[ \pd{R_{ki}}{\ddot{q}_{ki}} + h^2a_{ii}^2 \pd{R_{ki}}{\dot{q}_{ki}} + h^2a_{ii}^2 \pd{R_{ki}}{{q}_{ki}} \right]^T \\
-          & - h\sum_{j=i+1}^s b_j \left[ ha_{ji} \pd{R_{kj}}{\dot{q}_{kj}} 
-            +  (\sum_{p=i}^j a_{jp}a_{pi}) 
+          b_i \left[ \pd{R_{ki}}{\ddot{q}_{ki}} + ha_{ii} \pd{R_{ki}}{\dot{q}_{ki}} + h^2 a_{ii}^2 \pd{R_{ki}}{{q}_{ki}} \right]^T \lambda_{ki} = & - b_i \left[ \pd{R_{ki}}{\ddot{q}_{ki}} + h^2a_{ii}^2 \pd{R_{ki}}{\dot{q}_{ki}} + h^2a_{ii}^2 \pd{R_{ki}}{{q}_{ki}} \right]^T \\
+          & - \sum_{j=i+1}^s b_j \left[ ha_{ji} \pd{R_{kj}}{\dot{q}_{kj}} 
+            + h^2 (\sum_{p=i}^j a_{jp}a_{pi}) 
             \pd{R_{kj}}{{q}_{kj}} \right]^T \lambda_{kj} \\
-          & - h \sum_{j=i+1}^s b_j \left[ ha_{ji} \pd{f_{kj}}{\dot{q}_{kj}} 
-            +  (\sum_{p=i}^j a_{jp}a_{pi}) 
+          & -  \sum_{j=i+1}^s b_j \left[ ha_{ji} \pd{f_{kj}}{\dot{q}_{kj}} 
+            + h^2 (\sum_{p=i}^j a_{jp}a_{pi}) 
             \pd{f_{kj}}{{q}_{kj}} \right]^T  \\
-          & -  h (\sum_{j=i}^s b_j a_{ji}) \psi_{k}  \\
-          &  - hb_i \phi_{k} 
+          & -   (\sum_{j=i}^s b_j a_{ji}) \psi_{k}  \\
+          &  - b_i \phi_{k} 
         \end{split}
       \end{equation}
     \end{block}
