@@ -565,7 +565,7 @@ Discrete Adjoint -- Diagonally Implicit Runge Kutta
           & -  \sum_{j=i+1}^s b_j \left[ ha_{ji} \pd{f_{kj}}{\dot{q}_{kj}} 
             + h^2 (\sum_{p=i}^j a_{jp}a_{pi}) 
             \pd{f_{kj}}{{q}_{kj}} \right]^T  \\
-          & -   (\sum_{j=i}^s b_j a_{ji}) \psi_{k}  \\
+          & -   (\sum_{j=i}^s h b_j a_{ji}) \psi_{k}  \\
           &  - b_i \phi_{k} 
         \end{split}
       \end{equation}
