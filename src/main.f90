@@ -52,9 +52,9 @@ program main
   !                       TEST ABM                                    !
   !===================================================================!
 
-  X = 0.0d0
-  dfdx=0.0d0
-  dfdxtmp =0.0d0
+  X       = 0.0d0
+  dfdx    = 0.0d0
+  dfdxtmp = 0.0d0
 
   x(1) = 2.50d0    ! mass
   x(2) = 0.20d0    ! damping coeff
@@ -62,29 +62,27 @@ program main
   
   ! Initialize the system
   call smd1obj % initialize(num_state_vars = 1, num_design_vars = 3)
-  abmobj = ABM(system = smd1obj, tfinal = 1.0d0, h=1.0d-3, max_abm_order = 1)
+  abmobj = ABM(system = smd1obj, tfinal = 25.0d0, h=1.0d-3, max_abm_order = 3)
+  call abmobj % setPrintLevel(1)
   call abmobj % integrate()
-  call abmobj % writeSolution()
+  call abmobj % writeSolution("abm.dat")
   !  call abmobj % evalFuncGrad(num_func=1, func = KE,  num_dv = 3, x = x, fvals = fval, dfdx= dfdx)
   !  call abmobj % evalFDFuncGrad(num_func=1, func = KE,  num_dv = 3, x = x, fvals = fval, dfdx= dfdxtmp, dh=dh)
   call abmobj % finalize()
   call smd1obj % finalize()
 
-  print*, "fval         =", fval
-  print*, "Adjoint dfdx =", dfdx
-  print*, "FD      dfdx =", dfdxtmp
-  print *, "Error       =", abs(dfdxtmp-dfdx)
-
-
-stop
+!!$  print*, "fval         =", fval
+!!$  print*, "Adjoint dfdx =", dfdx
+!!$  print*, "FD      dfdx =", dfdxtmp
+!!$  print *, "Error       =", abs(dfdxtmp-dfdx)
 
   !===================================================================!
   !                          TEST BDF                                 !
   !===================================================================!
 
-  X = 0.0d0
-  dfdx=0.0d0
-  dfdxtmp =0.0d0
+  X       = 0.0d0
+  dfdx    = 0.0d0
+  dfdxtmp = 0.0d0
 
   x(1) = 2.50d0    ! mass
   x(2) = 0.20d0    ! damping coeff
@@ -92,27 +90,36 @@ stop
   
   ! Initialize the system
   call smd1obj % initialize(num_state_vars = 1, num_design_vars = 3)
-  bdfobj = BDF(system = smd1obj, tfinal = 1.0d0, h=1.0d-3, max_bdf_order = 1)
-  call bdfobj % evalFuncGrad(num_func=1, func = KE,  num_dv = 3, x = x, fvals = fval, dfdx= dfdx)
-  call bdfobj % writeSolution()
-  call bdfobj % evalFDFuncGrad(num_func=1, func = KE,  num_dv = 3, x = x, fvals = fval, dfdx= dfdxtmp, dh=dh)
+  bdfobj = BDF(system = smd1obj, tfinal = 25.0d0, h=1.0d-3, max_bdf_order = 3)
+  !  call bdfobj % evalFuncGrad(num_func=1, func = KE,  num_dv = 3, x = x, fvals = fval, dfdx= dfdx)
+  call bdfobj % setPrintLevel(1)
+  call bdfobj % integrate()
+  call bdfobj % writeSolution("bdf.dat")
+  !call bdfobj % evalFDFuncGrad(num_func=1, func = KE,  num_dv = 3, x = x, fvals = fval, dfdx= dfdxtmp, dh=dh)
   call bdfobj % finalize()
   call smd1obj % finalize()
-
-  print*, "fval         =", fval
-  print*, "Adjoint dfdx =", dfdx
-  print*, "FD      dfdx =", dfdxtmp
-  print *, "Error       =", abs(dfdxtmp-dfdx)
-
-
   
-!!$  dfdx    = 0.0d0
-!!$  dfdxtmp = 0.0d0
-!!$
-!!$  ! Initialize the system
-!!$  call smd1obj % initialize(num_state_vars = 1, num_design_vars = 3)
-!!$
-!!$  dirkobj = DIRK(system = smd1obj, tfinal = 2000.0d-3, h=1.0d-3, num_stages=3, second_order=.true.) 
+  !===================================================================!
+  !                          TEST DIRK                                !
+  !===================================================================!
+
+  X       = 0.0d0
+  dfdx    = 0.0d0
+  dfdxtmp = 0.0d0
+
+  x(1) = 2.50d0    ! mass
+  x(2) = 0.20d0    ! damping coeff
+  x(3) = 5.0d0    ! stiffness coeff
+
+  ! Initialize the system
+  call smd1obj % initialize(num_state_vars = 1, num_design_vars = 3)
+  dirkobj = DIRK(system = smd1obj, tfinal = 25.0d-0, h=1.0d-3, num_stages=3, second_order=.true.) 
+  call dirkobj % setPrintLevel(1)
+  call dirkobj % integrate()
+  call dirkobj % writeSolution("dirk.dat")
+  call dirkobj % finalize()
+  call smd1obj % finalize()
+
 !!$
 !!$  !  call dirkobj % testAdjointr( num_func = 1, func = KE, num_dv = 3, x = x,dfdx= dfdx)
 !!$  call dirkobj % testAdjoint6 ( num_func = 1, func = KE, num_dv = 3, &
@@ -154,6 +161,7 @@ stop
   call smd1obj % finalize()
 
   deallocate(X, dfdx, dfdxtmp)
+
   stop
   !===================================================================!
   !  Aeroelastic Oscillator
