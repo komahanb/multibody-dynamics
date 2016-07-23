@@ -9,6 +9,7 @@ program main
   ! Import Integrators
   use runge_kutta_integrator        , only : DIRK
   use bdf_integrator                , only : BDF
+  use abm_integrator                , only : ABM
   
   ! Import Physics
 !!$  use rigid_body_class              , only : rigid_body
@@ -26,6 +27,7 @@ program main
   ! Declare Integrators
   type(DIRK)                            :: dirkobj    ! DIRK Integrator object
   type(BDF)                             :: bdfobj     ! BDF Integrator object
+  type(ABM)                             :: abmobj     ! ABM Integrator object
   
   ! Declare Physics for testing
   type(smd1)                   , target :: smd1obj    ! Spring-mass-damper test ODE (1 var)
@@ -43,68 +45,93 @@ program main
   type(scalar)                            :: fval, ftmp
   real(dp)                                :: dh = 1.0d-8
 
-  !-------------------------------------------------------------------!
-  !                 Spring Mass Damper system                         !
-  !-------------------------------------------------------------------!
   
   allocate(X(3), dfdx(3), dfdxtmp(3))
+
+  !===================================================================!
+  !                       TEST ABM                                    !
+  !===================================================================!
+
+  X = 0.0d0
   dfdx=0.0d0
   dfdxtmp =0.0d0
 
   x(1) = 2.50d0    ! mass
   x(2) = 0.20d0    ! damping coeff
-  x(3) = 5.0d0    ! stiffness coef
+  x(3) = 5.0d0    ! stiffness coeff
+  
+  ! Initialize the system
+  call smd1obj % initialize(num_state_vars = 1, num_design_vars = 3)
+  abmobj = ABM(system = smd1obj, tfinal = 1.0d0, h=1.0d-3, max_abm_order = 1)
+  call abmobj % integrate()
+  call abmobj % writeSolution()
+  !  call abmobj % evalFuncGrad(num_func=1, func = KE,  num_dv = 3, x = x, fvals = fval, dfdx= dfdx)
+  !  call abmobj % evalFDFuncGrad(num_func=1, func = KE,  num_dv = 3, x = x, fvals = fval, dfdx= dfdxtmp, dh=dh)
+  call abmobj % finalize()
+  call smd1obj % finalize()
 
-!!$  
+  print*, "fval         =", fval
+  print*, "Adjoint dfdx =", dfdx
+  print*, "FD      dfdx =", dfdxtmp
+  print *, "Error       =", abs(dfdxtmp-dfdx)
+
+
+stop
+
+  !===================================================================!
+  !                          TEST BDF                                 !
+  !===================================================================!
+
+  X = 0.0d0
+  dfdx=0.0d0
+  dfdxtmp =0.0d0
+
+  x(1) = 2.50d0    ! mass
+  x(2) = 0.20d0    ! damping coeff
+  x(3) = 5.0d0    ! stiffness coeff
+  
+  ! Initialize the system
+  call smd1obj % initialize(num_state_vars = 1, num_design_vars = 3)
+  bdfobj = BDF(system = smd1obj, tfinal = 1.0d0, h=1.0d-3, max_bdf_order = 1)
+  call bdfobj % evalFuncGrad(num_func=1, func = KE,  num_dv = 3, x = x, fvals = fval, dfdx= dfdx)
+  call bdfobj % writeSolution()
+  call bdfobj % evalFDFuncGrad(num_func=1, func = KE,  num_dv = 3, x = x, fvals = fval, dfdx= dfdxtmp, dh=dh)
+  call bdfobj % finalize()
+  call smd1obj % finalize()
+
+  print*, "fval         =", fval
+  print*, "Adjoint dfdx =", dfdx
+  print*, "FD      dfdx =", dfdxtmp
+  print *, "Error       =", abs(dfdxtmp-dfdx)
+
+
+  
+!!$  dfdx    = 0.0d0
+!!$  dfdxtmp = 0.0d0
+!!$
 !!$  ! Initialize the system
 !!$  call smd1obj % initialize(num_state_vars = 1, num_design_vars = 3)
 !!$
-!!$  bdfobj = BDF(system = smd1obj, tfinal = 1.0d-3, h=1.0d-3, max_bdf_order = 1)
+!!$  dirkobj = DIRK(system = smd1obj, tfinal = 2000.0d-3, h=1.0d-3, num_stages=3, second_order=.true.) 
 !!$
-!!$  call bdfobj % evalFuncGrad(num_func=1, func = KE,  num_dv = 3, x = x, &
-!!$       & fvals = fval, dfdx= dfdx)
+!!$  !  call dirkobj % testAdjointr( num_func = 1, func = KE, num_dv = 3, x = x,dfdx= dfdx)
+!!$  call dirkobj % testAdjoint6 ( num_func = 1, func = KE, num_dv = 3, &
+!!$       & x = x, dfdx= dfdx, dfdxtmp=dfdxtmp )
 !!$
-!!$  call bdfobj % writeSolution()
-!!$ 
-!!$  call bdfobj % evalFDFuncGrad(num_func=1, func = KE,  num_dv = 3, x = x, &
-!!$       & fvals = fval, dfdx= dfundxtmp, dh=dh)
-!!$  
-!!$  call bdfobj % finalize()
+!!$  !  call dirkobj % testAdjoint2( num_func = 1, func = KE, num_dv = 3, x = x,dfdx= dfdx)
+!!$  call dirkobj % writeSolution("dirksol.dat")
 !!$
-!!$  print*, "fval         =", fval
-!!$  print*, "Adjoint dfdx =", dfdx
-!!$  print*, "FD      dfdx =", dfdxtmp
-!!$  print *, "Error       =", abs(dfdxtmp-dfdx)
+!!$  !   call dirkobj % evalFuncGrad( num_func=1, func = KE, num_dv = 3, x = x, &
+!!$  !        & fvals = fval, dfdx= dfdx )
 !!$
-!!$  ! Finalize the system
-!!$  call smd1obj % finalize()
-  
-  dfdx    = 0.0d0
-  dfdxtmp = 0.0d0
-
-  ! Initialize the system
-  call smd1obj % initialize(num_state_vars = 1, num_design_vars = 3)
-
-  dirkobj = DIRK(system = smd1obj, tfinal = 2000.0d-3, h=1.0d-3, num_stages=3, second_order=.true.) 
-
-  !  call dirkobj % testAdjointr( num_func = 1, func = KE, num_dv = 3, x = x,dfdx= dfdx)
-  call dirkobj % testAdjoint6 ( num_func = 1, func = KE, num_dv = 3, &
-       & x = x, dfdx= dfdx, dfdxtmp=dfdxtmp )
-
-  !  call dirkobj % testAdjoint2( num_func = 1, func = KE, num_dv = 3, x = x,dfdx= dfdx)
-  call dirkobj % writeSolution("dirksol.dat")
-
-  !   call dirkobj % evalFuncGrad( num_func=1, func = KE, num_dv = 3, x = x, &
-  !        & fvals = fval, dfdx= dfdx )
-
-  call dirkobj % evalFDFuncGrad(num_func=1, func = KE, num_dv = 3, x = x, &
-       & fvals = fval, dfdx= dfdxtmp, dh=dh)
-
-  print*, "Adjoint dfdx =", realpart(dfdx)
-  print*, "FD      dfdx =", realpart(dfdxtmp)
-
-  print*, "Error        =", abs(realpart(dfdxtmp)-realpart(dfdx))
-  print*, "Rel. Error   =", abs(realpart(dfdxtmp)-realpart(dfdx))/realpart(dfdxtmp)
+!!$  call dirkobj % evalFDFuncGrad(num_func=1, func = KE, num_dv = 3, x = x, &
+!!$       & fvals = fval, dfdx= dfdxtmp, dh=dh)
+!!$
+!!$  print*, "Adjoint dfdx =", realpart(dfdx)
+!!$  print*, "FD      dfdx =", realpart(dfdxtmp)
+!!$
+!!$  print*, "Error        =", abs(realpart(dfdxtmp)-realpart(dfdx))
+!!$  print*, "Rel. Error   =", abs(realpart(dfdxtmp)-realpart(dfdx))/realpart(dfdxtmp)
 
   stop
 
