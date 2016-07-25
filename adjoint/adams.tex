@@ -1,0 +1,165 @@
+\documentclass{beamer}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%                  Themes and such                         %%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\mode<presentation>
+{
+  %\usetheme{Copenhagen}  
+  %\usetheme{Warsaw}  
+  \usetheme{Malmoe}  
+%    \setbeamertemplate{headline}{}
+  %make my huge toc fit on one slide (and not look horrible)
+  %\setbeamerfont{subsection in toc}{series=\bfseries}
+  %\setbeamerfont{subsection in toc}{size=\tiny,series=\bfseries}
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%                       Packages                           %%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage{multimedia}
+\usepackage{multirow}
+\usepackage{subfigure}
+\usepackage{amsmath}
+
+% Define commands
+ \newcommand{\half}{\ensuremath{\frac{1}{2}}}
+
+ \newcommand{\bea}{\begin{eqnarray}}
+ \newcommand{\eea}{\end{eqnarray}}
+ \newcommand{\beq}{\begin{equation}}
+ \newcommand{\eeq}{\end{equation}}
+ \newcommand{\bed}{\begin{displaymath}}
+ \newcommand{\eed}{\end{displaymath}}
+
+ \newcommand{\pd}[2]{\frac{\partial #1}{\partial #2}}
+ \newcommand{\pf}[2]{\frac{d #1}{d #2}}
+ \newcommand{\pdt}[2]{\frac{\partial^2 #1}{\partial #2^2}}
+ \newcommand{\pft}[2]{\frac{d^2 #1}{d #2^2}}
+ \newcommand{\pdtno}[2]{\frac{\partial^2 #1}{\partial #2}}
+ \newcommand{\pdd}[3]{\frac{\partial^2 #1}{\partial #2 \partial #3}}
+ \newcommand{\pff}[3]{\frac{d^2 #1}{d #2 d #3}}
+
+ \graphicspath{{../figures/}}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%                     Title Info                           %%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\title[\hspace{-0.2cm} DIRK Adjoint]
+{
+Discrete Adjoint: Adams--Bashforth--Moulton (ABM)
+}
+
+\author[Komahan Boopathy]
+{
+  \Large {Komahan Boopathy}\\
+}
+
+\institute
+{
+  \large Georgia Institute of Technology\\
+ School of Aerospace Engineering\\
+ Atlanta, GA
+}
+
+\date
+{
+\small \today
+}
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+%\begin{frame}
+%  \frametitle{Outline}
+%  \tableofcontents
+%\end{frame}
+
+\begin{frame}[allowframebreaks] \frametitle{Time Integration}
+
+  The second--order governing differential equations are posed in the following
+  descriptor form at the k-th time step:
+  $$ R_k(\ddot{q}_k, \dot{q}_k, q_k, t_k , x) = 0.$$
+
+  We use Adams--Bashforth--Moulton (ABM) method to approximate the states:
+  $$ \dot{q}_k  = \dot{q}_{k-1}  + h \sum_{i=1}^{m} a_i \ddot{q}_{k-i+1}$$ 
+  $$ {q}_k      =     {q}_{k-1}  + h \sum_{i=1}^{m} a_i \dot{q}_{k-i+1}.$$
+
+  \framebreak
+
+  The ABM coefficients upto $6^{th}$ order are tabulated.
+
+  \begin{center}
+    \begin{tabular}{cccccccc}
+      \hline
+      k & $i=0$ & 1 & 2 & 3 & 4 & 5 & 6 \\ 
+      \hline
+      &&&&&&&\\
+      1 & 1     &   &   &   &   &   &  \\
+      &&&&&&&\\
+      2 & $\frac{1}{2}$ & $\frac{1}{2}$ &   &   &   &   &  \\
+      &&&&&&&\\
+      3 & $\frac{5}{12}$ & $\frac{8}{12}$ & $-\frac{1}{12}$  &   &   &   &  \\
+      &&&&&&&\\
+      4 & $\frac{9}{24}$ & $\frac{19}{24}$ & $-\frac{5}{24}$  & $\frac{1}{24}$  &   &   &  \\
+      &&&&&&&\\
+      5 & $\frac{251}{720}$ & $\frac{646}{720}$ & $-\frac{264}{720}$  & $\frac{106}{720}$  & $-\frac{19}{720}$  &   &  \\
+      &&&&&&&\\
+      6 & $\frac{475}{1440}$ & $\frac{1427}{1440}$ & $-\frac{798}{1440}$  & $\frac{482}{1440}$  & $-\frac{173}{1440}$  &  $\frac{27}{1440}$ &  \\
+      &&&&&&&\\
+      \hline   
+    \end{tabular}
+  \end{center}
+
+  \framebreak
+
+  We first demonstrate the adjoint on a three-step time integation. \\
+
+  First step $(k=1, m=1)$: $$R_1(\underline{\ddot{q}_1}, \dot{q}_1, q_1, t_1) = 0$$
+  where
+  $$ \dot{q}_1  = \dot{q}_{0}  + h a_1 \ddot{q}_{1}$$ 
+  $$     {q}_1  =     {q}_{0}  + h a_1 \dot{q}_{1}$$ 
+
+  Second step $(k=2, m=2)$: $$R_2(\underline{\ddot{q}_2}, \dot{q}_2, q_2, t_2) = 0$$
+  where
+  $$ \dot{q}_2  = \dot{q}_{1}  + h a_1 \ddot{q}_{2} + h a_2 \ddot{q}_{1} $$ 
+  $$     {q}_2  =     {q}_{1}  + h a_1 \dot{q}_{2}  + h a_2 \dot{q}_{1} $$ 
+
+  We introduce $\lambda$ as adjoint variables and form the Lagrangian: $$ {\cal L} = \sum_{k=0}^N f_k + \sum_{k=0}^N \lambda_k^T R_k $$
+
+  We set $\partial{\cal{L}}/\partial{\ddot{q}_2}=0$ to solve for $\lambda_2$.
+  
+  $$\pd{f_2}{\ddot{q}_2} + \lambda_2^T \pd{R_2}{\ddot{q}_2} = 0$$
+
+  Expanding and transposing yields:
+  $$
+  \left[ \pd{R_2}{\ddot{q}_2} + ha_1 \pd{R_2}{\dot{q}_2} + h^2a_1^2 \pd{R_2}{{q}_2} \right]^T \lambda_2 = - \left\{ \pd{f_2}{\ddot{q}_2} + ha_1 \pd{f_2}{\dot{q}_2} + h^2a_1^2 \pd{f_2}{{q}_2} \right\}^T 
+  $$
+  
+  We set $\partial{\cal{L}}/\partial{\ddot{q}_1}=0$ to solve for $\lambda_1$. 
+  
+  $$\pd{f_1}{\ddot{q}_1} + \lambda_1^T \pd{R_1}{\ddot{q}_1} 
+  + \pd{f_2}{\ddot{q}_1} + \lambda_2^T \pd{R_2}{\ddot{q}_1} = 0$$
+
+\begin{equation}\nonumber
+\begin{split}
+  \left[ \pd{R_1}{\ddot{q}_1} + ha_1 \pd{R_1}{\dot{q}_1} + h^2a_1^2 \pd{R_1}{{q}_1} \right]^T \lambda_1  = &
+  - \left\{ \pd{f_1}{\ddot{q}_1} + ha_1 \pd{f_1}{\dot{q}_1} + h^2a_1^2 \pd{f_1}{{q}_1} \right\}^T \\
+  & - \left\{ \pd{f_2}{\dot{q}_2} \pd{\dot{q}_2}{\ddot{q}_1} +  \pd{f_2}{{q}_2} \pd{{q}_2}{\ddot{q}_1} \right\}^T\\
+  & - \left[  \pd{R_2}{\dot{q}_2} \pd{\dot{q}_2}{\ddot{q}_1} +  \pd{R_2}{{q}_2} \pd{{q}_2}{\ddot{q}_1} \right]^T \lambda_1 \\
+\end{split}
+\end{equation}
+where
+$$\alpha=\pd{q_2}{\ddot{q}_1} = h^2a_1^2 + ha_2(ha_1) + ha_1(ha_1+ha_1)$$
+$$
+\beta=\pd{\dot{q}_2}{\ddot{q}_1} = ha_2
+$$
+\end{frame}
+
+\end{document}
+

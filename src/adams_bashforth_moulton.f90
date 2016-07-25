@@ -303,7 +303,7 @@ contains
     type(scalar)                                           :: scale = 1.0d0
     integer                                            :: k
     
-!    scale = this % h
+    !scale = this % h
     
     dfdx = 0.0d0
     
@@ -432,40 +432,35 @@ contains
     type(scalar), dimension(:), intent(inout) :: rhs
     type(scalar), dimension(:,:), allocatable :: jac
     type(scalar)                              :: scale
-    integer                                   :: k, i, m1, m2, idx
+    integer                                   :: k, i, m1, m2, idx, m
     
     allocate( jac(this % nSVars, this % nSVars) )
-    
-    k = this % current_step 
-    m1 = this % getOrder(k)
-    m2 = this % getOrder(k)
-
-    if (m2 .eq. 0) m2 = 1
 
     ! Zero the RHS first
     rhs = 0.0d0
+
+    k = this % current_step
     
-    !-----------------------------------------------------------------!
-    ! Add function contribution (dfdu)
-    !-----------------------------------------------------------------!
+    m1 = this % getOrder(k)
+    m2 = this % getOrder(k)
     
-    call this % system % func % addDFdU(rhs, ONE, this % time(k), &
+    call this % system % func % addDFdUDDOT(rhs, scale, this % time(k), &
          & this % system % x, this % u(k,:), this % udot(k,:), this % uddot(k,:))
 
     do i = 0, m1
        idx = k + i
        if ( idx .le. this % num_steps) then
-!          scale = this % coeff % beta(m1, i+1)/this % h
+          scale = this % A(this % getOrder(k), i+1) * this % h
           call this % system % func % addDFdUDot(rhs, scale, this % time(idx), &
                & this % system % x, this % u(idx,:), this % udot(idx,:), this % uddot(idx,:))
        end if
     end do
 
-    do i = 0, 2*m2
+    do i = 0, m2
        idx = k + i
        if ( idx .le. this % num_steps) then
- !         scale = this % coeff % gamma(m2, i+1)/this % h/this % h
-          call this % system % func % addDFdUDDot(rhs, scale, this % time(idx), &
+          scale = this % A(m2, i+1)*this % A(m2, i+1) * this % h * this % h
+          call this % system % func % addDFdU(rhs, scale, this % time(idx), &
                & this % system % x, this % u(idx,:), this % udot(idx,:), this % uddot(idx,:))
        end if
     end do
@@ -474,20 +469,20 @@ contains
     ! Add residual contribution
     !-----------------------------------------------------------------!
     
-    do i = 1, m1 
+    do i = 1, m1
        idx = k + i
        if ( idx .le. this % num_steps) then
-  !        scale = this % coeff % beta(m1, i+1)/this % h
+          scale = this % A(m1, i+1) * this % h
           call this % system % assembleJacobian(jac, ZERO, ONE, ZERO, &
                & this % time(idx), this % u(idx,:), this % udot(idx,:), this % uddot(idx,:))
           rhs = rhs + scale*matmul( transpose(jac), this % psi(idx,:) )
        end if
     end do
 
-    do i = 1, 2*m2
+    do i = 1, m2
        idx = k + i
        if ( idx .le. this % num_steps) then
-   !       scale = this % coeff % gamma(m2, i+1)/this % h/this % h
+          scale = this % A(m2, i+1)*this % A(m2, i+1) * this % h * this % h
           call this % system % assembleJacobian(jac, ZERO, ZERO, ONE, &
                & this % time(idx), this % u(idx,:), this % udot(idx,:), this % uddot(idx,:))
           rhs = rhs + scale*matmul( transpose(jac), this % psi(idx,:) )
