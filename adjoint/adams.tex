@@ -141,6 +141,8 @@ Discrete Adjoint: Adams--Bashforth--Moulton (ABM)
   \left[ \pd{R_2}{\ddot{q}_2} + ha_1 \pd{R_2}{\dot{q}_2} + h^2a_1^2 \pd{R_2}{{q}_2} \right]^T \lambda_2 = - \left\{ \pd{f_2}{\ddot{q}_2} + ha_1 \pd{f_2}{\dot{q}_2} + h^2a_1^2 \pd{f_2}{{q}_2} \right\}^T 
   $$
   
+  \framebreak
+
   We set $\partial{\cal{L}}/\partial{\ddot{q}_1}=0$ to solve for $\lambda_1$. 
   
   $$\pd{f_1}{\ddot{q}_1} + \lambda_1^T \pd{R_1}{\ddot{q}_1} 
@@ -155,7 +157,7 @@ Discrete Adjoint: Adams--Bashforth--Moulton (ABM)
 \end{split}
 \end{equation}
 where
-$$\alpha=\pd{q_2}{\ddot{q}_1} = h^2a_1^2 + ha_2(ha_1) + ha_1(ha_1+ha_1)$$
+$$\alpha=\pd{q_2}{\ddot{q}_1} = ha_1ha_1 + ha_2ha_1 + ha_1ha_2$$
 $$
 \beta=\pd{\dot{q}_2}{\ddot{q}_1} = ha_2
 $$
