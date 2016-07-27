@@ -185,11 +185,7 @@ contains
     ! Assume a UDDOT for the next time step
     !-----------------------------------------------------------------!
 
-    if ( k .eq. 2 ) then
-       this % uddot(k,:) = 1.0d0
-    else
-       this % uddot(k,:) = this % uddot(k-1,:) 
-    end if
+    this % uddot(k,:) = this % uddot(k-1,:)
 
     !-----------------------------------------------------------------!
     ! Approximate UDOT using NBG
@@ -198,11 +194,11 @@ contains
     this % udot(k,:) = this % udot(k-1,:) 
 
     scale = this % h * (1.0d0 - this % GAMMA)
-    this % udot(k,:) = scale*this % uddot(k-1,:) 
+    this % udot(k,:) = this % udot(k,:) + scale*this % uddot(k-1,:) 
 
     scale = this % h * this % GAMMA
-    this % udot(k,:) = scale*this % uddot(k,:) 
-    
+    this % udot(k,:) = this % udot(k,:) + scale*this % uddot(k,:) 
+
     !-----------------------------------------------------------------!
     ! Approximate U using NBG
     !-----------------------------------------------------------------!
@@ -210,14 +206,14 @@ contains
     this % u(k,:) = this % u(k-1,:) 
 
     scale = this % h
-    this % u(k,:) = scale*this % udot(k-1,:) 
+    this % u(k,:) = this % u(k,:) + scale*this % udot(k-1,:) 
 
     scale = this % h * this % h * (1.0d0 - 2.0d0 * this % BETA)/2.0d0
-    this % u(k,:) = scale*this % uddot(k-1,:) 
+    this % u(k,:) = this % u(k,:) + scale*this % uddot(k-1,:) 
 
     scale = this % h * this % h * this % BETA
-    this % u(k,:) = scale*this % uddot(k,:) 
-    
+    this % u(k,:) = this % u(k,:) + scale*this % uddot(k,:) 
+
   end subroutine approximateStates
   
   !===================================================================!

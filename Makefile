@@ -52,11 +52,12 @@ LIBS = -lm -llapack
 # Define all the source files to compile here
 #---------------------------------------------------------------------#
 SRC  :=	 src/function.f90 src/physics.f90 src/integrator.f90 \
-	src/adams_bashforth_moulton.f90 \
+         src/adams_bashforth_moulton.f90 \
+         src/newmark_beta_gamma.f90 \
          src/runge_kutta.f90 src/backward_difference.f90 \
-	 src/smd.f90 src/smd_functions.f90 \
+         src/smd.f90 src/smd_functions.f90 \
          src/aero_elastic_oscillator.f90 src/oscillator_functions.f90 \
-	 src/test_adjoint.f90
+         src/main.f90
 
 #	 src/vanderpol.f90 \
 #	 src/utils.f90 src/rotation.f90 src/dynamics.f90 \
