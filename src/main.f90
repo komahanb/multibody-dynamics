@@ -29,7 +29,7 @@ program main
   type(DIRK)                            :: dirkobj    ! DIRK Integrator object
   type(BDF)                             :: bdfobj     ! BDF Integrator object
   type(ABM)                             :: abmobj     ! ABM Integrator object
-  type(NBG)                             :: nbgobj     ! ABM Integrator object
+  type(NBG)                             :: nbgobj     ! NBM Integrator object
 
   ! Declare Physics for testing
   type(smd1)                   , target :: smd1obj    ! Spring-mass-damper test ODE (1 var)

@@ -82,7 +82,7 @@ contains
     type(scalar), intent(in), dimension(:)    :: x, u, udot, uddot
     type(scalar), intent(in)                  :: alpha, beta, gamma
 
-    res(1) = res(1) + alpha*x(3)*u(1) + beta * 0.0d0 + gamma * 0.0d0 !to u(1)
+    res(1) = res(1) + alpha*x(3)*u(1)
     
   end subroutine addFuncSVSens
 
@@ -98,7 +98,7 @@ contains
     type(scalar), intent(in), dimension(:)    :: x, u, udot, uddot
     type(scalar)                              :: scale
 
-    res(1) = res(1) + scale*x(3)*u(1) ! to u(1)
+!    res(1) = res(1) + scale*x(3)*u(1) ! to u(1)
    
   end subroutine addDfdU
 

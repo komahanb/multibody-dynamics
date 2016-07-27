@@ -10,7 +10,8 @@ program main
   use runge_kutta_integrator        , only : DIRK
   use bdf_integrator                , only : BDF
   use abm_integrator                , only : ABM
-  
+  use nbg_integrator                , only : NBG
+
   ! Import Physics
 !!$  use rigid_body_class              , only : rigid_body
 !!$  use multibody_dynamics_class      , only : multibody_dynamics
@@ -28,7 +29,8 @@ program main
   type(DIRK)                            :: dirkobj    ! DIRK Integrator object
   type(BDF)                             :: bdfobj     ! BDF Integrator object
   type(ABM)                             :: abmobj     ! ABM Integrator object
-  
+  type(NBG)                             :: nbgobj     ! NBM Integrator object
+    
   ! Declare Physics for testing
   type(smd1)                   , target :: smd1obj    ! Spring-mass-damper test ODE (1 var)
   type(smd2)                   , target :: smd2obj    ! Spring-mass-damper test ODE (2 var)
@@ -49,7 +51,7 @@ program main
   allocate(X(3), dfdx(3), dfdxtmp(3))
 
   !===================================================================!
-  !                       TEST ABM                                    !
+  !                       TEST NBG                                    !
   !===================================================================!
 
   X       = 0.0d0
@@ -59,10 +61,37 @@ program main
   x(1) = 2.50d0    ! mass
   x(2) = 0.20d0    ! damping coeff
   x(3) = 5.0d0    ! stiffness coeff
+
+  ! Initialize the system
+  call smd1obj % initialize(num_state_vars = 1, num_design_vars = 3)
+  nbgobj = NBG(system = smd1obj, tfinal = 3.0d-3, h=1.0d-3)
+  call nbgobj % evalFuncGrad(num_func=1, func = KE,  num_dv = 3, x = x, fvals = fval, dfdx= dfdx)
+  call nbgobj % evalFDFuncGrad(num_func=1, func = KE,  num_dv = 3, x = x, fvals = fval, dfdx= dfdxtmp, dh=dh)
+  call nbgobj % finalize()
+  call smd1obj % finalize()
+
+  print*, "fval         =", fval
+  print*, "Adjoint dfdx =", dfdx
+  print*, "FD      dfdx =", dfdxtmp
+  print *, "Error       =", abs(dfdxtmp-dfdx)
+  print*, "Rel. Error   =", abs(realpart(dfdxtmp)-realpart(dfdx))/realpart(dfdxtmp)
+  
+stop
+  !===================================================================!
+  !                       TEST ABM                                    !
+  !===================================================================!
+
+  X       = 0.0d0
+  dfdx    = 0.0d0
+  dfdxtmp = 0.0d0
+
+  x(1) = 2.50d0   ! mass
+  x(2) = 0.20d0    ! damping coeff
+  x(3) = 5.0d0   ! stiffness coeff
   
   ! Initialize the system
   call smd1obj % initialize(num_state_vars = 1, num_design_vars = 3)
-  abmobj = ABM(system = smd1obj, tfinal = 1.0d-3, h=1.0d-3, max_abm_order = 3)
+  abmobj = ABM(system = smd1obj, tfinal = 2.0d-3, h=1.0d-3, max_abm_order = 3)
   call abmobj % evalFuncGrad(num_func=1, func = KE,  num_dv = 3, x = x, fvals = fval, dfdx= dfdx)
   call abmobj % evalFDFuncGrad(num_func=1, func = KE,  num_dv = 3, x = x, fvals = fval, dfdx= dfdxtmp, dh=dh)
   call abmobj % finalize()
@@ -88,7 +117,7 @@ program main
   
   ! Initialize the system
   call smd1obj % initialize(num_state_vars = 1, num_design_vars = 3)
-  bdfobj = BDF(system = smd1obj, tfinal = 1.0d-3, h=1.0d-3, max_bdf_order = 3)
+  bdfobj = BDF(system = smd1obj, tfinal = 20.0d-3, h=1.0d-3, max_bdf_order = 3)
   call bdfobj % evalFuncGrad(num_func=1, func = KE,  num_dv = 3, x = x, fvals = fval, dfdx= dfdx)
   call bdfobj % evalFDFuncGrad(num_func=1, func = KE,  num_dv = 3, x = x, fvals = fval, dfdx= dfdxtmp, dh=dh)
   call bdfobj % finalize()

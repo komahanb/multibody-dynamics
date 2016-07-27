@@ -64,7 +64,7 @@ contains
     logical  , OPTIONAL, intent(in) :: second_order
 
     print *, "======================================"
-    print *, ">>   Adams Bashforth Moulton       << "
+    print *, ">>   Newmark Beta Gamma (NBG)      << "
     print *, "======================================"
 
     !-----------------------------------------------------------------!
@@ -324,7 +324,8 @@ contains
     type(scalar), dimension(:), intent(inout) :: rhs
     type(scalar), dimension(:,:), allocatable :: jac
     type(scalar)                              :: scale
-    integer                                   :: k, i, m1, m2, idx, m
+    type(integer)                             :: k, i, m1, m2, idx, m
+    type(scalar)                              :: alpha, beta, gamma
 
     allocate( jac(this % nSVars, this % nSVars) )
 
@@ -333,8 +334,54 @@ contains
 
     k = this % current_step
 
+    ! Get the coefficients
+    call this % getLinearCoeff(k, alpha, beta, gamma)
+    
+    ! Add the state variable sensitivity
+    call this % system % func % addFuncSVSens(rhs, &
+         & alpha, beta, gamma, &
+         & this % time(k), &
+         & this % system % X, &
+         & this % u(k,:), &
+         & this % udot(k,:), &
+         & this % uddot(k,:))
+
+    ! Put the contributions from this step to the next step
+    if ( k .lt. this % num_steps ) then
+
+       ! Adjoint RHS coefficients
+       gamma = 0.0d0
+       beta  = this % h
+       alpha = this % h * this % h*(0.5d0 + this % GAMMA)
+     
+       ! Add the state variable sensitivity from the previous step
+       call this % system % func % addFuncSVSens(rhs, &
+            & alpha, beta, gamma, &
+            & this % time(k+1), &
+            & this % system % X, &
+            & this % u(k+1,:), &
+            & this % udot(k+1,:), &
+            & this % uddot(k+1,:))
+
+       ! Add the residual adjoint product from the previous step
+       call this % system % assembleJacobian(jac, &
+            & alpha, beta, gamma, &
+            & this % time(k+1), &
+            & this % u(k+1,:), &
+            & this % udot(k+1,:), &
+            & this % uddot(k+1,:))
+       
+       print *, this % u(k+1,:), &
+            & this % udot(k+1,:), &
+            & this % uddot(k+1,:)
+
+       print *, this % psi(k+1,:), jac
+       rhs = rhs + matmul(transpose(jac(:,:)), this % psi(k+1,:))
+       
+    end if
+        
     ! Negate the RHS
-    rhs = - rhs
+    rhs = -rhs
 
     if(allocated(jac)) deallocate(jac)
 
