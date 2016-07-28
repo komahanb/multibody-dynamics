@@ -370,12 +370,7 @@ contains
             & this % u(k+1,:), &
             & this % udot(k+1,:), &
             & this % uddot(k+1,:))
-       
-       print *, this % u(k+1,:), &
-            & this % udot(k+1,:), &
-            & this % uddot(k+1,:)
 
-       print *, this % psi(k+1,:), jac
        rhs = rhs + matmul(transpose(jac(:,:)), this % psi(k+1,:))
        
     end if

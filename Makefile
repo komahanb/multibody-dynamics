@@ -33,7 +33,7 @@ BIN_DIR=bin
 # Define any directories containing header files other than /usr/include
 #-----------------------------------------------------------------------
 INCLUDES = -I/usr/local/include -I./src
-  
+
 #-----------------------------------------------------------------------
 # Define library paths in addition to /usr/lib
 #   if I wanted to include libraries not in /usr/lib I'd specify

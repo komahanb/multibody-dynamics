@@ -238,8 +238,6 @@ contains
 
        ! Solve the nonlinear system at each step by driving the
        ! residual to zero
-
-!       print *, k, alpha, beta, gamma
        call this % newtonSolve(alpha, beta, gamma, &
             & this % time(k), this % u(k,:), this % udot(k,:), this % uddot(k,:))
 
@@ -262,12 +260,12 @@ contains
 
     if ( this % second_order ) then
        gamma = 1.0d0
-       beta  = this  % A(m, 1)*this % h
-       alpha = (this % A(m, 1)*this % h)**2
+       beta  = this % A(m,1)*this % h
+       alpha = beta * this % A(m,1) * this % h
     else 
        gamma = 0.0d0
        beta  = 1.0d0
-       alpha = this  % A(m, 1)*this % h
+       alpha = this  % A(m,1) * this % h
     end if
     
   end subroutine getLinearCoeff
@@ -279,11 +277,11 @@ contains
   
   pure integer function getOrder(this, k)
 
-    class(ABM), intent(in)    :: this
-    integer, intent(in)                  :: k
+    class(ABM), intent(in) :: this
+    integer, intent(in)    :: k
 
     ! Find the order of approximation
-    getOrder = k -1
+    getOrder = k - 1
 
     ! Do not let exceed the max order sought
     if ( getOrder .gt. this % max_abm_order ) getOrder = this % max_abm_order
@@ -297,14 +295,15 @@ contains
   
   subroutine computeTotalDerivative( this, dfdx )
     
-    class(ABM)                                         :: this
-    type(scalar) , dimension(:), intent(inout)             :: dfdx
-    type(scalar) , dimension(this % nSVars, this % nDVars) :: dRdX
-    type(scalar)                                           :: scale = 1.0d0
-    integer                                            :: k
+    class(ABM)                                 :: this
+    type(scalar) , dimension(:), intent(inout) :: dfdx
+    type(scalar) , allocatable, dimension(:,:) :: dRdX
+    type(scalar)                               :: scale = 1.0d0
+    integer                                    :: k
+
+    if (.not.allocated(dRdX)) allocate(dRdX(this % nSVars, this % nDVars))
     
-    !scale = this % h
-    
+    dRdX = 0.0d0
     dfdx = 0.0d0
     
     !-----------------------------------------------------------------!
@@ -327,7 +326,7 @@ contains
     do k = 2, this % num_steps
        call this % system % getResidualDVSens(dRdX, scale, this % time(k), &
             & this % system % x, this % u(k,:), this % udot(k,:), this % uddot(k,:))
-       dfdx = dfdx + matmul(this % psi(k,:), dRdX) ! check order
+       dfdx = dfdx + matmul( transpose(dRdX), this % psi(k,:)) ! check order
     end do
 
 !!$    ! Add constraint contribution
@@ -338,7 +337,7 @@ contains
     ! Finally multiply by the scalar
     dfdx = this % h * dfdx
 
-    print*, "Check scaling of dfdx, and transpose"
+    if (allocated(dRdX)) deallocate(dRdX)
 
   end subroutine computeTotalDerivative
 
@@ -390,12 +389,7 @@ contains
     !-----------------------------------------------------------------!
     ! Assume a UDDOT for the next time step
     !-----------------------------------------------------------------!
-    
-    if ( k .eq. 2 ) then
-       this % uddot(k,:) = 1.0d0
-    else
-       this % uddot(k,:) = this % uddot(k-1,:) 
-    end if
+    this % uddot(k,:) = this % uddot(k-1,:) 
     
     m = this % getOrder(k)
 
@@ -432,62 +426,55 @@ contains
     type(scalar), dimension(:), intent(inout) :: rhs
     type(scalar), dimension(:,:), allocatable :: jac
     type(scalar)                              :: scale
-    integer                                   :: k, i, m1, m2, idx, m
+    integer                                   :: k, m
+    type(scalar)                              :: alpha, beta, gamma
     
     allocate( jac(this % nSVars, this % nSVars) )
 
     ! Zero the RHS first
     rhs = 0.0d0
 
-    k = this % current_step
-    
-    m1 = this % getOrder(k)
-    m2 = this % getOrder(k)
-    
-    call this % system % func % addDFdUDDOT(rhs, scale, this % time(k), &
-         & this % system % x, this % u(k,:), this % udot(k,:), this % uddot(k,:))
+    k = this % current_step    
 
-    do i = 0, m1
-       idx = k + i
-       if ( idx .le. this % num_steps) then
-          scale = this % A(this % getOrder(k), i+1) * this % h
-          call this % system % func % addDFdUDot(rhs, scale, this % time(idx), &
-               & this % system % x, this % u(idx,:), this % udot(idx,:), this % uddot(idx,:))
-       end if
-    end do
+    ! Get the coefficients
+    call this % getLinearCoeff(k, alpha, beta, gamma)
 
-    do i = 0, m2
-       idx = k + i
-       if ( idx .le. this % num_steps) then
-          scale = this % A(m2, i+1)*this % A(m2, i+1) * this % h * this % h
-          call this % system % func % addDFdU(rhs, scale, this % time(idx), &
-               & this % system % x, this % u(idx,:), this % udot(idx,:), this % uddot(idx,:))
-       end if
-    end do
+    ! Add the state variable sensitivity
+    call this % system % func % addFuncSVSens(rhs, &
+         & alpha, beta, gamma, &
+         & this % time(k), &
+         & this % system % X, &
+         & this % u(k,:), &
+         & this % udot(k,:), &
+         & this % uddot(k,:))
 
-    !-----------------------------------------------------------------!
-    ! Add residual contribution
-    !-----------------------------------------------------------------!
-    
-    do i = 1, m1
-       idx = k + i
-       if ( idx .le. this % num_steps) then
-          scale = this % A(m1, i+1) * this % h
-          call this % system % assembleJacobian(jac, ZERO, ONE, ZERO, &
-               & this % time(idx), this % u(idx,:), this % udot(idx,:), this % uddot(idx,:))
-          rhs = rhs + scale*matmul( transpose(jac), this % psi(idx,:) )
-       end if
-    end do
+    ! Put the contributions from this step to the next step
+    if ( k .lt. this % num_steps ) then
 
-    do i = 1, m2
-       idx = k + i
-       if ( idx .le. this % num_steps) then
-          scale = this % A(m2, i+1)*this % A(m2, i+1) * this % h * this % h
-          call this % system % assembleJacobian(jac, ZERO, ZERO, ONE, &
-               & this % time(idx), this % u(idx,:), this % udot(idx,:), this % uddot(idx,:))
-          rhs = rhs + scale*matmul( transpose(jac), this % psi(idx,:) )
-       end if
-    end do
+       ! Adjoint RHS coefficients
+       gamma = 0.0d0
+       alpha = 2.0d0*alpha
+
+       ! Add the state variable sensitivity from the previous step
+       call this % system % func % addFuncSVSens(rhs, &
+            & alpha, beta, gamma, &
+            & this % time(k+1), &
+            & this % system % X, &
+            & this % u(k+1,:), &
+            & this % udot(k+1,:), &
+            & this % uddot(k+1,:))
+
+       ! Add the residual adjoint product from the previous step
+       call this % system % assembleJacobian(jac, &
+            & alpha, beta, gamma, &
+            & this % time(k+1), &
+            & this % u(k+1,:), &
+            & this % udot(k+1,:), &
+            & this % uddot(k+1,:))
+      
+       rhs = rhs + matmul(transpose(jac(:,:)), this % psi(k+1,:))
+       
+    end if
     
     ! Negate the RHS
     rhs = - rhs
