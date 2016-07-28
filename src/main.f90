@@ -53,7 +53,7 @@ program main
 
   ! Initialize the system
   call smd1obj % initialize(num_state_vars = 1, num_design_vars = 3)
-  nbgobj = NBG(system = smd1obj, tfinal = 25.0d0, h=1.0d-3)
+  nbgobj = NBG(system = smd1obj, tfinal = 25.0d0, h=1.0d0)
   call nbgobj % setPrintLevel(0)
   call nbgobj % integrate()
   call nbgobj % writeSolution("nbg.dat")
@@ -66,8 +66,8 @@ program main
   
   ! Initialize the system
   call smd1obj % initialize(num_state_vars = 1, num_design_vars = 3)
-  abmobj = ABM(system = smd1obj, tfinal = 25.0d0, h=1.0d-3, max_abm_order = 1)
-  call abmobj % setPrintLevel(0)
+  abmobj = ABM(system = smd1obj, tfinal = 25.0d0, h=1.0d0, max_abm_order = 2)
+  call abmobj % setPrintLevel(1)
   call abmobj % integrate()
   call abmobj % writeSolution("abm.dat")
   call abmobj % finalize()
@@ -79,7 +79,7 @@ program main
 
   ! Initialize the system
   call smd1obj % initialize(num_state_vars = 1, num_design_vars = 3)
-  bdfobj = BDF(system = smd1obj, tfinal = 25.0d0, h=1.0d-3, max_bdf_order = 3)
+  bdfobj = BDF(system = smd1obj, tfinal = 25.0d0, h=1.0d0, max_bdf_order = 3)
   call bdfobj % setPrintLevel(0)
   call bdfobj % integrate()
   call bdfobj % writeSolution("bdf.dat")
@@ -92,7 +92,7 @@ program main
 
   ! Initialize the system
   call smd1obj % initialize(num_state_vars = 1, num_design_vars = 3)
-  dirkobj = DIRK(system = smd1obj, tfinal = 25.0d-0, h=1.0d-3, num_stages=3, second_order=.true.) 
+  dirkobj = DIRK(system = smd1obj, tfinal = 25.0d-0, h=1.0d0, num_stages=1, second_order=.true.) 
   call dirkobj % setPrintLevel(0)
   call dirkobj % integrate()
   call dirkobj % writeSolution("dirk.dat")

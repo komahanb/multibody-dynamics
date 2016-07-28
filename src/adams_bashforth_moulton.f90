@@ -235,7 +235,7 @@ contains
 
        ! Determine the coefficients for linearing the Residual
        call this % getLinearCoeff(k, alpha, beta, gamma)
-
+      
        ! Solve the nonlinear system at each step by driving the
        ! residual to zero
        call this % newtonSolve(alpha, beta, gamma, &
@@ -253,7 +253,7 @@ contains
    
     class(ABM), intent(inout)   :: this
     integer, intent(in)         :: k
-    type(scalar), intent(inout) :: alpha, beta, gamma
+    type(scalar), intent(out) :: alpha, beta, gamma
     integer :: m
 
     m = this % getOrder(k)
@@ -383,35 +383,31 @@ contains
 
     class(ABM), intent(inout) :: this
     integer                   :: k, m, i
+    type(scalar) :: scale
 
     k = this % current_step
     
-    !-----------------------------------------------------------------!
-    ! Assume a UDDOT for the next time step
-    !-----------------------------------------------------------------!
-    this % uddot(k,:) = this % uddot(k-1,:) 
-    
     m = this % getOrder(k)
 
-    !-----------------------------------------------------------------!
-    ! Approximate UDOT using ABM
-    !-----------------------------------------------------------------!
-      
-    do i = 1, m
-       this % udot(k,:) = this % udot(k,:) &
-            & + this % h*this % A(m,i) * this % uddot(k-i+1,:)
+    ! Approximate UDDOT
+    this % uddot(k,:) = this % uddot(k-1,:)
+    
+    ! Approximate UDOT
+    this % udot(k,:) = this % udot(k-1,:)
+    
+    do i = 0, m-1
+       scale = this % h * this % A(m,i+1)
+       this % udot(k,:) = this % udot(k,:) + scale * this % uddot(k-i,:)
     end do
-    this % udot(k,:) = this % udot(k,:) + this % udot(k-1,:) 
 
-    !-----------------------------------------------------------------!
-    ! Approximate U using ABM
-    !-----------------------------------------------------------------!
-   
-    do i = 1, m
-       this % u(k,:) = this % u(k,:) &
-            & + (this % h*this % A(m, i)**2)*this % udot(k-i+1,:)
+    ! Approximate U
+    this % u(k,:) = this % u(k-1,:)
+    
+    do i = 0, m-1
+       scale = this % h * this % A(m,i+1)
+       this % u(k,:) = this % u(k,:) + scale * this % udot(k-i,:)
     end do
-    this % u(k,:) = this % u(k,:) + this % u(k-1,:) 
+
     
   end subroutine approximateStates
 

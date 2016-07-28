@@ -607,17 +607,13 @@ contains
        if (this % second_order) then
           
           ! guess qddot
-          if (k .eq. 2) then ! initialize with a starting value
-             this % QDDOT(k,j,:) = 1.0d0
-          else 
-             if (j .eq. 1) then ! copy previous global state
-                this % QDDOT(k,j,:) = this % UDDOT(k-1,:)
-             else ! copy previous local state
-                this % QDDOT(k,j,:) = this % QDDOT(k,j-1,:)
-             end if
+          if (j .eq. 1) then ! copy previous global state
+             this % QDDOT(k,j,:) = this % UDDOT(k-1,:)
+          else ! copy previous local state
+             this % QDDOT(k,j,:) = this % QDDOT(k,j-1,:)
           end if
 
-          ! compute the stage velocities for the guessed QDDOT
+          ! compute the stage velocity states for the guessed QDDOT
           forall(m = 1 : this % nsvars)
              this % QDOT(k,j,m) = qdot(k-1,m) &
                   & + this % h*sum(this % A(j,:)&
@@ -633,16 +629,12 @@ contains
        else
 
           ! guess qdot
-          if (k .eq. 2) then ! initialize with a starting value
-             this % QDOT(k,j,:) = 1.0d0
-          else 
-             if (j .eq. 1) then ! copy previous global state
-                this % QDOT(k,j,:) = this % UDOT(k-1,:)
-             else ! copy previous local state
-                this % QDOT(k,j,:) = this % QDOT(k,j-1,:)
-             end if
+          if (j .eq. 1) then ! copy previous global state
+             this % QDOT(k,j,:) = this % UDOT(k-1,:)
+          else ! copy previous local state
+             this % QDOT(k,j,:) = this % QDOT(k,j-1,:)
           end if
-
+          
           ! compute the stage states for the guessed 
           forall(m = 1 : this % nsvars)
              this % Q(k,j,m) = q(k-1,m) &
