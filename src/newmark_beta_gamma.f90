@@ -237,9 +237,13 @@ contains
     type(scalar), intent(inout) :: alpha, beta, gamma
     integer                     :: m
 
-    gamma = 1.0d0
-    beta  = this % h * this % GAMMA
-    alpha = this % h * this % h * this % BETA
+    gamma = 1.0d0/this % h/ this % h
+    beta  = this % GAMMA/ this % h
+    alpha = this % BETA
+!!$
+!!$    gamma = 1.0d0
+!!$    beta  = this % h * this % GAMMA
+!!$    alpha = this % h * this % h * this % BETA
 
   end subroutine getLinearCoeff
 
@@ -307,7 +311,6 @@ contains
        !--------------------------------------------------------------!
        ! Determine the linearization coefficients for the Jacobian
        !--------------------------------------------------------------!
-
        call this % getLinearCoeff(k, alpha, beta, gamma)
 
        !--------------------------------------------------------------!
@@ -333,7 +336,6 @@ contains
     class(NBG)                                :: this
     type(scalar), dimension(:), intent(inout) :: rhs
     type(scalar), dimension(:,:), allocatable :: jac
-    type(scalar)                              :: scale
     type(scalar)                              :: alpha, beta, gamma
     type(integer)                             :: k
 
@@ -344,26 +346,19 @@ contains
     ! Zero the RHS first
     rhs = 0.0d0
 
-    if ( k .eq. this % num_steps) then
+    if ( k .ne. this % num_steps) then
 
-       this % sigma = 0.0d0
-       this % rho   = 0.0d0
-
-    else
-       
        !-----------------------------------------------------!
-       ! Add residual contributions to RHS
+       ! Add previous residual contributions to RHS
        !-----------------------------------------------------!
-
-       scale = 1.0d0 !this % h
 
        gamma = 0.0d0
-       beta  = this % h * (1.0d0 - this % GAMMA)
-       alpha = this % h * this % h * (0.5d0 - this % BETA)
+       beta  = 1.0d0/this % h
+       alpha = 0.5d0 + this % GAMMA
 
        ! Add the state variable sensitivity from the previous step
        call this % system % func % addFuncSVSens(rhs, &
-            & scale*alpha, scale*beta, scale*gamma, &
+            & alpha, beta, gamma, &
             & this % time(k+1), &
             & this % system % X, &
             & this % u(k+1,:), &
@@ -372,7 +367,7 @@ contains
 
        ! Add the residual adjoint product from the previous step
        call this % system % assembleJacobian(jac, &
-            & scale*alpha, scale*beta, scale*gamma, &
+            & alpha, beta, gamma, &
             & this % time(k+1), &
             & this % u(k+1,:), &
             & this % udot(k+1,:), &
@@ -448,18 +443,9 @@ contains
     ! Get the coefficients
     call this % getLinearCoeff(k, alpha, beta, gamma)
     
-    !-------------------------------------------------------!
-    ! Add current contributions to RHS
-    !-------------------------------------------------------!
-    
-    rhs = rhs + beta  * this % sigma/this % h
-    rhs = rhs + alpha * this % rho/this % h
-
-    scale = 1.0d0
-    
     ! Add the state variable sensitivity
     call this % system % func % addFuncSVSens(rhs, &
-         & scale*alpha, scale*beta, scale*gamma, &
+         & alpha, beta, gamma, &
          & this % time(k), &
          & this % system % X, &
          & this % u(k,:), &

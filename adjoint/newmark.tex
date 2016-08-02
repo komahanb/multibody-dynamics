@@ -107,7 +107,7 @@ Discrete Adjoint: Newmark--Beta--Gamma (NBG)
          
          \framebreak
          
-         Setting $\pd{\cal{L}}{\dot{q}} = 0$ yields:
+         Setting $\pd{\cal{L}}{\dot{q}_k} = 0$ yields:
          \begin{equation}
            \begin{split}
              \psi_k = \psi_{k+1} + h \phi_{k+1}  + \left\{ h \pd{f_{k+1}}{\dot{q}_{k+1}} +  h^2 \pd{f_{k+1}}{{q}_{k+1}} \right\}^T + \left[ h \pd{R_{k+1}}{\dot{q}_{k+1}} +  h^2 \pd{R_{k+1}}{{q}_{k+1}} \right]^T \lambda_{k+1} 
@@ -115,7 +115,7 @@ Discrete Adjoint: Newmark--Beta--Gamma (NBG)
          \end{equation}
 
 
-         Setting $\pd{\cal{L}}{{q}} = 0$ yields:
+         Setting $\pd{\cal{L}}{{q}_k} = 0$ yields:
          \begin{equation}
            \begin{split}
              \phi_k = \phi_{k+1} + \left\{h \pd{f_{k+1}}{{q}_{k+1}} \right\}^T + \left[ h \pd{R_{k+1}}{{q}_{k+1}} \right]^T \lambda_{k+1}  
@@ -144,7 +144,34 @@ Discrete Adjoint: Newmark--Beta--Gamma (NBG)
              & -  \frac{1}{h} \left\{ (1-\gamma) \frac{1}{h} \psi_{k+1} + \frac{1-2\beta}{2} \phi_{k+1} \right\}^T\\
            \end{split}
          \end{equation}
-         
+
+         \framebreak
+        
+         Grouping the terms together we get:
+
+         \begin{equation}
+           \begin{split}
+             \left[ \frac{1}{h^2} \pd{R_k}{\ddot{q}_k} + \gamma \frac{1}{h} \pd{R_k}{\dot{q}_k} + \beta \pd{R_k}{{q}_k} \right]^T \lambda_k = &- \left\{ \frac{1}{h^2}  \pd{f_k}{\ddot{q}_k} + \gamma \frac{1}{h} \pd{f_k}{\dot{q}_k} + \beta \pd{f_k}{{q}_k} \right\}^T \\
+             & -  \left\{  \gamma \frac{1}{h}  \pd{f_{k+1}}{\dot{q}_{k+1}} +  \gamma \pd{f_{k+1}}{{q}_{k+1}} \right\}^T \\ 
+             & -  \left[  \gamma \frac{1}{h}  \pd{R_{k+1}}{\dot{q}_{k+1}} + \gamma \pd{R_{k+1}}{{q}_{k+1}} \right]^T \lambda_{k+1}  \\
+             & -  \left\{ \beta \pd{f_{k+1}}{{q}_{k+1}} \right\}^T \\ 
+             & - \left[  \beta\pd{R_{k+1}}{{q}_{k+1}} \right]^T \lambda_{k+1}  \\
+             & -  \left\{ (1-\gamma) \frac{1}{h} \pd{f_{k+1}}{\dot{q}_{k+1}} + (\frac{1}{2}-\beta) \pd{f_{k+1}}{{q}_{k+1}} \right\}^T \\
+             & -  \left[ (1-\gamma) \frac{1}{h} \pd{R_{k+1}}{\dot{q}_{k+1}} + (\frac{1}{2}-\beta) \pd{R_{k+1}}{{q}_{k+1}} \right]^T\lambda_{k+1} \\
+             & -  \frac{1}{h} \left\{ \frac{1}{h} \psi_{k+1} + (\frac{1}{2} +\gamma) \phi_{k+1} \right\}^T\\
+           \end{split}
+         \end{equation}
+        
+         \begin{equation}
+           \begin{split}
+             \left[ \frac{1}{h^2} \pd{R_k}{\ddot{q}_k} + \gamma \frac{1}{h} \pd{R_k}{\dot{q}_k} + \beta \pd{R_k}{{q}_k} \right]^T \lambda_k = &- \left\{ \frac{1}{h^2}  \pd{f_k}{\ddot{q}_k} + \gamma \frac{1}{h} \pd{f_k}{\dot{q}_k} + \beta \pd{f_k}{{q}_k} \right\}^T \\
+             & -  \left\{  \frac{1}{h} \pd{f_{k+1}}{\dot{q}_{k+1}} +  (\frac{1}{2} +\gamma) \pd{f_{k+1}}{{q}_{k+1}} \right\}^T \\
+             & -  \left[  \frac{1}{h} \pd{R_{k+1}}{\dot{q}_{k+1}} +  (\frac{1}{2} +\gamma)  \pd{R_{k+1}}{{q}_{k+1}} \right]^T\lambda_{k+1} \\
+             & -  \frac{1}{h} \left\{ \frac{1}{h} \psi_{k+1} + (\frac{1}{2} +\gamma) \phi_{k+1} \right\}^T\\
+           \end{split}
+         \end{equation}
+
+
          The total derivative can be computed as follows:
          $$\pd{\cal{L}}{x} = \pd{F}{x} = \sum_{k=0}^N h \pd{f_k}{x}^T + \sum_{k=0}^N h
          \pd{R_k}{x}^T \lambda_k.$$
@@ -153,3 +180,18 @@ Discrete Adjoint: Newmark--Beta--Gamma (NBG)
 \end{frame}
 
 \end{document}
+
+%         We explore further simplifications by substituting equations.
+%
+%         \begin{equation}
+%           \begin{split}
+%             \left[ \frac{1}{h^2} \pd{R_k}{\ddot{q}_k} + \gamma \frac{1}{h} \pd{R_k}{\dot{q}_k} + \beta \pd{R_k}{{q}_k} \right]^T \lambda_k = &- \left\{ \frac{1}{h^2}  \pd{f_k}{\ddot{q}_k} + \gamma \frac{1}{h} \pd{f_k}{\dot{q}_k} + \beta \pd{f_k}{{q}_k} \right\}^T \\
+%             & -  \frac{1}{h}\left\{  \gamma \frac{1}{h}  \left( \psi_{k+1} + h \phi_{k+1}  + \left\{ h \pd{f_{k+1}}{\dot{q}_{k+1}} +  h^2 \pd{f_{k+1}}{{q}_{k+1}} \right\}^T + \left[ h \pd{R_{k+1}}{\dot{q}_{k+1}} +  h^2 \pd{R_{k+1}}{{q}_{k+1}} \right]^T \lambda_{k+1}  \right) \right\}^T \\
+%             & -  \frac{1}{h}\left\{  \beta  \left( \phi_{k+1} + \left\{h \pd{f_{k+1}}{{q}_{k+1}} \right\}^T + \left[ h \pd{R_{k+1}}{{q}_{k+1}} \right]^T \lambda_{k+1}  \right) \right\}^T\\
+%             & -  \left\{ (1-\gamma) \frac{1}{h} \pd{f_{k+1}}{\dot{q}_{k+1}} + \frac{1-2\beta}{2} \pd{f_{k+1}}{{q}_{k+1}} \right\}^T \\
+%             & -  \left[ (1-\gamma) \frac{1}{h} \pd{R_{k+1}}{\dot{q}_{k+1}} + \frac{1-2\beta}{2} \pd{R_{k+1}}{{q}_{k+1}} \right]^T\lambda_{k+1} \\
+%             & -  \frac{1}{h} \left\{ (1-\gamma) \frac{1}{h} \psi_{k+1} + \frac{1-2\beta}{2} \phi_{k+1} \right\}^T\\
+%           \end{split}
+%         \end{equation}
+%
+%         \framebreak

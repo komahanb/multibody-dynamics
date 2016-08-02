@@ -54,12 +54,13 @@ program main
   !                       TEST NBG                                    !
   !===================================================================!
 
+  fval = 0.0d0
   X       = 0.0d0
   dfdx    = 0.0d0
   dfdxtmp = 0.0d0
 
   x(1) = 2.50d0    ! mass
-  x(2) = 0.20d0    ! damping coeff
+  x(2) = 0.020d0    ! damping coeff
   x(3) = 5.0d0    ! stiffness coeff
 
   ! Initialize the system
@@ -77,6 +78,8 @@ program main
   print *, "Error       =", abs(dfdxtmp-dfdx)
   print*, "Rel. Error   =", abs(realpart(dfdxtmp)-realpart(dfdx))/realpart(dfdxtmp)
 
+
+stop
   !===================================================================!
   !                       TEST ABM                                    !
   !===================================================================!
