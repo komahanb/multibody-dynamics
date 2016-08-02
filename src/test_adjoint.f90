@@ -45,7 +45,7 @@ program main
   ! Design variable array
   type(scalar), dimension(:), allocatable :: x, dfdx, dfdxtmp
   type(scalar)                            :: fval, ftmp
-  real(dp)                                :: dh = 1.0d-8
+  real(dp)                                :: dh = 1.0d-16
 
   
   allocate(X(3), dfdx(3), dfdxtmp(3))
@@ -64,8 +64,9 @@ program main
 
   ! Initialize the system
   call smd1obj % initialize(num_state_vars = 1, num_design_vars = 3)
-  nbgobj = NBG(system = smd1obj, tfinal = 2.0d-3, h=1.0d-3)
-  call nbgobj % evalFuncGrad(num_func=1, func = KE,  num_dv = 3, x = x, fvals = fval, dfdx= dfdx)
+  nbgobj = NBG(system = smd1obj, tfinal = 20.0d-3, h=1.0d-3)
+  call nbgobj % evalFuncGrad(num_func=1, func = KE,  num_dv = 3, x = x, fvals = fval, dfdx= dfdx)  
+  call nbgobj % writeSolution("nbg1.dat")
   call nbgobj % evalFDFuncGrad(num_func=1, func = KE,  num_dv = 3, x = x, fvals = fval, dfdx= dfdxtmp, dh=dh)
   call nbgobj % finalize()
   call smd1obj % finalize()
@@ -75,7 +76,7 @@ program main
   print*, "FD      dfdx =", dfdxtmp
   print *, "Error       =", abs(dfdxtmp-dfdx)
   print*, "Rel. Error   =", abs(realpart(dfdxtmp)-realpart(dfdx))/realpart(dfdxtmp)
-  
+
   !===================================================================!
   !                       TEST ABM                                    !
   !===================================================================!
@@ -90,7 +91,7 @@ program main
   
   ! Initialize the system
   call smd1obj % initialize(num_state_vars = 1, num_design_vars = 3)
-  abmobj = ABM(system = smd1obj, tfinal = 2.0d-3, h=1.0d-3, max_abm_order = 1)
+  abmobj = ABM(system = smd1obj, tfinal = 30.0d-3, h=1.0d-3, max_abm_order = 1)
   call abmobj % evalFuncGrad(num_func=1, func = KE,  num_dv = 3, x = x, fvals = fval, dfdx= dfdx)
   call abmobj % evalFDFuncGrad(num_func=1, func = KE,  num_dv = 3, x = x, fvals = fval, dfdx= dfdxtmp, dh=dh)
   call abmobj % finalize()
@@ -102,8 +103,6 @@ program main
   print *, "Error       =", abs(dfdxtmp-dfdx)
   print*, "Rel. Error   =", abs(realpart(dfdxtmp)-realpart(dfdx))/realpart(dfdxtmp)
 
-
-stop
   !===================================================================!
   !                          TEST BDF                                 !
   !===================================================================!

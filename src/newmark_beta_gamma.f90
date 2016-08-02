@@ -28,6 +28,9 @@ module nbg_integrator
      type(scalar) :: BETA   = 0.25d0
      type(scalar) :: GAMMA  = 0.50d0
 
+     type(scalar), allocatable, dimension(:) :: rho
+     type(scalar), allocatable, dimension(:) :: sigma
+     
    contains
 
      ! Destructor
@@ -41,7 +44,7 @@ module nbg_integrator
      ! Routines for adjoint gradient
      procedure, public  :: marchBackwards
      procedure, private :: assembleRHS
-     procedure :: computeTotalDerivative
+     procedure          :: computeTotalDerivative
 
   end type NBG
 
@@ -50,7 +53,6 @@ module nbg_integrator
   end interface NBG
 
 contains
-
 
   !===================================================================!
   ! Initialize the NBG datatype and allocate required variables
@@ -130,6 +132,12 @@ contains
     allocate(this % psi(this % num_steps, this % nsvars))
     this % psi = 0.0d0
 
+    allocate(this % rho(this % nsvars))
+    this % rho = 0.0d0
+    
+    allocate(this % sigma(this % nsvars))
+    this % sigma = 0.0d0
+
     !-----------------------------------------------------------------!
     ! Allocate space for the global states and time
     !-----------------------------------------------------------------!
@@ -166,7 +174,9 @@ contains
     if(allocated(this % time)) deallocate(this % time)
 
     if(allocated(this % psi)) deallocate(this % psi)
-
+    if(allocated(this % rho)) deallocate(this % rho)
+    if(allocated(this % sigma)) deallocate(this % sigma)
+   
   end subroutine finalize
   
   !===================================================================!
@@ -225,7 +235,7 @@ contains
     class(NBG), intent(inout)   :: this
     integer, intent(in)         :: k
     type(scalar), intent(inout) :: alpha, beta, gamma
-    integer :: m
+    integer                     :: m
 
     gamma = 1.0d0
     beta  = this % h * this % GAMMA
@@ -243,7 +253,7 @@ contains
     type(scalar) :: alpha, beta, gamma
     integer      :: k
 
-    ! Set states to zeror
+    ! Set states to zero
     this % U     = 0.0d0
     this % UDOT  = 0.0d0
     this % UDDOT = 0.0d0
@@ -307,7 +317,7 @@ contains
        call this % adjointSolve(this % psi(k,:), alpha, beta, gamma, &
             & this % time(k), this % u(k,:), this % udot(k,:), this % uddot(k,:))
 
-       print*, "k,psi=", k, this % psi(k,:)
+       print*, "k, psi=", k, this % psi(k,:)       
 
     end do time
 
@@ -324,38 +334,71 @@ contains
     type(scalar), dimension(:), intent(inout) :: rhs
     type(scalar), dimension(:,:), allocatable :: jac
     type(scalar)                              :: scale
-    type(integer)                             :: k, i, m1, m2, idx, m
     type(scalar)                              :: alpha, beta, gamma
+    type(integer)                             :: k
 
     allocate( jac(this % nSVars, this % nSVars) )
+    
+    k = this % current_step
 
     ! Zero the RHS first
     rhs = 0.0d0
 
-    k = this % current_step
+    if ( k .eq. this % num_steps) then
 
-    ! Get the coefficients
-    call this % getLinearCoeff(k, alpha, beta, gamma)
-    
-    ! Add the state variable sensitivity
-    call this % system % func % addFuncSVSens(rhs, &
-         & alpha, beta, gamma, &
-         & this % time(k), &
-         & this % system % X, &
-         & this % u(k,:), &
-         & this % udot(k,:), &
-         & this % uddot(k,:))
+       this % sigma = 0.0d0
+       this % rho   = 0.0d0
 
-    ! Put the contributions from this step to the next step
-    if ( k .lt. this % num_steps ) then
+    else
+       
+       !-----------------------------------------------------!
+       ! Add residual contributions to RHS
+       !-----------------------------------------------------!
 
-       ! Adjoint RHS coefficients
+       scale = 1.0d0 !this % h
+
        gamma = 0.0d0
-       beta  = this % h
-       alpha = this % h * this % h*(0.5d0 + this % GAMMA)
-     
+       beta  = this % h * (1.0d0 - this % GAMMA)
+       alpha = this % h * this % h * (0.5d0 - this % BETA)
+
        ! Add the state variable sensitivity from the previous step
        call this % system % func % addFuncSVSens(rhs, &
+            & scale*alpha, scale*beta, scale*gamma, &
+            & this % time(k+1), &
+            & this % system % X, &
+            & this % u(k+1,:), &
+            & this % udot(k+1,:), &
+            & this % uddot(k+1,:))
+
+       ! Add the residual adjoint product from the previous step
+       call this % system % assembleJacobian(jac, &
+            & scale*alpha, scale*beta, scale*gamma, &
+            & this % time(k+1), &
+            & this % u(k+1,:), &
+            & this % udot(k+1,:), &
+            & this % uddot(k+1,:))
+
+       rhs = rhs + matmul(transpose(jac(:,:)), this % psi(k+1,:))
+
+       !-------------------------------------------------------!
+       ! Add similar contributions to RHS
+       !-------------------------------------------------------!
+
+       rhs = rhs + beta  * this % sigma/this % h
+       rhs = rhs + alpha * this % rho/this % h
+       
+       !-----------------------------------------------------------!
+       ! Compute NEW THIS % SIGMA (k)
+       !-----------------------------------------------------------!
+
+       this % sigma = this % sigma + this % h * this % rho
+
+       gamma = 0.0d0
+       beta  = this % h
+       alpha = this % h * this % h
+
+       ! Add the state variable sensitivity from the previous step
+       call this % system % func % addFuncSVSens(this % sigma, &
             & alpha, beta, gamma, &
             & this % time(k+1), &
             & this % system % X, &
@@ -371,10 +414,58 @@ contains
             & this % udot(k+1,:), &
             & this % uddot(k+1,:))
 
-       rhs = rhs + matmul(transpose(jac(:,:)), this % psi(k+1,:))
-       
+       this % sigma = this % sigma + matmul(transpose(jac(:,:)), this % psi(k+1,:))
+
+       !-----------------------------------------------------------!
+       ! Compute THIS % RHO (K)
+       !-----------------------------------------------------------!
+
+       gamma = 0.0d0
+       beta  = 0.0d0
+       alpha = this % h
+
+       ! Add the state variable sensitivity from the previous step
+       call this % system % func % addFuncSVSens(this % rho, &
+            & alpha, beta, gamma, &
+            & this % time(k+1), &
+            & this % system % X, &
+            & this % u(k+1,:), &
+            & this % udot(k+1,:), &
+            & this % uddot(k+1,:))
+
+       ! Add the residual adjoint product from the previous step
+       call this % system % assembleJacobian(jac, &
+            & alpha, beta, gamma, &
+            & this % time(k+1), &
+            & this % u(k+1,:), &
+            & this % udot(k+1,:), &
+            & this % uddot(k+1,:))
+
+       this % rho = this % rho + matmul(transpose(jac(:,:)), this % psi(k+1,:))
+      
     end if
-        
+
+    ! Get the coefficients
+    call this % getLinearCoeff(k, alpha, beta, gamma)
+    
+    !-------------------------------------------------------!
+    ! Add current contributions to RHS
+    !-------------------------------------------------------!
+    
+    rhs = rhs + beta  * this % sigma/this % h
+    rhs = rhs + alpha * this % rho/this % h
+
+    scale = 1.0d0
+    
+    ! Add the state variable sensitivity
+    call this % system % func % addFuncSVSens(rhs, &
+         & scale*alpha, scale*beta, scale*gamma, &
+         & this % time(k), &
+         & this % system % X, &
+         & this % u(k,:), &
+         & this % udot(k,:), &
+         & this % uddot(k,:))
+
     ! Negate the RHS
     rhs = -rhs
 
@@ -434,5 +525,5 @@ contains
     print*, "Check scaling of dfdx, and transpose"
 
   end subroutine computeTotalDerivative
-
+  
 end module nbg_integrator

@@ -80,44 +80,74 @@ Discrete Adjoint: Newmark--Beta--Gamma (NBG)
 %  \tableofcontents
 %\end{frame}
 
-\begin{frame}[allowframebreaks] \frametitle{Time Integration}
+\begin{frame}[allowframebreaks] \frametitle{Newmark--Beta--Gamma Method Adjoint}
 
-  The second--order governing differential equations are posed in the following
-  descriptor form at the k-th time step:
-  $$ R_k(\ddot{q}_k, \dot{q}_k, q_k, t_k , x) = 0.$$
+  \tiny{
+    
+    The second--order governing differential equations are posed in the following
+    descriptor form at the k-th time step:
+    $$ R_k(\ddot{q}_k, \dot{q}_k, q_k, t_k , x) = 0.$$
 
-  We use Newmark--Beta--Gamma (NBG) method to approximate the states:
-  $$ \dot{q}_k  = \dot{q}_{k-1}  + (1-\gamma) h \ddot{q}_{k-1} +  \gamma h \ddot{q}_{k}$$ 
-  $$ {q}_k      =     {q}_{k-1}  + h \dot{q}_{k-1} +\frac{1-2\beta}{2} h^2\ddot{q}_{k-1}+ \beta h^2 \ddot{q}_k.$$
-<<<<<<< HEAD
-  The acceleration states $\ddot{q}_k$ are the primary unknown at each time step.
-=======
-  The acceleration states $\ddot{q}_k$ are the unknowns.
->>>>>>> b3ec2921fffe40f738080875f0390c5e44d8e98b
-  
-  \framebreak
+    We use Newmark--Beta--Gamma (NBG) method to approximate the states:
+    $$ S_k =  \dot{q}_{k-1}  + (1-\gamma) h \ddot{q}_{k-1} +  \gamma h \ddot{q}_{k}- \dot{q}_k=0$$ 
+    $$ T_k =  {q}_{k-1}  + h \dot{q}_{k-1} +\frac{1-2\beta}{2} h^2\ddot{q}_{k-1}+ \beta h^2 \ddot{q}_k-{q}_k=0.$$
+    The acceleration states $\ddot{q}_k$ are the primary unknown at each time step. We introduce $\lambda_k$, $\psi_k$ and $\phi_k$ as adjoint variables
+    associated with each of these equations. The Lagrangian function is written
+    as:
+    
+    $${\cal{L}} = \sum_{k=0}^N h f_k(\underline{\ddot{q}_k},
+    \dot{q}_k, q_k, x) + \sum_{k=0}^N h \lambda_k^T
+    R_k(\underline{\ddot{q}_k}, \dot{q}_k, q_k, x) + \sum_{k=0}^N \psi_k
+    S_k(\underline{\dot{q}_k}, \dot{q}_{k-1}, \ddot{q}_{k-1},
+    \ddot{q}_{k}) + \sum_{k=0}^N \phi_k T_k(\underline{{q}_k},
+         {q}_{k-1}, \ddot{q}_{k-1}, \ddot{q}_{k}). $$
+         
+         The underlined variables denote the primary unknown in each
+         equation.
+         
+         \framebreak
+         
+         Setting $\pd{\cal{L}}{\dot{q}} = 0$ yields:
+         \begin{equation}
+           \begin{split}
+             \psi_k = \psi_{k+1} + h \phi_{k+1}  + \left\{ h \pd{f_{k+1}}{\dot{q}_{k+1}} +  h^2 \pd{f_{k+1}}{{q}_{k+1}} \right\}^T + \left[ h \pd{R_{k+1}}{\dot{q}_{k+1}} +  h^2 \pd{R_{k+1}}{{q}_{k+1}} \right]^T \lambda_{k+1} 
+           \end{split}
+         \end{equation}
 
-  The Lagrangian function is written as:
 
-  $${\cal{L}} = \sum_{k=0}^N h f_k(\ddot{q}_k, \dot{q}_k, q_k) + \sum_{k=0}^N h  \lambda_k^T R_k(\ddot{q}_k, \dot{q}_k, q_k) $$
+         Setting $\pd{\cal{L}}{{q}} = 0$ yields:
+         \begin{equation}
+           \begin{split}
+             \phi_k = \phi_{k+1} + \left\{h \pd{f_{k+1}}{{q}_{k+1}} \right\}^T + \left[ h \pd{R_{k+1}}{{q}_{k+1}} \right]^T \lambda_{k+1}  
+           \end{split}
+         \end{equation}
+         
+         Setting $\pd{\cal{L}}{\ddot{q}_k} = 0$ yields:
+         \begin{equation}
+           \begin{split}
+             \left[ \pd{R_k}{\ddot{q}_k} + \gamma h \pd{R_k}{\dot{q}_k} + \beta h^2 \pd{R_k}{{q}_k} \right]^T \lambda_k = &- \left\{ \pd{f_k}{\ddot{q}_k} + \gamma h \pd{f_k}{\dot{q}_k} + \beta h^2 \pd{f_k}{{q}_k} \right\}^T \\
+             & -  \frac{1}{h}\left\{  \gamma h  \psi_k + \beta h^2   \phi_k \right\}^T\\
+             & -  \left\{ (1-\gamma) h \pd{f_{k+1}}{\dot{q}_{k+1}} + \frac{1-2\beta}{2} h^2 \pd{f_{k+1}}{{q}_{k+1}} \right\}^T \\
+                          & -  \left[ (1-\gamma) h \pd{R_{k+1}}{\dot{q}_{k+1}} + \frac{1-2\beta}{2} h^2 \pd{R_{k+1}}{{q}_{k+1}} \right]^T\lambda_{k+1} \\
+             & -  \frac{1}{h} \left\{ (1-\gamma) h \psi_{k+1} + \frac{1-2\beta}{2} h^2 \phi_{k+1} \right\}^T\\
+           \end{split}
+         \end{equation}
 
-  Setting $\pd{\cal{L}}{\ddot{q}} = 0$ yields
-  \small{
-  $$ h\pd{f_k}{\ddot{q}_k}^T + h \pd{R_k}{\ddot{q}_k}^T \lambda_k
-  + h\pd{f_{k-1}}{\ddot{q}_{k-1}}^T +  h \pd{R_{k-1}}{\ddot{q}_{k-1}}^T \lambda_{k-1} + \ldots + 
-  h\pd{f_0}{\ddot{q}_0}^T + h \pd{R_0}{\ddot{q}_0}^T \lambda_0
-  = 0 $$
-  }
-
-  The adjoint equation at each time step is:
-  $$\pd{R_k}{\ddot{q}_k}^T \lambda_k = - \pd{f_k}{\ddot{q}_k}^T  - \pd{f_{k+1}}{\ddot{q}_{k}}^T - \pd{R_{k+1}}{\ddot{q}_{k}}^T \lambda_{k+1}.$$
-  This can be written in expanded form as follows:
-  \scriptsize{
-  \begin{equation}\nonumber\begin{split}
-    \left[ \pd{R_k}{\ddot{q}_k} + \gamma h \pd{R_k}{\dot{q}_k} + \beta h^2 \pd{R_k}{{q}_k} \right]^T \lambda_k & = \left\{ \pd{f_k}{\ddot{q}_k} + \gamma h \pd{f_k}{\dot{q}_k} + \beta h^2 \pd{f_k}{{q}_k} \right\}^T \\ & +  \left\{ \pd{R_{k+1}}{\ddot{q}_{k+1}} + (1-\gamma) h \pd{R_{k+1}}{\dot{q}_{k+1}} + \frac{1-2\beta}{2} h^2 \pd{R_{k+1}}{{q}_{k+1}} \right\}^T \\
-    & +  \left[ \pd{R_{k+1}}{\ddot{q}_{k+1}} + (1-\gamma) h \pd{R_{k+1}}{\dot{q}_{k+1}} + \frac{1-2\beta}{2} h^2 \pd{R_{k+1}}{{q}_{k+1}} \right]^T\lambda_{k+1} \\
-      \end{split}
-  \end{equation}
+         We can equivalently scale the equation with $1/h^2$ and represent as follows:
+         
+         \begin{equation}
+           \begin{split}
+             \left[ \frac{1}{h^2} \pd{R_k}{\ddot{q}_k} + \gamma \frac{1}{h} \pd{R_k}{\dot{q}_k} + \beta \pd{R_k}{{q}_k} \right]^T \lambda_k = &- \left\{ \frac{1}{h^2}  \pd{f_k}{\ddot{q}_k} + \gamma \frac{1}{h} \pd{f_k}{\dot{q}_k} + \beta \pd{f_k}{{q}_k} \right\}^T \\
+             & -  \frac{1}{h}\left\{  \gamma \frac{1}{h}  \psi_k + \beta   \phi_k \right\}^T\\
+             & -  \left\{ (1-\gamma) \frac{1}{h} \pd{f_{k+1}}{\dot{q}_{k+1}} + \frac{1-2\beta}{2} \pd{f_{k+1}}{{q}_{k+1}} \right\}^T \\
+                          & -  \left[ (1-\gamma) \frac{1}{h} \pd{R_{k+1}}{\dot{q}_{k+1}} + \frac{1-2\beta}{2} \pd{R_{k+1}}{{q}_{k+1}} \right]^T\lambda_{k+1} \\
+             & -  \frac{1}{h} \left\{ (1-\gamma) \frac{1}{h} \psi_{k+1} + \frac{1-2\beta}{2} \phi_{k+1} \right\}^T\\
+           \end{split}
+         \end{equation}
+         
+         The total derivative can be computed as follows:
+         $$\pd{\cal{L}}{x} = \pd{F}{x} = \sum_{k=0}^N h \pd{f_k}{x}^T + \sum_{k=0}^N h
+         \pd{R_k}{x}^T \lambda_k.$$
   }
   
 \end{frame}
