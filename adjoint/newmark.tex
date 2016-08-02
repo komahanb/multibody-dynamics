@@ -1,0 +1,155 @@
+\documentclass{beamer}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%                  Themes and such                         %%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\mode<presentation>
+{
+  %\usetheme{Copenhagen}  
+  %\usetheme{Warsaw}  
+  \usetheme{Malmoe}  
+%    \setbeamertemplate{headline}{}
+  %make my huge toc fit on one slide (and not look horrible)
+  %\setbeamerfont{subsection in toc}{series=\bfseries}
+  %\setbeamerfont{subsection in toc}{size=\tiny,series=\bfseries}
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%                       Packages                           %%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage{multimedia}
+\usepackage{multirow}
+\usepackage{subfigure}
+\usepackage{amsmath}
+
+% Define commands
+ \newcommand{\half}{\ensuremath{\frac{1}{2}}}
+
+ \newcommand{\bea}{\begin{eqnarray}}
+ \newcommand{\eea}{\end{eqnarray}}
+ \newcommand{\beq}{\begin{equation}}
+ \newcommand{\eeq}{\end{equation}}
+ \newcommand{\bed}{\begin{displaymath}}
+ \newcommand{\eed}{\end{displaymath}}
+
+ \newcommand{\pd}[2]{\frac{\partial #1}{\partial #2}}
+ \newcommand{\pf}[2]{\frac{d #1}{d #2}}
+ \newcommand{\pdt}[2]{\frac{\partial^2 #1}{\partial #2^2}}
+ \newcommand{\pft}[2]{\frac{d^2 #1}{d #2^2}}
+ \newcommand{\pdtno}[2]{\frac{\partial^2 #1}{\partial #2}}
+ \newcommand{\pdd}[3]{\frac{\partial^2 #1}{\partial #2 \partial #3}}
+ \newcommand{\pff}[3]{\frac{d^2 #1}{d #2 d #3}}
+
+ \graphicspath{{../figures/}}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%                     Title Info                           %%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\title[\hspace{-0.2cm} DIRK Adjoint]
+{
+Discrete Adjoint: Newmark--Beta--Gamma (NBG)
+}
+
+\author[Komahan Boopathy]
+{
+  \Large {Komahan Boopathy}\\
+}
+
+\institute
+{
+  \large Georgia Institute of Technology\\
+ School of Aerospace Engineering\\
+ Atlanta, GA
+}
+
+\date
+{
+\small \today
+}
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+%\begin{frame}
+%  \frametitle{Outline}
+%  \tableofcontents
+%\end{frame}
+
+\begin{frame}[allowframebreaks] \frametitle{Newmark--Beta--Gamma Method Adjoint}
+
+  \tiny{
+    
+    The second--order governing differential equations are posed in the following
+    descriptor form at the k-th time step:
+    $$ R_k(\ddot{q}_k, \dot{q}_k, q_k, t_k , x) = 0.$$
+
+    We use Newmark--Beta--Gamma (NBG) method to approximate the states:
+    $$ S_k =  \dot{q}_{k-1}  + (1-\gamma) h \ddot{q}_{k-1} +  \gamma h \ddot{q}_{k}- \dot{q}_k=0$$ 
+    $$ T_k =  {q}_{k-1}  + h \dot{q}_{k-1} +\frac{1-2\beta}{2} h^2\ddot{q}_{k-1}+ \beta h^2 \ddot{q}_k-{q}_k=0.$$
+    The acceleration states $\ddot{q}_k$ are the primary unknown at each time step. We introduce $\lambda_k$, $\psi_k$ and $\phi_k$ as adjoint variables
+    associated with each of these equations. The Lagrangian function is written
+    as:
+    
+    $${\cal{L}} = \sum_{k=0}^N h f_k(\underline{\ddot{q}_k},
+    \dot{q}_k, q_k, x) + \sum_{k=0}^N h \lambda_k^T
+    R_k(\underline{\ddot{q}_k}, \dot{q}_k, q_k, x) + \sum_{k=0}^N \psi_k
+    S_k(\underline{\dot{q}_k}, \dot{q}_{k-1}, \ddot{q}_{k-1},
+    \ddot{q}_{k}) + \sum_{k=0}^N \phi_k T_k(\underline{{q}_k},
+         {q}_{k-1}, \ddot{q}_{k-1}, \ddot{q}_{k}). $$
+         
+         The underlined variables denote the primary unknown in each
+         equation.
+         
+         \framebreak
+         
+         Setting $\pd{\cal{L}}{\dot{q}} = 0$ yields:
+         \begin{equation}
+           \begin{split}
+             \psi_k = \psi_{k+1} + h \phi_{k+1}  + \left\{ h \pd{f_{k+1}}{\dot{q}_{k+1}} +  h^2 \pd{f_{k+1}}{{q}_{k+1}} \right\}^T + \left[ h \pd{R_{k+1}}{\dot{q}_{k+1}} +  h^2 \pd{R_{k+1}}{{q}_{k+1}} \right]^T \lambda_{k+1} 
+           \end{split}
+         \end{equation}
+
+
+         Setting $\pd{\cal{L}}{{q}} = 0$ yields:
+         \begin{equation}
+           \begin{split}
+             \phi_k = \phi_{k+1} + \left\{h \pd{f_{k+1}}{{q}_{k+1}} \right\}^T + \left[ h \pd{R_{k+1}}{{q}_{k+1}} \right]^T \lambda_{k+1}  
+           \end{split}
+         \end{equation}
+         
+         Setting $\pd{\cal{L}}{\ddot{q}_k} = 0$ yields:
+         \begin{equation}
+           \begin{split}
+             \left[ \pd{R_k}{\ddot{q}_k} + \gamma h \pd{R_k}{\dot{q}_k} + \beta h^2 \pd{R_k}{{q}_k} \right]^T \lambda_k = &- \left\{ \pd{f_k}{\ddot{q}_k} + \gamma h \pd{f_k}{\dot{q}_k} + \beta h^2 \pd{f_k}{{q}_k} \right\}^T \\
+             & -  \frac{1}{h}\left\{  \gamma h  \psi_k + \beta h^2   \phi_k \right\}^T\\
+             & -  \left\{ (1-\gamma) h \pd{f_{k+1}}{\dot{q}_{k+1}} + \frac{1-2\beta}{2} h^2 \pd{f_{k+1}}{{q}_{k+1}} \right\}^T \\
+                          & -  \left[ (1-\gamma) h \pd{R_{k+1}}{\dot{q}_{k+1}} + \frac{1-2\beta}{2} h^2 \pd{R_{k+1}}{{q}_{k+1}} \right]^T\lambda_{k+1} \\
+             & -  \frac{1}{h} \left\{ (1-\gamma) h \psi_{k+1} + \frac{1-2\beta}{2} h^2 \phi_{k+1} \right\}^T\\
+           \end{split}
+         \end{equation}
+
+         We can equivalently scale the equation with $1/h^2$ and represent as follows:
+         
+         \begin{equation}
+           \begin{split}
+             \left[ \frac{1}{h^2} \pd{R_k}{\ddot{q}_k} + \gamma \frac{1}{h} \pd{R_k}{\dot{q}_k} + \beta \pd{R_k}{{q}_k} \right]^T \lambda_k = &- \left\{ \frac{1}{h^2}  \pd{f_k}{\ddot{q}_k} + \gamma \frac{1}{h} \pd{f_k}{\dot{q}_k} + \beta \pd{f_k}{{q}_k} \right\}^T \\
+             & -  \frac{1}{h}\left\{  \gamma \frac{1}{h}  \psi_k + \beta   \phi_k \right\}^T\\
+             & -  \left\{ (1-\gamma) \frac{1}{h} \pd{f_{k+1}}{\dot{q}_{k+1}} + \frac{1-2\beta}{2} \pd{f_{k+1}}{{q}_{k+1}} \right\}^T \\
+                          & -  \left[ (1-\gamma) \frac{1}{h} \pd{R_{k+1}}{\dot{q}_{k+1}} + \frac{1-2\beta}{2} \pd{R_{k+1}}{{q}_{k+1}} \right]^T\lambda_{k+1} \\
+             & -  \frac{1}{h} \left\{ (1-\gamma) \frac{1}{h} \psi_{k+1} + \frac{1-2\beta}{2} \phi_{k+1} \right\}^T\\
+           \end{split}
+         \end{equation}
+         
+         The total derivative can be computed as follows:
+         $$\pd{\cal{L}}{x} = \pd{F}{x} = \sum_{k=0}^N h \pd{f_k}{x}^T + \sum_{k=0}^N h
+         \pd{R_k}{x}^T \lambda_k.$$
+  }
+  
+\end{frame}
+
+\end{document}
