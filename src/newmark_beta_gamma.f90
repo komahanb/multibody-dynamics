@@ -25,9 +25,26 @@ module nbg_integrator
 
   type, extends(integrator) :: NBG
      
+     ! Average Constant Accelearation (second order unconditionally stable)
      type(scalar) :: BETA   = 0.25d0
      type(scalar) :: GAMMA  = 0.50d0
 
+!!$     ! Fox & Goodwin  (third order & conditionally stable wh=2.45)
+!!$     type(scalar) :: BETA   = 1.0d0/12.0d0
+!!$     type(scalar) :: GAMMA  = 0.50d0
+!!$
+!!$     ! Linear Acceleration (second order & conditionally stable wh=3.46)
+!!$     type(scalar) :: BETA   = 1.0d0/6.0d0
+!!$     type(scalar) :: GAMMA  = 0.50d0
+!!$
+!!$     ! Central Difference (second order & conditionally stable wh=2)
+!!$     type(scalar) :: BETA   = 1.0d0/2.0d0
+!!$     type(scalar) :: GAMMA  = 0.50d0
+!!$
+!!$     ! Purely Explicit
+!!$     type(scalar) :: BETA   = 0.0d0
+!!$     type(scalar) :: GAMMA  = 0.0d0
+     
      type(scalar), allocatable, dimension(:) :: rho
      type(scalar), allocatable, dimension(:) :: sigma
      
