@@ -82,86 +82,84 @@ Discrete Adjoint: Adams--Bashforth--Moulton (ABM)
 
 \begin{frame}[allowframebreaks] \frametitle{Time Integration}
 
-  The second--order governing differential equations are posed in the following
-  descriptor form at the k-th time step:
-  $$ R_k(\ddot{q}_k, \dot{q}_k, q_k, t_k , x) = 0.$$
+  \tiny{
 
-  We use Adams--Bashforth--Moulton (ABM) method to approximate the states:
-  $$ \dot{q}_k  = \dot{q}_{k-1}  + h \sum_{i=1}^{m} a_i \ddot{q}_{k-i+1}$$ 
-  $$ {q}_k      =     {q}_{k-1}  + h \sum_{i=1}^{m} a_i \dot{q}_{k-i+1}.$$
+    The second--order governing differential equations are posed in the following
+    descriptor form at the k-th time step:
+    $$ R_k(\underline{\ddot{q}_k}, \dot{q}_k, q_k, t_k , x) = 0.$$
 
-  \framebreak
+    We use Adams--Bashforth--Moulton (ABM) method to approximate the states:
+    $$ S_k =   \dot{q}_{k-1}  + h \sum_{i=0}^{m-1} a_i \ddot{q}_{k-i} - \underline{\dot{q}_k}  = 0 $$ 
+    $$ T_k =   {q}_{k-1}  + h \sum_{i=0}^{m-1} a_i \dot{q}_{k-i} - \underline{{q}_k} = 0.$$
 
-  The ABM coefficients upto $6^{th}$ order are tabulated.
+    The acceleration states $\ddot{q}_k$ are the primary unknown at each time step. We introduce $\lambda_k$, $\psi_k$ and $\phi_k$ as adjoint variables
+    associated with each of these equations. The Lagrangian function is written
+    as:
+    
+    $${\cal{L}} = \sum_{k=0}^N h f_k + \sum_{k=0}^N h \lambda_k^T
+    R_k + \sum_{k=0}^N \psi_k S_k + \sum_{k=0}^N \phi_k T_k. $$
+         
+         The underlined variables denote the primary unknown in each
+         equation.
 
-  \begin{center}
-    \begin{tabular}{cccccccc}
-      \hline
-      k & $i=0$ & 1 & 2 & 3 & 4 & 5 & 6 \\ 
-      \hline
-      &&&&&&&\\
-      1 & 1     &   &   &   &   &   &  \\
-      &&&&&&&\\
-      2 & $\frac{1}{2}$ & $\frac{1}{2}$ &   &   &   &   &  \\
-      &&&&&&&\\
-      3 & $\frac{5}{12}$ & $\frac{8}{12}$ & $-\frac{1}{12}$  &   &   &   &  \\
-      &&&&&&&\\
-      4 & $\frac{9}{24}$ & $\frac{19}{24}$ & $-\frac{5}{24}$  & $\frac{1}{24}$  &   &   &  \\
-      &&&&&&&\\
-      5 & $\frac{251}{720}$ & $\frac{646}{720}$ & $-\frac{264}{720}$  & $\frac{106}{720}$  & $-\frac{19}{720}$  &   &  \\
-      &&&&&&&\\
-      6 & $\frac{475}{1440}$ & $\frac{1427}{1440}$ & $-\frac{798}{1440}$  & $\frac{482}{1440}$  & $-\frac{173}{1440}$  &  $\frac{27}{1440}$ &  \\
-      &&&&&&&\\
-      \hline   
-    \end{tabular}
-  \end{center}
+    \framebreak
 
-  \framebreak
+    The ABM coefficients upto $6^{th}$ order are tabulated.
 
-  We first demonstrate the adjoint on a three-step time integation. \\
+    \begin{center}
+      \begin{tabular}{cccccccc}
+        \hline
+        m & $i=0$ & 1 & 2 & 3 & 4 & 5 & 6 \\ 
+        \hline
+        &&&&&&&\\
+        1 & 1     &   &   &   &   &   &  \\
+        &&&&&&&\\
+        2 & $\frac{1}{2}$ & $\frac{1}{2}$ &   &   &   &   &  \\
+        &&&&&&&\\
+        3 & $\frac{5}{12}$ & $\frac{8}{12}$ & $-\frac{1}{12}$  &   &   &   &  \\
+        &&&&&&&\\
+        4 & $\frac{9}{24}$ & $\frac{19}{24}$ & $-\frac{5}{24}$  & $\frac{1}{24}$  &   &   &  \\
+        &&&&&&&\\
+        5 & $\frac{251}{720}$ & $\frac{646}{720}$ & $-\frac{264}{720}$  & $\frac{106}{720}$  & $-\frac{19}{720}$  &   &  \\
+        &&&&&&&\\
+        6 & $\frac{475}{1440}$ & $\frac{1427}{1440}$ & $-\frac{798}{1440}$  & $\frac{482}{1440}$  & $-\frac{173}{1440}$  &  $\frac{27}{1440}$ &  \\
+        &&&&&&&\\
+        \hline   
+      \end{tabular}
+    \end{center}
 
-  First step $(k=1, m=1)$: $$R_1(\underline{\ddot{q}_1}, \dot{q}_1, q_1, t_1) = 0$$
-  where
-  $$ \dot{q}_1  = \dot{q}_{0}  + h a_1 \ddot{q}_{1}$$ 
-  $$     {q}_1  =     {q}_{0}  + h a_1 \dot{q}_{1}$$ 
+    \framebreak
 
-  Second step $(k=2, m=2)$: $$R_2(\underline{\ddot{q}_2}, \dot{q}_2, q_2, t_2) = 0$$
-  where
-  $$ \dot{q}_2  = \dot{q}_{1}  + h a_1 \ddot{q}_{2} + h a_2 \ddot{q}_{1} $$ 
-  $$     {q}_2  =     {q}_{1}  + h a_1 \dot{q}_{2}  + h a_2 \dot{q}_{1} $$ 
+    We demonstrate the adjoint devlopment for three steps of time
+    integation. \\
+    ~\\
+    \underline{\textbf{First step}} $(k=1, m=1)$: 
+    $$ h \lambda_1^T R_1(\underline{\ddot{q}_1}, \dot{q}_1, q_1, t_1) = 0$$
+    $$ h  f_1(\underline{\ddot{q}_1}, \dot{q}_1, q_1, t_1)^T = 0 $$
+    $$ \psi_1^T S_1 = \dot{q}_{0}  + h a_0 \ddot{q}_{1} - \dot{q}_1  $$ 
+    $$ \phi_1^T T_1 =  {q}_{0}  + h a_0 \dot{q}_{1} - {q}_1$$ 
 
-  We introduce $\lambda$ as adjoint variables and form the Lagrangian: $$ {\cal L} = \sum_{k=0}^N f_k + \sum_{k=0}^N \lambda_k^T R_k $$
+    \underline{\textbf{Second step}} $(k=2, m=2)$: 
+    $$h \lambda_2^T R_2(\underline{\ddot{q}_2}, \dot{q}_2, q_2, t_2) = 0$$
+    $$h f_2(\underline{\ddot{q}_2}, \dot{q}_2, q_2, t_2)^T = 0$$
+    $$ \psi_2^T S_2 = \dot{q}_{1}  + h a_0 \ddot{q}_{2} + h a_1 \ddot{q}_{1} - \dot{q}_2 $$ 
+    $$ \phi_2^T T_2 = {q}_{1}  + h a_0 \dot{q}_{2}  + h a_1 \dot{q}_{1} - {q}_2$$ 
 
-  We set $\partial{\cal{L}}/\partial{\ddot{q}_2}=0$ to solve for $\lambda_2$.
-  
-  $$\pd{f_2}{\ddot{q}_2} + \lambda_2^T \pd{R_2}{\ddot{q}_2} = 0$$
+    \underline{\textbf{Third step}} $(k=3, m=3)$: 
+    $$h\lambda_3^TR_3(\underline{\ddot{q}_3}, \dot{q}_3, q_3, t_3) = 0$$
+    $$hf_3(\underline{\ddot{q}_3}, \dot{q}_3, q_3, t_3)^T = 0$$
+    $$ \psi_3^TS_3 = \dot{q}_{2}  + h a_0 \ddot{q}_{3} + h a_1 \ddot{q}_{2}  + h a_2 \ddot{q}_{1} - \dot{q}_3 $$ 
+    $$ \phi_3^TT_3 = {q}_{2}  + h a_0 \dot{q}_{3} + h a_1 \dot{q}_{2}  + h a_2 \dot{q}_{1} - {q}_3 $$ 
 
-  Expanding and transposing yields:
-  $$
-  \left[ \pd{R_2}{\ddot{q}_2} + ha_1 \pd{R_2}{\dot{q}_2} + h^2a_1^2 \pd{R_2}{{q}_2} \right]^T \lambda_2 = - \left\{ \pd{f_2}{\ddot{q}_2} + ha_1 \pd{f_2}{\dot{q}_2} + h^2a_1^2 \pd{f_2}{{q}_2} \right\}^T 
-  $$
-  
-  \framebreak
+    \framebreak
+   
+    Setting $\pd{\cal{L}}{{q}_1} = 0$ yields:
+    $$ h \lambda_1^T \pd{R_1}{q_1} + h \pd{f_1}{q_1} + \psi_1^T \pd{S_1}{q_1} + \phi_1^T \pd{T_1}{q_1} = 0 $$
 
-  We set $\partial{\cal{L}}/\partial{\ddot{q}_1}=0$ to solve for $\lambda_1$. 
-  
-  $$\pd{f_1}{\ddot{q}_1} + \lambda_1^T \pd{R_1}{\ddot{q}_1} 
-  + \pd{f_2}{\ddot{q}_1} + \lambda_2^T \pd{R_2}{\ddot{q}_1} = 0$$
+  }
 
-\begin{equation}\nonumber
-\begin{split}
-  \left[ \pd{R_1}{\ddot{q}_1} + ha_1 \pd{R_1}{\dot{q}_1} + h^2a_1^2 \pd{R_1}{{q}_1} \right]^T \lambda_1  = &
-  - \left\{ \pd{f_1}{\ddot{q}_1} + ha_1 \pd{f_1}{\dot{q}_1} + h^2a_1^2 \pd{f_1}{{q}_1} \right\}^T \\
-  & - \left\{ \pd{f_2}{\dot{q}_2} \pd{\dot{q}_2}{\ddot{q}_1} +  \pd{f_2}{{q}_2} \pd{{q}_2}{\ddot{q}_1} \right\}^T\\
-  & - \left[  \pd{R_2}{\dot{q}_2} \pd{\dot{q}_2}{\ddot{q}_1} +  \pd{R_2}{{q}_2} \pd{{q}_2}{\ddot{q}_1} \right]^T \lambda_1 \\
-\end{split}
-\end{equation}
-where
-$$\alpha=\pd{q_2}{\ddot{q}_1} = ha_1ha_1 + ha_2ha_1 + ha_1ha_2$$
-$$
-\beta=\pd{\dot{q}_2}{\ddot{q}_1} = ha_2
-$$
 \end{frame}
+
 
 \end{document}
 
