@@ -55,26 +55,20 @@ module runge_kutta_integrator
 
    contains
 
-     !----------------------------------------------------------------!
-     ! Implemented common procedures (visible to the user)
-     !----------------------------------------------------------------!
+     ! Destructor
+     procedure :: finalize
 
-     procedure :: finalize, integrate
-
-     !----------------------------------------------------------------!
-     ! Implemented procedures (not callable by the user)
-     !----------------------------------------------------------------!
+     ! Routines for integration
+     
+     procedure          :: integrate => integrate
+     procedure, private :: approximateStates
+     procedure, private :: getLinearCoeff
 
      procedure, private :: TimeMarch
      procedure, private :: CheckButcherTableau
-
-     !----------------------------------------------------------------!
-     ! Deferred common procedures
-     !----------------------------------------------------------------!
-
-     procedure(computeStageStateValues_interface), private, deferred :: ComputeStageStateValues
-     procedure(buthcher_interface), private, deferred                :: SetupButcherTableau
-
+     
+     procedure(buthcher_interface), private, deferred :: SetupButcherTableau
+     
      procedure :: testAdjoint
      procedure :: testAdjoint2
      procedure :: testAdjoint3
@@ -96,7 +90,6 @@ module runge_kutta_integrator
      private
 
      procedure :: setupButcherTableau => ButcherDIRK
-     procedure, private :: computeStageStateValues
 
      !----------------------------------------------------------------!
      ! Adjoint procedures
@@ -113,17 +106,6 @@ module runge_kutta_integrator
   !===================================================================!
 
   interface
-
-     !================================================================!
-     ! Interface for finding the stage derivatives at each time step
-     !================================================================!
-
-     subroutine computeStageStateValues_interface(this, q, qdot)
-       import RK
-       class(RK) :: this
-       type(scalar), intent(in), dimension(:,:)           :: q
-       type(scalar), OPTIONAL, intent(in), dimension(:,:) :: qdot
-     end subroutine computeStageStateValues_interface
 
      !================================================================!
      ! Interface for setting the Butcher tableau for each type of RK
@@ -350,15 +332,16 @@ contains
     if(allocated(this % phi)) deallocate(this % phi)
 
   end subroutine finalize
-
+  
   !===================================================================!
-  ! Time integration logic
+  ! Overridden Time integration logic
   !===================================================================!
-
+  
   subroutine Integrate(this)
 
     class(RK) :: this
-    integer :: k
+    type(scalar)  :: alpha, beta, gamma
+    integer :: k, i
 
     ! Set states to zero
 
@@ -372,26 +355,47 @@ contains
     this % QDDOT = 0.0d0
     this % T     = 0.0d0
 
-    call this % system % getInitialStates(this % time(1), &
-         & this % u(1,:), this % udot(1,:))
+    call this % system % getInitialStates(this % time(1), this % u(1,:), this % udot(1,:))
+
+    !-----------------------------------------------------------------!
+    ! March in time
+    !-----------------------------------------------------------------!
     
     this % current_step = 1
-
-    ! March in time
+    
     time: do k = 2, this % num_steps
-
+       
        this % current_step = k
 
-       ! Find the stage derivatives at the current step
-       call this % computeStageStateValues(this % u, this % udot)
+       !-----------------------------------------------------------------!
+       ! Loop over stages
+       !-----------------------------------------------------------------!
+       
+       do i = 1, this % num_stages
+
+          this % current_stage = i
+
+          ! Find the stage times
+          this % T(i) = this % time(k-1) + this % C(i)*this % h
+
+          ! Guess the solution for stage states
+          call this % approximateStates()
+
+          call this % getLinearCoeff(alpha, beta, gamma)
+
+          ! solve the non linear stage equations using Newton's method
+          call this % newtonSolve(alpha, beta, gamma, &
+               & this % time(k), this % q(k,i,:), this % qdot(k,i,:), this % qddot(k,i,:))
+
+       end do
 
        ! Advance the state to the current step
        call this % timeMarch(this % u, this % udot, this % uddot)
-       
+
     end do time
 
   end subroutine Integrate
-  
+
   !===================================================================!
   ! Time backwards in stage and backwards in time to solve for the
   ! adjoint variables
@@ -581,87 +585,83 @@ contains
   end subroutine ButcherDIRK
 
   !===================================================================!
-  ! Get the stage derivative array for the current step and states for
-  ! DIRK
+  ! Returns the linearization scalar coefficients: alpha, beta, gamma
   !===================================================================!
-
-  subroutine computeStageStateValues( this, q, qdot )
-
-    class(DIRK)                                    :: this
-    type(scalar), intent(in), dimension(:,:)           :: q
-    type(scalar), OPTIONAL, intent(in), dimension(:,:) :: qdot
-    integer                                        :: k, j, m
-    type(scalar)                                       :: alpha, beta, gamma
+  
+  subroutine getLinearCoeff( this, alpha, beta, gamma )
+    
+    class(RK) :: this
+    type(scalar), intent(out)   :: alpha, beta, gamma
+    integer :: k, i
 
     k = this % current_step
+    i = this % current_stage
 
-    do j = 1, this % num_stages
+    if (this % second_order) then
+       gamma = 1.0d0
+       beta  = this % h * this%A(i,i)
+       alpha = this % h * this%A(i,i)* this % h * this%A(i,i)
+    else
+       gamma = 0.0d0
+       beta  = 1.0d0
+       alpha = this % h * this % A(i,i)
+    end if
 
-       this % current_stage = j
+  end subroutine getLinearCoeff
 
-       ! Find the stage times
-       this % T(j) = this % time(k-1) + this % C(j)*this % h
+  !===================================================================!
+  ! Approximate the state variables at each step using BDF formulae
+  !===================================================================!
+  
+  subroutine approximateStates( this )
 
-       ! Guess the solution for stage states
+    class(RK) :: this
+    integer    :: k, m, i
 
-       if (this % second_order) then
-          
-          ! guess qddot
-          if (j .eq. 1) then ! copy previous global state
-             this % QDDOT(k,j,:) = this % UDDOT(k-1,:)
-          else ! copy previous local state
-             this % QDDOT(k,j,:) = this % QDDOT(k,j-1,:)
-          end if
+    k = this % current_step
+    i = this % current_stage
+    
+    if (this % second_order) then
 
-          ! compute the stage velocity states for the guessed QDDOT
-          forall(m = 1 : this % nsvars)
-             this % QDOT(k,j,m) = qdot(k-1,m) &
-                  & + this % h*sum(this % A(j,:)&
-                  & * this % QDDOT(k,:, m))
-          end forall
-
-          ! compute the stage states for the guessed QDDOT
-          forall(m = 1 : this % nsvars)
-             this % Q(k,j,m) = q(k-1,m) &
-                  & + this % h*sum(this % A(j,:)*this % QDOT(k,:, m))
-          end forall
-
-       else
-
-          ! guess qdot
-          if (j .eq. 1) then ! copy previous global state
-             this % QDOT(k,j,:) = this % UDOT(k-1,:)
-          else ! copy previous local state
-             this % QDOT(k,j,:) = this % QDOT(k,j-1,:)
-          end if
-          
-          ! compute the stage states for the guessed 
-          forall(m = 1 : this % nsvars)
-             this % Q(k,j,m) = q(k-1,m) &
-                  & + this % h*sum(this % A(j,:)*this % QDOT(k,:, m))
-          end forall
-
-       end if
-       
-       ! solve the non linear stage equations using Newton's method for
-       ! the actual stage states 
-       if (this % second_order) then
-          gamma = 1.0d0
-          beta  = this % h * this%A(j,j)
-          alpha = this % h * this%A(j,j)* this % h * this%A(j,j)
-       else
-          gamma = 0.0d0
-          beta  = 1.0d0
-          alpha = this % h * this % A(j,j)
+       ! guess qddot
+       if (i .eq. 1) then ! copy previous global state
+          this % QDDOT(k,i,:) = this % UDDOT(k-1,:)
+       else ! copy previous local state
+          this % QDDOT(k,i,:) = this % QDDOT(k,i-1,:)
        end if
 
-       call this % newtonSolve(alpha, beta, gamma, &
-            & this % time(k), this % q(k,j,:), this % qdot(k,j,:), this % qddot(k,j,:))
-       
-    end do
+       ! compute the stage velocity states for the guessed QDDOT
+       forall(m = 1 : this % nsvars)
+          this % QDOT(k,i,m) = this % udot(k-1,m) &
+               & + this % h*sum(this % A(i,:)&
+               & * this % QDDOT(k,:, m))
+       end forall
 
-  end subroutine computeStageStateValues
- 
+       ! compute the stage states for the guessed QDDOT
+       forall(m = 1 : this % nsvars)
+          this % Q(k,i,m) = this % u(k-1,m) &
+               & + this % h*sum(this % A(i,:)*this % QDOT(k,:, m))
+       end forall
+
+    else
+
+       ! guess qdot
+       if (i .eq. 1) then ! copy previous global state
+          this % QDOT(k,i,:) = this % UDOT(k-1,:)
+       else ! copy previous local state
+          this % QDOT(k,i,:) = this % QDOT(k,i-1,:)
+       end if
+
+       ! compute the stage states for the guessed 
+       forall(m = 1 : this % nsvars)
+          this % Q(k,i,m) = this % u(k-1,m) &
+               & + this % h*sum(this % A(i,:)*this % QDOT(k,:, m))
+       end forall
+
+    end if
+
+  end subroutine approximateStates
+  
   !===================================================================!
   ! Function that puts together the right hand side of the adjoint
   ! equation into the supplied rhs vector.

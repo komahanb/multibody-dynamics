@@ -310,9 +310,9 @@ contains
     integer                                   :: info, size
    
  ! Norms for tracking progress
-    real(dp)                                  :: abs_res_norm
-    real(dp)                                  :: rel_res_norm
-    real(dp)                                  :: init_norm
+    real(dp)                                  :: abs_res_norm = 0.0d0
+    real(dp)                                  :: rel_res_norm = 0.0d0
+    real(dp)                                  :: init_norm    = 0.0d0
     
  ! Other Local variables
     type(scalar), allocatable, dimension(:)   :: res, dq

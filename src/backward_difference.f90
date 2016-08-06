@@ -60,16 +60,18 @@ module bdf_integrator
 
    contains
 
- ! Routines for integration
-     procedure, public  :: finalize, integrate     
+     ! Destructor
+     procedure, public  :: finalize
+
+     ! Routines for integration
      procedure, private :: approximateStates
      procedure, private :: getLinearCoeff
 
- ! Routines for adjoint gradient
+     ! Routines for adjoint gradient
 
      procedure, public  :: marchBackwards
      procedure, private :: assembleRHS
-     procedure :: computeTotalDerivative
+     procedure          :: computeTotalDerivative
 
   end type BDF
   
@@ -79,28 +81,6 @@ module bdf_integrator
 
 contains
   
-  !===================================================================!
-  ! Returns the linearization scalar coefficients: alpha, beta, gamma
-  !===================================================================!
-  
-  subroutine getLinearCoeff( this, k, alpha, beta, gamma )
-    
-    class(BDF), intent(inout) :: this
-    integer, intent(in)       :: k
-    type(scalar), intent(inout)   :: alpha, beta, gamma
-    
-    alpha = this % coeff % alpha
-
-    beta  = this % coeff % beta(this % coeff % getOrder(k,1), 1)/this % h
-    
-    if ( this % second_order ) then
-       gamma = this % coeff % gamma(this % coeff % getOrder(k, 2), 1)/this % h/this % h
-    else 
-       gamma = 0.0d0
-    end if
-    
-  end subroutine getLinearCoeff
-
   !===================================================================!
   ! Constructor for BDF coeff object
   !===================================================================!
@@ -167,6 +147,79 @@ contains
     
   end subroutine destruct
   
+  !===================================================================!
+  ! Returns the linearization scalar coefficients: alpha, beta, gamma
+  !===================================================================!
+  
+  subroutine getLinearCoeff( this, alpha, beta, gamma )
+    
+    class(BDF) :: this
+    type(scalar), intent(out)   :: alpha, beta, gamma
+    integer :: k
+
+    k = this % current_step
+   
+    if ( this % second_order ) then
+       gamma = this % coeff % gamma(this % coeff % getOrder(k, 2), 1)/this % h/this % h
+    else 
+       gamma = 0.0d0
+    end if
+    beta  = this % coeff % beta(this % coeff % getOrder(k,1), 1)/this % h
+    alpha = this % coeff % alpha
+    
+  end subroutine getLinearCoeff
+
+  !===================================================================!
+  ! Approximate the state variables at each step using BDF formulae
+  !===================================================================!
+  
+  subroutine approximateStates( this )
+
+    class(BDF) :: this
+    integer    :: k, m, i
+
+    k = this % current_step
+    
+    !-----------------------------------------------------------------!
+    ! Extrapolate U to next time step
+    !-----------------------------------------------------------------!
+
+    this % u(k,:) = this % u(k-1,:) + this % udot(k-1,:)*this % h &
+         & + this % uddot(k-1,:)*this % h*this % h/2.0d0
+
+    !-----------------------------------------------------------------!
+    ! Approximate UDOT using BDF
+    !-----------------------------------------------------------------!
+    
+    m = this % coeff % getOrder(k, 1)
+
+    do i = 1, m + 1
+       this % udot(k,:) = this % udot(k,:) &
+            & + this % coeff % beta(m, i)*this % u(k-i+1,:)/this % h
+    end do
+    
+    !-----------------------------------------------------------------!
+    ! Approximate UDDOT using BDF
+    !-----------------------------------------------------------------!
+    
+    m = this % coeff % getOrder(k, 2)
+
+    if ( m .eq. 0) then
+
+       ! We dont have enought points yet
+       this % uddot(k,:) = (this % udot(k,:) - this % udot(k-1,:))/this % h
+       
+    else
+       
+       do i = 1, 2*m + 1
+          this % uddot(k,:) = this % uddot(k,:) &
+               & + this % coeff % gamma(m, i)*this % u(k-i+1,:)/this % h/this % h
+       end do
+       
+    end if
+    
+  end subroutine approximateStates
+
   !===================================================================!
   ! Returns the order of approximation for the given time step k and
   ! degree d
@@ -374,52 +427,6 @@ contains
   end subroutine finalize
 
   !===================================================================!
-  ! Time integration logic
-  !===================================================================!
-
-  subroutine Integrate( this )
-
-    class(BDF) :: this
-    type(scalar)   :: alpha, beta, gamma
-    integer    :: k
-
-    ! Set states to zeror
-    this % U     = 0.0d0
-    this % UDOT  = 0.0d0
-    this % UDDOT = 0.0d0
-    this % time  = 0.0d0
-
-    ! Set the initial condition
-    call this % system % getInitialStates(this % time(1), &
-         & this % u(1,:), this % udot(1,:))
-
-    this % current_step = 1
-
-    ! March in time
-    time: do k = 2, this % num_steps
-
-       this % current_step =  k
-       
-       ! Increment the time (states are already advanced after the
-       ! Newton solve)
-       this % time(k) = this % time(k-1) + this % h
-       
-       ! Approximate the states u, udot and uddot using BDF stencil
-       call this % approximateStates()
-       
-       ! Determine the coefficients for linearing the Residual
-       call this % getLinearCoeff(k, alpha, beta, gamma)
-       
-       ! Solve the nonlinear system at each step by driving the
-       ! residual to zero
-       call this % newtonSolve(alpha, beta, gamma, &
-            & this % time(k), this % u(k,:), this % udot(k,:), this % uddot(k,:))
-
-    end do time
-
-  end subroutine Integrate
-
-  !===================================================================!
   ! Subroutine that marches backwards in time to compute the lagrange
   ! multipliers (adjoint variables for the function)
   ! ===================================================================!
@@ -438,7 +445,7 @@ contains
        ! Determine the linearization coefficients for the Jacobian
        !--------------------------------------------------------------!
               
-       call this % getLinearCoeff(k, alpha, beta, gamma)
+       call this % getLinearCoeff(alpha, beta, gamma)
     
        !--------------------------------------------------------------!
        ! Solve the adjoint equation at each step
@@ -453,57 +460,6 @@ contains
     
   end subroutine marchBackwards
   
-  !===================================================================!
-  ! Approximate the state variables at each step using BDF formulae
-  !===================================================================!
-  
-  subroutine approximateStates( this )
-
-    class(BDF), intent(inout) :: this
-    integer :: k, m, i
-
-    k = this % current_step
-    
-    !-----------------------------------------------------------------!
-    ! Extrapolate U to next time step
-    !-----------------------------------------------------------------!
-
-    this % u(k,:) = this % u(k-1,:) + this % udot(k-1,:)*this % h &
-         & + this % uddot(k-1,:)*this % h*this % h/2.0d0
-
-    !-----------------------------------------------------------------!
-    ! Approximate UDOT using BDF
-    !-----------------------------------------------------------------!
-    
-    m = this % coeff % getOrder(k, 1)
-
-    do i = 1, m + 1
-       this % udot(k,:) = this % udot(k,:) &
-            & + this % coeff % beta(m, i)*this % u(k-i+1,:)/this % h
-    end do
-    
-    !-----------------------------------------------------------------!
-    ! Approximate UDDOT using BDF
-    !-----------------------------------------------------------------!
-    
-    m = this % coeff % getOrder(k, 2)
-
-    if ( m .eq. 0) then
-
-       ! We dont have enought points yet
-       this % uddot(k,:) = (this % udot(k,:) - this % udot(k-1,:))/this % h
-       
-    else
-       
-       do i = 1, 2*m + 1
-          this % uddot(k,:) = this % uddot(k,:) &
-               & + this % coeff % gamma(m, i)*this % u(k-i+1,:)/this % h/this % h
-       end do
-       
-    end if
-    
-  end subroutine approximateStates
-
   !===================================================================!
   ! Function that puts together the right hand side of the adjoint
   ! equation into the supplied rhs vector.
