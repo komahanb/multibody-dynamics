@@ -54,7 +54,6 @@ module nbg_integrator
      procedure, public  :: finalize
      
      ! Routines for integration
-     procedure, public  :: integrate
      procedure, private :: approximateStates
      procedure, private :: getLinearCoeff
 
@@ -202,7 +201,7 @@ contains
   
   subroutine approximateStates( this )
 
-    class(NBG), intent(inout) :: this
+    class(NBG) :: this
     integer                   :: k
     type(scalar)              :: scale
 
@@ -247,69 +246,26 @@ contains
   ! Returns the linearization scalar coefficients: alpha, beta, gamma
   !===================================================================!
   
-  subroutine getLinearCoeff( this, k, alpha, beta, gamma )
+  subroutine getLinearCoeff( this, alpha, beta, gamma )
 
-    class(NBG), intent(inout)   :: this
-    integer, intent(in)         :: k
-    type(scalar), intent(inout) :: alpha, beta, gamma
+    class(NBG) :: this
+    type(scalar), intent(out) :: alpha, beta, gamma
     integer                     :: m
+    
+    if ( this % second_order ) then
+       gamma = 1.0d0/this % h/ this % h
+       beta  = this % GAMMA/ this % h
+       alpha = this % BETA
+    else
+       stop"Error: Newmark-Beta-Gamma method works for second order systems in current form..."
+    end if
 
-    gamma = 1.0d0/this % h/ this % h
-    beta  = this % GAMMA/ this % h
-    alpha = this % BETA
-!!$
 !!$    gamma = 1.0d0
 !!$    beta  = this % h * this % GAMMA
 !!$    alpha = this % h * this % h * this % BETA
 
   end subroutine getLinearCoeff
 
-  !===================================================================!
-  ! Time integration logic
-  !===================================================================!
-
-  subroutine Integrate( this )
-
-    class(NBG)   :: this
-    type(scalar) :: alpha, beta, gamma
-    integer      :: k
-
-    ! Set states to zero
-    this % U     = 0.0d0
-    this % UDOT  = 0.0d0
-    this % UDDOT = 0.0d0
-    this % time  = 0.0d0
-
-    ! Set the initial condition
-    call this % system % getInitialStates(this % time(1), &
-         & this % u(1,:), this % udot(1,:))
-
-    this % current_step = 1
-
-    ! March in time
-    time: do k = 2, this % num_steps
-
-       this % current_step =  k
-       
-       ! Increment the time (states are already advanced after the
-       ! Newton solve)
-       this % time(k) = this % time(k-1) + this % h
-       
-       ! Approximate the states u, udot and uddot using NBG stencil
-       call this % approximateStates()
-
-       ! Determine the coefficients for linearing the Residual
-       call this % getLinearCoeff(k, alpha, beta, gamma)
-
-       ! Solve the nonlinear system at each step by driving the
-       ! residual to zero
-       call this % newtonSolve(alpha, beta, gamma, &
-            & this % time(k), this % u(k,:), this % udot(k,:), this % uddot(k,:))
-
-    end do time
-
-  end subroutine Integrate
-  
   !===================================================================!
   ! Subroutine that marches backwards in time to compute the lagrange
   ! multipliers (adjoint variables for the function)
@@ -328,7 +284,7 @@ contains
        !--------------------------------------------------------------!
        ! Determine the linearization coefficients for the Jacobian
        !--------------------------------------------------------------!
-       call this % getLinearCoeff(k, alpha, beta, gamma)
+       call this % getLinearCoeff(alpha, beta, gamma)
 
        !--------------------------------------------------------------!
        ! Solve the adjoint equation at each step
@@ -458,7 +414,7 @@ contains
     end if
 
     ! Get the coefficients
-    call this % getLinearCoeff(k, alpha, beta, gamma)
+    call this % getLinearCoeff( alpha, beta, gamma)
     
     ! Add the state variable sensitivity
     call this % system % func % addFuncSVSens(rhs, &

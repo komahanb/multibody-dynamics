@@ -44,8 +44,9 @@ module integrator_class
      !----------------------------------------------------------------!
 
      integer  :: num_steps = 0                 ! number of time steps
-     real(dp) :: tinit = 0.0d0, tfinal = 1.0d0 ! initial and final times
-     real(dp) :: h = 0.1d0                     ! default step size
+     real(dp) :: tinit     = 0.0d0                 ! initial time
+     real(dp) :: tfinal    = 1.0d0                ! final time
+     real(dp) :: h         = 0.1d0                     ! default step size
 
      !----------------------------------------------------------------!
      ! Nonlinear solution at each stage
@@ -58,21 +59,21 @@ module integrator_class
      ! Track global time and states
      !----------------------------------------------------------------!
 
-     real(dp), dimension(:), allocatable   :: time
+     real(dp), dimension(:), allocatable       :: time
      type(scalar), dimension(:,:), allocatable :: U
      type(scalar), dimension(:,:), allocatable :: UDOT
      type(scalar), dimension(:,:), allocatable :: UDDOT
-     type(scalar) , dimension(:,:), allocatable :: psi
-     type(scalar) , dimension(:,:), allocatable :: phi
+     type(scalar), dimension(:,:), allocatable :: psi
+     type(scalar), dimension(:,:), allocatable :: phi
 
      !----------------------------------------------------------------!
      ! Miscellaneous variables
      !----------------------------------------------------------------!
 
-     logical :: second_order = .true.
-     logical :: forward = .true.
-     integer :: print_level = 0
-     integer :: current_step
+     logical :: second_order         = .true.
+     logical :: forward              = .true.
+     integer :: print_level          = 0
+     integer :: current_step         = 0
      logical :: approximate_jacobian = .false.
 
    contains
@@ -94,21 +95,54 @@ module integrator_class
      procedure :: setApproximateJacobian
 
      !----------------------------------------------------------------!
-     ! Adjoint Procedures                                                     !
+     ! Deferred procedures for subtypes to implement                  !
      !----------------------------------------------------------------!
 
+     procedure(InterfaceDefault)        , private, deferred :: approximateStates
+     procedure(InterfaceGetLinearCoeff) , private, deferred :: getLinearCoeff
+     
      procedure(InterfaceAssembleRHS)    , private, deferred :: assembleRHS
-     procedure(InterfaceTotalDerivative),  deferred :: computeTotalDerivative
-     procedure(InterfaceMarch), public, deferred            :: integrate, marchBackwards
-     procedure                                              :: adjointSolve
-     procedure                                              :: evalFunc
-     procedure                                              :: evalFuncGrad
-     procedure                                              :: evalFDFuncGrad
+     procedure(InterfaceMarch)          , public, deferred  :: marchBackwards
+     procedure(InterfaceTotalDerivative), deferred          :: computeTotalDerivative
+
+     procedure :: integrate
+     procedure :: adjointSolve
+     procedure :: evalFunc
+     
+     procedure :: evalFuncGrad
+     procedure :: evalFDFuncGrad
 
   end type integrator
 
   interface
+
+
+     !===================================================================!
+     ! Default interface without any arguments
+     !===================================================================!
      
+     subroutine InterfaceDefault(this)
+
+       import integrator
+
+       class(integrator) :: this
+
+     end subroutine InterfaceDefault
+     
+     !===================================================================!
+     ! Interface for getting the coefficients for Residual linearization
+     !===================================================================!
+     
+     subroutine InterfaceGetLinearCoeff(this, alpha, beta, gamma)
+
+       import integrator
+
+       class(integrator)         :: this
+       type(scalar), intent(out) :: alpha, beta, gamma
+
+     end subroutine InterfaceGetLinearCoeff
+     
+
      !===================================================================!
      ! Interface routine to assemble the RHS of the adjoint systen
      !===================================================================!
@@ -405,22 +439,22 @@ contains
   
   subroutine approximateJacobian( this, jac, alpha, beta, gamma, t, q, qdot, qddot )
 
-    class(integrator)                       :: this
+    class(integrator)                            :: this
     
     ! Matrices
-    type(scalar), intent(inout), dimension(:,:) :: jac
+    type(scalar) , intent(inout), dimension(:,:) :: jac
     
     ! Arrays
-    real(dp), intent(in)                    :: t
-    type(scalar), intent(in), dimension(:)      :: q, qdot, qddot     ! states
+    real(dp)     , intent(in)                    :: t
+    type(scalar) , intent(in), dimension(:)      :: q, qdot, qddot     ! states
 
-    type(scalar), allocatable, dimension(:)     :: pstate             ! perturbed states
-    type(scalar), allocatable, dimension(:)     :: R, Rtmp            ! original residual and perturbed residual
+    type(scalar) , allocatable, dimension(:)     :: pstate             ! perturbed states
+    type(scalar) , allocatable, dimension(:)     :: R, Rtmp            ! original residual and perturbed residual
 
     ! Scalars
-    type(scalar)                                :: dh = 1.0d-6        ! finite-diff step size
-    type(scalar), intent(in)                    :: alpha, beta, gamma ! linearization coefficients
-    integer                                 :: m                  ! loop variables
+    type(scalar)                                 :: dh = 1.0d-6        ! finite-diff step size
+    type(scalar) , intent(in)                    :: alpha, beta, gamma ! linearization coefficients
+    integer                                      :: m                  ! loop variables
 
     !  Zero the supplied jacobian matrix for safety (as we are
     !  computing everything newly here)
@@ -509,6 +543,51 @@ contains
     deallocate(R,Rtmp)
 
   end subroutine approximateJacobian
+
+  !===================================================================!
+  ! Time integration logic
+  !===================================================================!
+  
+  subroutine Integrate( this )
+
+    class(integrator) :: this
+    type(scalar)      :: alpha, beta, gamma
+    integer           :: k
+
+    ! Set states to zeror
+    this % U     = 0.0d0
+    this % UDOT  = 0.0d0
+    this % UDDOT = 0.0d0
+    this % time  = 0.0d0
+
+    ! Set the initial condition
+    call this % system % getInitialStates(this % time(1), &
+         & this % u(1,:), this % udot(1,:))
+
+    this % current_step = 1
+
+    ! March in time
+    time: do k = 2, this % num_steps
+
+       this % current_step =  k
+
+       ! Increment the time
+       this % time(k) = this % time(k-1) + this % h
+
+       ! Approximate the states u, udot and uddot using ABM stencil
+       call this % approximateStates()
+
+       ! Determine the coefficients for linearing the Residual
+       call this % getLinearCoeff(alpha, beta, gamma)
+
+       ! Solve the nonlinear system at each step by driving the
+       ! residual to zero
+       call this % newtonSolve(alpha, beta, gamma, &
+            & this % time(k), this % u(k,:), this % udot(k,:), this % uddot(k,:))
+
+    end do time
+
+  end subroutine Integrate
 
   !====================================================================!
   ! Common routine to solve the adjoint linear system at each time
