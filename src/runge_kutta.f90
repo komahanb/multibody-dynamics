@@ -141,83 +141,17 @@ contains
     print *, ">> Diagonally-Implicit-Runge-Kutta  <<"
     print *, "======================================"
 
-    !-----------------------------------------------------------------!
-    ! Set the physical system in to the integrator                    !
-    !-----------------------------------------------------------------!
+    call this % construct(system, tinit, tfinal, h, second_order)
     
-    call this % setPhysicalSystem(system)
-
     !-----------------------------------------------------------------!
-    ! Fetch the number of state variables from the system object
-    !-----------------------------------------------------------------!
-    this % nsvars = system % getNumStateVars()
-    print '("  >> Number of variables    : ",i4)', this % nsvars
-
-    if ( .not. (this % nsvars .gt. 0) ) then
-       stop ">> Error: Zero state variable. Stopping."
-    end if
-
-    !-----------------------------------------------------------------!
-    ! Set the order of the governing equations
-    !-----------------------------------------------------------------!
-    
-    if (present(second_order)) then
-       this % second_order = second_order
-    end if
-    print '("  >> Second order           : ",L1)', this % second_order
-
-    !-----------------------------------------------------------------!
-    ! Set the initial and final time
-    !-----------------------------------------------------------------!
-
-    if (present(tinit)) then
-       this % tinit = tinit
-    end if
-    print '("  >> Start time             : ",F8.3)', this % tinit
-
-    if (present(tfinal)) then
-       this % tfinal = tfinal
-    end if
-    print '("  >> End time               : ",F8.3)', this % tfinal
-
-    !-----------------------------------------------------------------!
-    ! Set the order of integration
+    ! Set the order/stages of integration
     !-----------------------------------------------------------------!
 
     if (present(num_stages)) then
        this % num_stages = num_stages
     end if
     print '("  >> Number of stages       : ",i4)', this % num_stages
-
-    !-----------------------------------------------------------------!
-    ! Set the user supplied initial step size
-    !-----------------------------------------------------------------!
-
-    if (present(h)) then
-       this % h = h 
-    end if
-    print '("  >> Step size              : ",E9.3)', this % h
-
-    !-----------------------------------------------------------------!
-    ! Find the number of time steps required during integration
-    !-----------------------------------------------------------------!
-
-    this % num_steps = int((this % tfinal - this % tinit)/this % h) + 1 
-    print '("  >> Number of steps        : ",i6)', this % num_steps
     
-    !-----------------------------------------------------------------!
-    ! Allocate space for the tableau
-    !-----------------------------------------------------------------!
-
-    allocate(this % A(this % num_stages, this % num_stages))
-    this % A = 0.0d0
-
-    allocate(this % B(this % num_stages))    
-    this % B = 0.0d0
-
-    allocate(this % C(this % num_stages))
-    this % C = 0.0d0
-
     !-----------------------------------------------------------------!
     ! Allocate space for the stage states and time
     !-----------------------------------------------------------------!
@@ -241,42 +175,22 @@ contains
     allocate(this % lam(this % num_steps, this % num_stages, this % nsvars))
     this % lam = 0.0d0
 
-    allocate(this % psi(this % num_steps, this % nsvars))
-    this % psi = 0.0d0
-
-    allocate(this % phi(this % num_steps, this % nsvars))
-    this % phi = 0.0d0
-
     !-----------------------------------------------------------------!
-    ! Allocate space for the global states and time
+    ! Allocate space for the tableau
     !-----------------------------------------------------------------!
 
-    allocate(this % time(this % num_steps))
-    this % time = 0.0d0
+    allocate(this % A(this % num_stages, this % num_stages))
+    this % A = 0.0d0
 
-    allocate(this % U(this % num_steps, this % nsvars))
-    this % U = 0.0d0
+    allocate(this % B(this % num_stages))    
+    this % B = 0.0d0
 
-    allocate(this % UDOT(this % num_steps, this % nsvars))
-    this % UDOT = 0.0d0
-
-    allocate(this % UDDOT(this % num_steps, this % nsvars))
-    this % UDDOT = 0.0d0
-
-    !-----------------------------------------------------------------!
-    ! Put values into the Butcher tableau
-    !-----------------------------------------------------------------!
+    allocate(this % C(this % num_stages))
+    this % C = 0.0d0
 
     call this % setupButcherTableau()
-
-    !-----------------------------------------------------------------!
-    ! Sanity check for consistency of Butcher Tableau
-    !-----------------------------------------------------------------!
-
+    
     call this % checkButcherTableau()
-
-    ! set the start time
-    this % time(1) = this % tinit
 
   end function initialize
 
@@ -301,11 +215,11 @@ contains
     end if
 
   end subroutine checkButcherTableau
-
+  
   !===================================================================!
   ! Deallocate the allocated variables
   !===================================================================!
-
+  
   subroutine finalize(this)
 
     class(RK) :: this
@@ -315,21 +229,14 @@ contains
     if(allocated(this % B)) deallocate(this % B)
     if(allocated(this % C)) deallocate(this % C)
 
-    ! Clear stage value
+    ! Clear stage state values
     if(allocated(this % QDDOT)) deallocate(this % QDDOT)
     if(allocated(this % QDOT)) deallocate(this % QDOT)
     if(allocated(this % Q)) deallocate(this % Q)
     if(allocated(this % T)) deallocate(this % T)
 
-    ! Clear global states and time
-    if(allocated(this % UDDOT)) deallocate(this % UDDOT)
-    if(allocated(this % UDOT)) deallocate(this % UDOT)
-    if(allocated(this % U)) deallocate(this % U)
-    if(allocated(this % time)) deallocate(this % time)
-
+    ! Clear stage lagrange multipliers
     if(allocated(this % lam)) deallocate(this % lam)
-    if(allocated(this % psi)) deallocate(this % psi)
-    if(allocated(this % phi)) deallocate(this % phi)
 
   end subroutine finalize
   

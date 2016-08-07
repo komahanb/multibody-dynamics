@@ -105,6 +105,7 @@ module integrator_class
      procedure(InterfaceMarch)          , public, deferred  :: marchBackwards
      procedure(InterfaceTotalDerivative), deferred          :: computeTotalDerivative
 
+     procedure :: construct, destruct
      procedure :: integrate
      procedure :: adjointSolve
      procedure :: evalFunc
@@ -114,8 +115,8 @@ module integrator_class
 
   end type integrator
 
+  
   interface
-
 
      !===================================================================!
      ! Default interface without any arguments
@@ -174,8 +175,11 @@ module integrator_class
      !===================================================================!
 
      subroutine InterfaceMarch(this)
+       
        import integrator
+       
        class(integrator)                     :: this
+       
      end subroutine InterfaceMarch
 
      !===================================================================!
@@ -194,9 +198,126 @@ module integrator_class
 
   end interface
 
-
 contains
+
+  !======================================================================!
+  ! Base class constructor logic
+  !======================================================================!
   
+  subroutine construct(this, system, tinit, tfinal, h, second_order)
+    
+    class(integrator)               :: this
+    class(physics), target          :: system
+    real(dp), OPTIONAL, intent(in)  :: tinit, tfinal
+    real(dp), OPTIONAL, intent(in)  :: h
+    logical , OPTIONAL, intent(in)  :: second_order
+
+    !-----------------------------------------------------------------!
+    ! Set the physical system in to the integrator                    !
+    !-----------------------------------------------------------------!
+    
+    call this % setPhysicalSystem(system)
+
+    !-----------------------------------------------------------------!
+    ! Fetch the number of state variables from the system object
+    !-----------------------------------------------------------------!
+
+    this % nsvars = system % getNumStateVars()
+    print '("  >> Number of variables    : ",i4)', this % nsvars
+    
+    if ( .not. (this % nsvars .gt. 0) ) then
+       stop ">> Error: No state variable. Stopping."
+    end if
+
+    !-----------------------------------------------------------------!
+    ! Set the order of the governing equations
+    !-----------------------------------------------------------------!
+    
+    if (present(second_order)) then
+       this % second_order = second_order
+    end if
+    print '("  >> Second order           : ",L1)', this % second_order
+
+    !-----------------------------------------------------------------!
+    ! Set the initial and final time
+    !-----------------------------------------------------------------!
+
+    if (present(tinit)) then
+       this % tinit = tinit
+    end if
+    print '("  >> Start time             : ",F8.3)', this % tinit
+
+    if (present(tfinal)) then
+       this % tfinal = tfinal
+    end if
+    print '("  >> End time               : ",F8.3)', this % tfinal
+
+    !-----------------------------------------------------------------!
+    ! Set the user supplied initial step size
+    !-----------------------------------------------------------------!
+
+    if (present(h)) then
+       this % h = h 
+    end if
+    print '("  >> Step size              : ",E9.3)', this % h
+    
+    !-----------------------------------------------------------------!
+    ! Find the number of time steps required during integration
+    !-----------------------------------------------------------------!
+
+    this % num_steps = int((this % tfinal - this % tinit)/this % h) + 1 
+    print '("  >> Number of steps        : ",i6)', this % num_steps
+
+    !-----------------------------------------------------------------!
+    ! Allocate space for the global states and time
+    !-----------------------------------------------------------------!
+
+    allocate(this % time(this % num_steps))
+    this % time = 0.0d0
+    
+    ! Set the start time
+    this % time(1) = this % tinit
+
+    allocate(this % U(this % num_steps, this % nsvars))
+    this % U = 0.0d0
+
+    allocate(this % UDOT(this % num_steps, this % nsvars))
+    this % UDOT = 0.0d0
+
+    allocate(this % UDDOT(this % num_steps, this % nsvars))
+    this % UDDOT = 0.0d0
+    
+    !-----------------------------------------------------------------!
+    ! Allocate space for the RHS of adjoint equations
+    !-----------------------------------------------------------------!
+
+    allocate(this % psi(this % num_steps, this % nsvars))
+    this % psi = 0.0d0
+
+    allocate(this % phi(this % num_steps, this % nsvars))
+    this % phi = 0.0d0
+  
+  end subroutine construct
+
+  !======================================================================!
+  ! Base class destructor
+  !======================================================================!
+  
+  subroutine destruct(this)
+
+    class(integrator) :: this
+
+    ! Clear global states and time
+    if(allocated(this % UDDOT)) deallocate(this % UDDOT)
+    if(allocated(this % UDOT)) deallocate(this % UDOT)
+    if(allocated(this % U)) deallocate(this % U)
+    if(allocated(this % time)) deallocate(this % time)
+    
+    if(allocated(this % psi)) deallocate(this % psi)
+    if(allocated(this % phi)) deallocate(this % phi)
+
+  end subroutine destruct
+
   !===================================================================!
   ! Setter that can be used to set the method in which jacobian needs
   ! to be computed. Setting this to .true. would make the code use
