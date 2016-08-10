@@ -28,7 +28,7 @@ module bdf_integrator
      
      ! Information
      integer                               :: max_order = 3
-     
+
      ! Coeff values
      type(scalar)                              :: alpha
      type(scalar), dimension(:,:), allocatable :: beta
@@ -53,10 +53,10 @@ module bdf_integrator
   !===================================================================! 
 
   type, extends(integrator) :: BDF
-
-! BDF variables
-     integer                                :: max_bdf_order = 3
-     type(bdf_coeff)                        :: coeff
+     
+     ! BDF variables
+     integer            :: max_bdf_order = 3
+     type(bdf_coeff)    :: coeff
 
    contains
 
@@ -73,8 +73,9 @@ module bdf_integrator
      procedure, private :: assembleRHS
      procedure          :: computeTotalDerivative
 
-  end type BDF
-  
+  end type BDF  
+
+  ! Constructor for BDF type
   interface BDF
      module procedure initialize
   end interface BDF
@@ -92,7 +93,7 @@ contains
     if( present(max_order) ) then
        this % max_order = max_order
     end if
-    
+
     allocate( this % beta (0:this % max_order, this % max_order + 1) )
     this % beta = 0.0d0 
 
@@ -131,7 +132,7 @@ contains
        print *,  "Wrong max_bdf_order:", this % max_order
        stop
     end if
-
+    
   end function construct_bdf_coeff
   
   !===================================================================!
@@ -144,7 +145,7 @@ contains
     
     if ( allocated(this % beta) ) deallocate(this % beta)
     if ( allocated(this % gamma) ) deallocate(this % gamma)
-    
+
   end subroutine destruct
   
   !===================================================================!
@@ -323,6 +324,15 @@ contains
     
     this % coeff = bdf_coeff(this % max_bdf_order)
 
+    !-----------------------------------------------------------------!
+    ! Setup adjoint RHS
+    !-----------------------------------------------------------------!
+    
+    this % num_rhs_bins = 2*this % max_bdf_order + 1
+
+    allocate(this % rhs(this % num_rhs_bins, this % nsvars))
+    this % rhs = 0.0d0
+    
   end function initialize
 
   !===================================================================!
@@ -335,6 +345,8 @@ contains
 
     ! call the BDF coeff destructor
     call this % coeff % destruct()
+    
+    if ( allocated(this % rhs) ) deallocate(this % rhs)
 
   end subroutine finalize
 

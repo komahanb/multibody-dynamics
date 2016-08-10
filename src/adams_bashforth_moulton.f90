@@ -97,6 +97,15 @@ contains
        print *,  "Wrong max_abm_order:", this % max_abm_order
        stop
     end if
+    
+    !-----------------------------------------------------------------!
+    ! Setup adjoint RHS
+    !-----------------------------------------------------------------!
+    
+    this % num_rhs_bins = this % max_abm_order
+
+    allocate(this % rhs(this % num_rhs_bins, this % nsvars))
+    this % rhs = 0.0d0
 
   end function initialize
 
@@ -110,6 +119,8 @@ contains
 
     ! Deallocate ABM coefficient
     if(allocated(this % A)) deallocate(this % A)
+    
+    if ( allocated(this % rhs) ) deallocate(this % rhs)
 
   end subroutine finalize
 
@@ -128,7 +139,7 @@ contains
 
     if ( this % second_order ) then
        gamma = 1.0d0
-       beta  = this % A(m,1)*this % h
+       beta  = this % A(m,1) * this % h
        alpha = beta * this % A(m,1) * this % h
     else 
        gamma = 0.0d0
@@ -194,13 +205,13 @@ contains
     do k = 2, this % num_steps
        call this % system % getResidualDVSens(dRdX, scale, this % time(k), &
             & this % system % x, this % u(k,:), this % udot(k,:), this % uddot(k,:))
-       dfdx = dfdx + matmul( transpose(dRdX), this % psi(k,:)) ! check order
+       dfdx = dfdx + matmul( transpose(dRdX), this % lambda(k,:)) ! check order
     end do
 
 !!$    ! Add constraint contribution
 !!$    call this % system % getResidualDVSens(dRdX, scale, this % time(1), &
 !!$         & this % system % x, this % u(1,:), this % udot(1,:), this % uddot(1,:))
-!!$    dfdx = dfdx + matmul(this % psi(2,:), dRdX)
+!!$    dfdx = dfdx + matmul(this % lambda(2,:), dRdX)
 
     ! Finally multiply by the scalar
     dfdx = this % h * dfdx
@@ -229,15 +240,15 @@ contains
        !--------------------------------------------------------------!
               
        call this % getLinearCoeff(alpha, beta, gamma)
-    
+
        !--------------------------------------------------------------!
        ! Solve the adjoint equation at each step
        !--------------------------------------------------------------!
 
-       call this % adjointSolve(this % psi(k,:), alpha, beta, gamma, &
+       call this % adjointSolve(this % lambda(k,:), alpha, beta, gamma, &
             & this % time(k), this % u(k,:), this % udot(k,:), this % uddot(k,:))
        
-       print*, "k,psi=", k, this % psi(k,:)
+       print*, "k,lambda=", k, this % lambda(k,:)
 
     end do time
     
@@ -298,12 +309,114 @@ contains
     ! Zero the RHS first
     rhs = 0.0d0
 
-    k = this % current_step    
+    ! Retrieve the current time index
+    k = this % current_step
+    m = this % getOrder(k)
 
-    ! Get the coefficients
-    call this % getLinearCoeff(alpha, beta, gamma)
+    !-------------------------------------------------------------------!
+    ! Find PHI at the new step
+    !-------------------------------------------------------------------!
 
-    ! Add the state variable sensitivity
+    if ( k+1 .le. this % num_steps ) then
+
+       gamma = 0.0d0
+       beta  = 0.0d0
+       alpha = this % h
+
+       ! Add the state variable sensitivity from the previous step
+       call this % system % func % addFuncSVSens(this % phi(k,:), &
+            & alpha, beta, gamma, &
+            & this % time(k+1), &
+            & this % system % X, &
+            & this % u(k+1,:), &
+            & this % udot(k+1,:), &
+            & this % uddot(k+1,:))
+
+       ! Add the residual adjoint product from the previous step
+       call this % system % assembleJacobian(jac, &
+            & alpha, beta, gamma, &
+            & this % time(k+1), &
+            & this % u(k+1,:), &
+            & this % udot(k+1,:), &
+            & this % uddot(k+1,:))
+
+       this % phi(k,:) = this % phi(k,:) + matmul(transpose(jac(:,:)), this % lambda(k+1,:))
+       
+    else
+       
+       this % phi(k,:) = 0.0d0
+       
+    end if
+    
+    !-------------------------------------------------------------------!
+    ! Find PSI at the new step
+    !-------------------------------------------------------------------!
+    
+    if ( k+1 .le. this % num_steps ) then
+
+       !    do i = 1, m + 1 ! 0, m
+
+       !      if ( k+i .le. this % num_steps ) then
+
+       ! Add contributions from previous PSI
+       !        if (i .eq. 1) then
+       this % psi(k,:) = this % psi(k,:) + this % psi(k+1,:)
+       !       end if
+
+       ! Add contributions from PHI
+       this % psi(k,:) = this % psi(k,:) + this % h * this % A(m,1) * this % phi(k,:)
+       this % psi(k,:) = this % psi(k,:) + this % h * this % A(m,1) * this % phi(k+1,:)
+
+       !   end if
+
+       ! end do
+
+!!$
+!!$    do i = 2, m
+!!$
+!!$       if ( k+i .le. this % num_steps ) then
+
+       gamma = 0.0d0
+       beta  = this % h
+       alpha = this % h * this % h * this % A(m,1)
+
+       ! Add the state variable sensitivity from the previous step
+       call this % system % func % addFuncSVSens(this % psi(k,:), &
+            & alpha, beta, gamma, &
+            & this % time(k+1), &
+            & this % system % X, &
+            & this % u(k+1,:), &
+            & this % udot(k+1,:), &
+            & this % uddot(k+1,:))
+
+       ! Add the residual adjoint product from the previous step
+       call this % system % assembleJacobian(jac, &
+            & alpha, beta, gamma, &
+            & this % time(k+1), &
+            & this % u(k+1,:), &
+            & this % udot(k+1,:), &
+            & this % uddot(k+1,:))
+
+       this % psi(k,:) = this % psi(k,:) + matmul(transpose(jac(:,:)), this % lambda(k+1,:))
+!!$
+!!$       end if
+!!$
+!!$    end do
+
+    else
+
+       this % psi(k,:) = 0.0d0
+
+    end if
+
+    !--------------------------------------------------------------------------!
+    ! Add up contribution
+    !--------------------------------------------------------------------------!
+    
+    gamma = 1.0d0
+    beta  = this % h * this % A(m,1)
+    alpha = this % h * this % A(m,1) * this % h * this % A(m,1)
+
     call this % system % func % addFuncSVSens(rhs, &
          & alpha, beta, gamma, &
          & this % time(k), &
@@ -312,14 +425,12 @@ contains
          & this % udot(k,:), &
          & this % uddot(k,:))
 
-    ! Put the contributions from this step to the next step
-    if ( k .lt. this % num_steps ) then
+    if ( k+1 .le. this % num_steps ) then
 
-       ! Adjoint RHS coefficients
        gamma = 0.0d0
-       alpha = 2.0d0*alpha
+       beta  = this % h * this % A(m,1)
+       alpha = this % h * this % A(m,1) * this % h * this % A(m,1)
 
-       ! Add the state variable sensitivity from the previous step
        call this % system % func % addFuncSVSens(rhs, &
             & alpha, beta, gamma, &
             & this % time(k+1), &
@@ -335,16 +446,26 @@ contains
             & this % u(k+1,:), &
             & this % udot(k+1,:), &
             & this % uddot(k+1,:))
-      
-       rhs = rhs + matmul(transpose(jac(:,:)), this % psi(k+1,:))
+
+       rhs = rhs + matmul(transpose(jac(:,:)), this % lambda(k+1,:))
+
+       ! Add previous contributions
+       rhs = rhs + this % A(m,1) * this % psi(k+1,:)
+
+       rhs = rhs + this % A(m,1) * this % h * this % A(m,1) * this % phi(k+1,:)
+       rhs = rhs + this % A(m,1) * this % h * this % A(m,1) * this % phi(k+1,:)
        
     end if
-    
-    ! Negate the RHS
+
+    ! current
+    rhs = rhs + this % A(m,1) * this % psi(k,:)
+    rhs = rhs + this % A(m,1) * this % h * this % A(m,1) * this % phi(k,:)
+
+     ! Negate the RHS
     rhs = - rhs
-    
+
     if(allocated(jac)) deallocate(jac)
-    
+
   end subroutine assembleRHS
 
 end module abm_integrator

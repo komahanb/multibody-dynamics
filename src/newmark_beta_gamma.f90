@@ -97,6 +97,16 @@ contains
     allocate(this % sigma(this % nsvars))
     this % sigma = 0.0d0
 
+    !-----------------------------------------------------------------!
+    ! Setup adjoint RHS
+    !-----------------------------------------------------------------!
+    
+    this % num_rhs_bins = 2
+
+    allocate(this % rhs(this % num_rhs_bins, this % nsvars))
+    this % rhs = 0.0d0
+
+
   end function initialize
 
   !===================================================================!
@@ -108,9 +118,11 @@ contains
     class(NBG) :: this
 
     ! Clear global states and time
-    if(allocated(this % rho)) deallocate(this % rho)
+    if(allocated(this % rho))   deallocate(this % rho)
     if(allocated(this % sigma)) deallocate(this % sigma)
-   
+    
+    if (allocated(this % rhs))  deallocate(this % rhs)
+    
   end subroutine finalize
   
   !===================================================================!

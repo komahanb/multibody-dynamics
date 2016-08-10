@@ -189,9 +189,17 @@ contains
     this % C = 0.0d0
 
     call this % setupButcherTableau()
-    
     call this % checkButcherTableau()
 
+    !-----------------------------------------------------------------!
+    ! Setup adjoint RHS
+    !-----------------------------------------------------------------!
+    
+    this % num_rhs_bins = this % num_stages
+
+    allocate(this % rhs(this % num_rhs_bins, this % nsvars))
+    this % rhs = 0.0d0
+    
   end function initialize
 
   !===================================================================!

@@ -80,7 +80,7 @@ Discrete Adjoint: Adams--Bashforth--Moulton (ABM)
 %  \tableofcontents
 %\end{frame}
 
-\begin{frame}[allowframebreaks] \frametitle{Time Integration}
+\begin{frame}[allowframebreaks] \frametitle{ABM Adjoint}
 
   \tiny{
 
@@ -97,69 +97,135 @@ Discrete Adjoint: Adams--Bashforth--Moulton (ABM)
     as:
     
     $${\cal{L}} = \sum_{k=0}^N h f_k + \sum_{k=0}^N h \lambda_k^T
-    R_k + \sum_{k=0}^N \psi_k S_k + \sum_{k=0}^N \phi_k T_k. $$
-         
-         The underlined variables denote the primary unknown in each
-         equation.
-
+    R_k + \sum_{k=0}^N \psi_k^T S_k + \sum_{k=0}^N \phi_k^T T_k. $$
+    
+    The underlined variables denote the primary unknown in each
+    equation.
+    
     \framebreak
 
-    The ABM coefficients upto $6^{th}$ order are tabulated.
-
+    % Differentiate wrt to q
+    
+    $\star$ Setting $\pd{\cal{L}}{{q}_k} = 0$ yields:
+    $$ \phi_{k}^T \pd{T_k}{q_k} + \phi_{k+1}^T \pd{T_{k+1}}{q_k} + h \lambda_{k+1}^T \pd{R_{k+1}}{q_{k}}
+    + h \pd{f_{k+1}}{q_{k}}
+    = 0 $$ which simplifies to
+    
     \begin{center}
-      \begin{tabular}{cccccccc}
-        \hline
-        m & $i=0$ & 1 & 2 & 3 & 4 & 5 & 6 \\ 
-        \hline
-        &&&&&&&\\
-        1 & 1     &   &   &   &   &   &  \\
-        &&&&&&&\\
-        2 & $\frac{1}{2}$ & $\frac{1}{2}$ &   &   &   &   &  \\
-        &&&&&&&\\
-        3 & $\frac{5}{12}$ & $\frac{8}{12}$ & $-\frac{1}{12}$  &   &   &   &  \\
-        &&&&&&&\\
-        4 & $\frac{9}{24}$ & $\frac{19}{24}$ & $-\frac{5}{24}$  & $\frac{1}{24}$  &   &   &  \\
-        &&&&&&&\\
-        5 & $\frac{251}{720}$ & $\frac{646}{720}$ & $-\frac{264}{720}$  & $\frac{106}{720}$  & $-\frac{19}{720}$  &   &  \\
-        &&&&&&&\\
-        6 & $\frac{475}{1440}$ & $\frac{1427}{1440}$ & $-\frac{798}{1440}$  & $\frac{482}{1440}$  & $-\frac{173}{1440}$  &  $\frac{27}{1440}$ &  \\
-        &&&&&&&\\
-        \hline   
-      \end{tabular}
+      \boxed{
+        $$
+        \phi_k = \phi_{k+1} + h \left[  \pd{R_{k+1}}{q_{k+1}} \right]^T \lambda_{k+1} + h \left\{ \pd{f_{k+1}}{q_{k+1}} \right\}^T
+        $$
+      }
     \end{center}
 
+    % Differentiate wrt to qdot
+    
+    $\star$ Setting $\pd{\cal{L}}{\dot{q}_k} = 0$ yields:
+
+    $$
+    \psi_k^T \pd{S_k}{\dot{q}_k} + \psi_{k+1}^T \pd{S_{k+1}}{\dot{q}_k} +
+    \sum_{i=0}^{m-1} \phi_{k+i}^T \pd{T_{k+i}}{\dot{q}_k}  + h \sum_{i=1}^{m-1} \lambda_{k+i}^T \pd{R_{k+i}}{\dot{q}_k} 
+    + h \sum_{i=1}^{m-1} \pd{f_{k+i}}{\dot{q}_k} = 0
+    $$
+
+    which simplifies to
+
+    \begin{equation}
+      \begin{split}
+        \psi_k = \psi_{k+1} + h \sum_{i=0}^{m-1} a_i \phi_{k+i} & + h \sum_{i=1}^{m-1}
+        \left[ \pd{R_{k+i}}{\dot{q}_{k+i}} + \sum_{j=0}^{i} ha_j \pd{R_{k+i}}{{q}_{k+i}}  \right]^T \lambda_{k+1}\\
+        & + h \sum_{i=1}^{m-1}
+        \left\{ \pd{f_{k+i}}{\dot{q}_{k+i}} + \sum_{j=0}^{i} ha_j \pd{f_{k+i}}{{q}_{k+i}}  \right\}^T
+      \end{split}
+    \end{equation}
+
+    % Differentiate wrt to qddot
+    
+    $\star$ Setting $\pd{\cal{L}}{\ddot{q}_k} = 0$ yields:
+
+    $$ h \lambda_k^T \pd{R_k}{\ddot{q}_k} + h \pd{f_k}{\ddot{q}_k} +
+    \sum_{i=1}^{m-1} h \lambda_{K+i} \pd{R_{k+i}}{\ddot{q}_k} + \sum_{i=1}^{m-1} h
+    \pd{f_{k+1}}{\ddot{q}_k} + \sum_{i=0}^{m-1} \psi_{k+i}^T
+    \pd{S_{k+i}}{\ddot{q}_k} =0
+    $$
+    
+    which simplifies to
+    
+    \begin{equation}
+      \begin{split}
+        h \left[ \pd{R_k}{\ddot{q}_k} + h a_0 \pd{R_k}{\dot{q}_k} +  h^2 a_0^2  \pd{R_k}{{q}_k} \right]^T \lambda_k = & -  h \left\{ \pd{R_k}{\ddot{q}_k} + h a_0 \pd{R_k}{\dot{q}_k} +  h^2 a_0^2  \pd{R_k}{{q}_k} \right\}^T\\
+        & - h \sum_{i=0}^{m-1} a_i \psi_{k+i} \\
+        & - h \sum_{i=1}^{m-1} h \left[ \pd{R_{k+i}}{\dot{q}_{k+i}}\pd{\dot{q}_{k+i}}{\ddot{q}_k} + \pd{R_{k+i}}{q_{k+i}}\pd{q_{k+i}}{\ddot{q}_k} \right]^T \lambda_{k+i}\\
+        & - h \sum_{i=1}^{m-1} h \left\{ \pd{f_{k+i}}{\dot{q}_{k+i}}\pd{\dot{q}_{k+i}}{\ddot{q}_k} + \pd{f_{k+i}}{q_{k+i}}\pd{q_{k+i}}{\ddot{q}_k} \right\}^T
+      \end{split}
+    \end{equation}
+
     \framebreak
+    
+    \begin{equation}
+      \begin{split}
+        h \left[ \pd{R_k}{\ddot{q}_k} + h a_0 \pd{R_k}{\dot{q}_k} +  h^2 a_0^2  \pd{R_k}{{q}_k} \right]^T \lambda_k = & -  h \left\{ \pd{R_k}{\ddot{q}_k} + h a_0 \pd{R_k}{\dot{q}_k} +  h^2 a_0^2  \pd{R_k}{{q}_k} \right\}^T\\
+        & - h \sum_{i=0}^{m-1} a_i \psi_{k+i} \\
+        & - h \sum_{i=1}^{m-1} h \left[ ha_i \pd{R_{k+i}}{\dot{q}_{k+i}} + \pd{R_{k+i}}{q_{k+i}} \left( \pd{q_{k+i}}{q_{k+i-1}}  \pd{q_{k+i-1}} {\ddot{q}_k} +  \pd{q_{k+i}}{\dot{q}_{k}} \pd{\dot{q}_{k}} {\ddot{q}_k} \right) \right]^T \lambda_{k+i}\\
+        & - h \sum_{i=1}^{m-1} h \left\{ \pd{f_{k+i}}{\dot{q}_{k+i}}\pd{\dot{q}_{k+i}}{\ddot{q}_k} + \pd{f_{k+i}}{q_{k+i}}\pd{q_{k+i}}{\ddot{q}_k} \right\}^T
+      \end{split}
+    \end{equation}
 
-    We demonstrate the adjoint devlopment for three steps of time
-    integation. \\
-    ~\\
-    \underline{\textbf{First step}} $(k=1, m=1)$: 
-    $$ h \lambda_1^T R_1(\underline{\ddot{q}_1}, \dot{q}_1, q_1, t_1) = 0$$
-    $$ h  f_1(\underline{\ddot{q}_1}, \dot{q}_1, q_1, t_1)^T = 0 $$
-    $$ \psi_1^T S_1 = \dot{q}_{0}  + h a_0 \ddot{q}_{1} - \dot{q}_1  $$ 
-    $$ \phi_1^T T_1 =  {q}_{0}  + h a_0 \dot{q}_{1} - {q}_1$$ 
-
-    \underline{\textbf{Second step}} $(k=2, m=2)$: 
-    $$h \lambda_2^T R_2(\underline{\ddot{q}_2}, \dot{q}_2, q_2, t_2) = 0$$
-    $$h f_2(\underline{\ddot{q}_2}, \dot{q}_2, q_2, t_2)^T = 0$$
-    $$ \psi_2^T S_2 = \dot{q}_{1}  + h a_0 \ddot{q}_{2} + h a_1 \ddot{q}_{1} - \dot{q}_2 $$ 
-    $$ \phi_2^T T_2 = {q}_{1}  + h a_0 \dot{q}_{2}  + h a_1 \dot{q}_{1} - {q}_2$$ 
-
-    \underline{\textbf{Third step}} $(k=3, m=3)$: 
-    $$h\lambda_3^TR_3(\underline{\ddot{q}_3}, \dot{q}_3, q_3, t_3) = 0$$
-    $$hf_3(\underline{\ddot{q}_3}, \dot{q}_3, q_3, t_3)^T = 0$$
-    $$ \psi_3^TS_3 = \dot{q}_{2}  + h a_0 \ddot{q}_{3} + h a_1 \ddot{q}_{2}  + h a_2 \ddot{q}_{1} - \dot{q}_3 $$ 
-    $$ \phi_3^TT_3 = {q}_{2}  + h a_0 \dot{q}_{3} + h a_1 \dot{q}_{2}  + h a_2 \dot{q}_{1} - {q}_3 $$ 
-
-    \framebreak
-   
-    Setting $\pd{\cal{L}}{{q}_1} = 0$ yields:
-    $$ h \lambda_1^T \pd{R_1}{q_1} + h \pd{f_1}{q_1} + \psi_1^T \pd{S_1}{q_1} + \phi_1^T \pd{T_1}{q_1} = 0 $$
-
-  }
-
+  } % end tiny font
+  
 \end{frame}
 
-
 \end{document}
+%
+%
+%
+\framebreak
+
+The ABM coefficients upto $6^{th}$ order are tabulated.
+
+\begin{center}
+  \begin{tabular}{cccccccc}
+    \hline
+    m & $i=0$ & 1 & 2 & 3 & 4 & 5 & 6 \\ 
+    \hline
+    &&&&&&&\\
+    1 & 1     &   &   &   &   &   &  \\
+    &&&&&&&\\
+    2 & $\frac{1}{2}$ & $\frac{1}{2}$ &   &   &   &   &  \\
+    &&&&&&&\\
+    3 & $\frac{5}{12}$ & $\frac{8}{12}$ & $-\frac{1}{12}$  &   &   &   &  \\
+    &&&&&&&\\
+    4 & $\frac{9}{24}$ & $\frac{19}{24}$ & $-\frac{5}{24}$  & $\frac{1}{24}$  &   &   &  \\
+    &&&&&&&\\
+    5 & $\frac{251}{720}$ & $\frac{646}{720}$ & $-\frac{264}{720}$  & $\frac{106}{720}$  & $-\frac{19}{720}$  &   &  \\
+    &&&&&&&\\
+    6 & $\frac{475}{1440}$ & $\frac{1427}{1440}$ & $-\frac{798}{1440}$  & $\frac{482}{1440}$  & $-\frac{173}{1440}$  &  $\frac{27}{1440}$ &  \\
+    &&&&&&&\\
+    \hline   
+  \end{tabular}
+\end{center}
+
+\framebreak
+
+We demonstrate the adjoint development for three steps of time
+integation. \\
+~\\
+\underline{\textbf{First step}} $(k=1, m=1)$: 
+$$ h \lambda_1^T R_1(\underline{\ddot{q}_1}, \dot{q}_1, q_1, t_1) = 0$$
+$$ h  f_1(\underline{\ddot{q}_1}, \dot{q}_1, q_1, t_1)^T = 0 $$
+$$ \psi_1^T S_1 = \dot{q}_{0}  + h a_0 \ddot{q}_{1} - \dot{q}_1  $$ 
+$$ \phi_1^T T_1 =  {q}_{0}  + h a_0 \dot{q}_{1} - {q}_1$$ 
+
+\underline{\textbf{Second step}} $(k=2, m=2)$: 
+$$h \lambda_2^T R_2(\underline{\ddot{q}_2}, \dot{q}_2, q_2, t_2) = 0$$
+$$h f_2(\underline{\ddot{q}_2}, \dot{q}_2, q_2, t_2)^T = 0$$
+$$ \psi_2^T S_2 = \dot{q}_{1}  + h a_0 \ddot{q}_{2} + h a_1 \ddot{q}_{1} - \dot{q}_2 $$ 
+$$ \phi_2^T T_2 = {q}_{1}  + h a_0 \dot{q}_{2}  + h a_1 \dot{q}_{1} - {q}_2$$ 
+
+\underline{\textbf{Third step}} $(k=3, m=3)$: 
+$$h\lambda_3^TR_3(\underline{\ddot{q}_3}, \dot{q}_3, q_3, t_3) = 0$$
+$$hf_3(\underline{\ddot{q}_3}, \dot{q}_3, q_3, t_3)^T = 0$$
+$$ \psi_3^TS_3 = \dot{q}_{2}  + h a_0 \ddot{q}_{3} + h a_1 \ddot{q}_{2}  + h a_2 \ddot{q}_{1} - \dot{q}_3 $$ 
+$$ \phi_3^TT_3 = {q}_{2}  + h a_0 \dot{q}_{3} + h a_1 \dot{q}_{2}  + h a_2 \dot{q}_{1} - {q}_3 $$ 
 

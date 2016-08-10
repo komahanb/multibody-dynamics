@@ -49,10 +49,10 @@ module spring_mass_damper_class
 
    contains
 
-     procedure :: mapDesignVars    => mapDesignVars2
-     procedure :: assembleResidual => assembleResidual2
-     procedure :: assembleJacobian => assembleJacobian2
-     procedure :: getInitialStates => getInitialStates2
+     procedure :: mapDesignVars     => mapDesignVars2
+     procedure :: assembleResidual  => assembleResidual2
+     procedure :: assembleJacobian  => assembleJacobian2
+     procedure :: getInitialStates  => getInitialStates2
      procedure :: getResidualDVSens => getResidualDVSens2
      
   end type smd2
@@ -344,4 +344,3 @@ contains
   end subroutine mapDesignVars2
 
 end module spring_mass_damper_class
-

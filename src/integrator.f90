@@ -38,7 +38,7 @@ module integrator_class
      class(physics), pointer :: system => null()
      integer                 :: nsvars = 0 ! number of states/equations
      integer                 :: ndvars = 0 ! number of design variables
-
+     
      !----------------------------------------------------------------!
      ! Variables for managing time marching
      !----------------------------------------------------------------!
@@ -63,9 +63,17 @@ module integrator_class
      type(scalar), dimension(:,:), allocatable :: U
      type(scalar), dimension(:,:), allocatable :: UDOT
      type(scalar), dimension(:,:), allocatable :: UDDOT
+
+     !----------------------------------------------------------------!
+     ! Adjoint variables
+     !----------------------------------------------------------------!
+     
+     integer                                   :: num_rhs_bins
+     type(scalar), dimension(:,:), allocatable :: rhs
      type(scalar), dimension(:,:), allocatable :: psi
      type(scalar), dimension(:,:), allocatable :: phi
-
+     type(scalar), dimension(:,:), allocatable :: lambda
+     
      !----------------------------------------------------------------!
      ! Miscellaneous variables
      !----------------------------------------------------------------!
@@ -288,14 +296,17 @@ contains
     this % UDDOT = 0.0d0
     
     !-----------------------------------------------------------------!
-    ! Allocate space for the RHS of adjoint equations
+    ! Allocate space for the adjoint and RHS of adjoint equations
     !-----------------------------------------------------------------!
-
+        
     allocate(this % psi(this % num_steps, this % nsvars))
     this % psi = 0.0d0
 
     allocate(this % phi(this % num_steps, this % nsvars))
     this % phi = 0.0d0
+
+    allocate(this % lambda(this % num_steps, this % nsvars))
+    this % lambda = 0.0d0
   
   end subroutine construct
 
@@ -312,7 +323,8 @@ contains
     if(allocated(this % UDOT)) deallocate(this % UDOT)
     if(allocated(this % U)) deallocate(this % U)
     if(allocated(this % time)) deallocate(this % time)
-    
+
+    ! Adjoint variables and RHS
     if(allocated(this % psi)) deallocate(this % psi)
     if(allocated(this % phi)) deallocate(this % phi)
 
@@ -409,7 +421,8 @@ contains
   ! The guessed (initial) state variable values q, qdot, qddot are
   ! supplied
   !
-  ! Output: q, qdot, qddot updated iteratively until the corresponding
+  ! Output:
+  ! q, qdot, qddot updated iteratively until the corresponding
   ! residual R = 0
   !
   ! alpha: multiplier for derivative of Residual wrt to q

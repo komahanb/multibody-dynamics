@@ -65,7 +65,7 @@ program main
 
   ! Initialize the system
   call smd1obj % initialize(num_state_vars = 1, num_design_vars = 3)
-  nbgobj = NBG(system = smd1obj, tfinal = 20.0d-3, h=1.0d-3)
+  nbgobj = NBG(system = smd1obj, tfinal = 2.0d-3, h=1.0d-3)
   call nbgobj % evalFuncGrad(num_func=1, func = KE,  num_dv = 3, x = x, fvals = fval, dfdx= dfdx)  
   call nbgobj % writeSolution("nbg1.dat")
   call nbgobj % evalFDFuncGrad(num_func=1, func = KE,  num_dv = 3, x = x, fvals = fval, dfdx= dfdxtmp, dh=dh)
@@ -78,8 +78,6 @@ program main
   print *, "Error       =", abs(dfdxtmp-dfdx)
   print*, "Rel. Error   =", abs(realpart(dfdxtmp)-realpart(dfdx))/realpart(dfdxtmp)
 
-
-stop
   !===================================================================!
   !                       TEST ABM                                    !
   !===================================================================!
@@ -94,7 +92,7 @@ stop
   
   ! Initialize the system
   call smd1obj % initialize(num_state_vars = 1, num_design_vars = 3)
-  abmobj = ABM(system = smd1obj, tfinal = 30.0d-3, h=1.0d-3, max_abm_order = 1)
+  abmobj = ABM(system = smd1obj, tfinal = 2.0d-3, h=1.0d-3, max_abm_order = 1)
   call abmobj % evalFuncGrad(num_func=1, func = KE,  num_dv = 3, x = x, fvals = fval, dfdx= dfdx)
   call abmobj % evalFDFuncGrad(num_func=1, func = KE,  num_dv = 3, x = x, fvals = fval, dfdx= dfdxtmp, dh=dh)
   call abmobj % finalize()
@@ -120,7 +118,7 @@ stop
   
   ! Initialize the system
   call smd1obj % initialize(num_state_vars = 1, num_design_vars = 3)
-  bdfobj = BDF(system = smd1obj, tfinal = 20.0d-3, h=1.0d-3, max_bdf_order = 3)
+  bdfobj = BDF(system = smd1obj, tfinal = 20.0d-3, h=1.0d-3, max_bdf_order = 1)
   call bdfobj % evalFuncGrad(num_func=1, func = KE,  num_dv = 3, x = x, fvals = fval, dfdx= dfdx)
   call bdfobj % evalFDFuncGrad(num_func=1, func = KE,  num_dv = 3, x = x, fvals = fval, dfdx= dfdxtmp, dh=dh)
   call bdfobj % finalize()
