@@ -312,18 +312,16 @@ contains
     ! Retrieve the current time index
     k = this % current_step
     m = this % getOrder(k)
-
-    !-------------------------------------------------------------------!
-    ! Find PHI at the new step
-    !-------------------------------------------------------------------!
-
+    
     if ( k+1 .le. this % num_steps ) then
+       
+       ! Find PHI
+       this % phi(k,:) = this % phi(k+1,:)
 
        gamma = 0.0d0
        beta  = 0.0d0
        alpha = this % h
 
-       ! Add the state variable sensitivity from the previous step
        call this % system % func % addFuncSVSens(this % phi(k,:), &
             & alpha, beta, gamma, &
             & this % time(k+1), &
@@ -341,46 +339,20 @@ contains
             & this % uddot(k+1,:))
 
        this % phi(k,:) = this % phi(k,:) + matmul(transpose(jac(:,:)), this % lambda(k+1,:))
-       
-    else
-       
-       this % phi(k,:) = 0.0d0
-       
+
     end if
-    
-    !-------------------------------------------------------------------!
-    ! Find PSI at the new step
-    !-------------------------------------------------------------------!
-    
+
     if ( k+1 .le. this % num_steps ) then
+       
+       ! Find PSI
+       this % psi(k,:) = this % psi(k+1,:)
 
-       !    do i = 1, m + 1 ! 0, m
-
-       !      if ( k+i .le. this % num_steps ) then
-
-       ! Add contributions from previous PSI
-       !        if (i .eq. 1) then
-       this % psi(k,:) = this % psi(k,:) + this % psi(k+1,:)
-       !       end if
-
-       ! Add contributions from PHI
        this % psi(k,:) = this % psi(k,:) + this % h * this % A(m,1) * this % phi(k,:)
-       this % psi(k,:) = this % psi(k,:) + this % h * this % A(m,1) * this % phi(k+1,:)
-
-       !   end if
-
-       ! end do
-
-!!$
-!!$    do i = 2, m
-!!$
-!!$       if ( k+i .le. this % num_steps ) then
-
+       
        gamma = 0.0d0
        beta  = this % h
        alpha = this % h * this % h * this % A(m,1)
 
-       ! Add the state variable sensitivity from the previous step
        call this % system % func % addFuncSVSens(this % psi(k,:), &
             & alpha, beta, gamma, &
             & this % time(k+1), &
@@ -398,25 +370,14 @@ contains
             & this % uddot(k+1,:))
 
        this % psi(k,:) = this % psi(k,:) + matmul(transpose(jac(:,:)), this % lambda(k+1,:))
-!!$
-!!$       end if
-!!$
-!!$    end do
-
-    else
-
-       this % psi(k,:) = 0.0d0
 
     end if
-
-    !--------------------------------------------------------------------------!
-    ! Add up contribution
-    !--------------------------------------------------------------------------!
     
     gamma = 1.0d0
     beta  = this % h * this % A(m,1)
     alpha = this % h * this % A(m,1) * this % h * this % A(m,1)
 
+    ! Add the state variable sensitivity from the previous step
     call this % system % func % addFuncSVSens(rhs, &
          & alpha, beta, gamma, &
          & this % time(k), &
@@ -425,43 +386,9 @@ contains
          & this % udot(k,:), &
          & this % uddot(k,:))
 
-    if ( k+1 .le. this % num_steps ) then
-
-       gamma = 0.0d0
-       beta  = this % h * this % A(m,1)
-       alpha = this % h * this % A(m,1) * this % h * this % A(m,1)
-
-       call this % system % func % addFuncSVSens(rhs, &
-            & alpha, beta, gamma, &
-            & this % time(k+1), &
-            & this % system % X, &
-            & this % u(k+1,:), &
-            & this % udot(k+1,:), &
-            & this % uddot(k+1,:))
-
-       ! Add the residual adjoint product from the previous step
-       call this % system % assembleJacobian(jac, &
-            & alpha, beta, gamma, &
-            & this % time(k+1), &
-            & this % u(k+1,:), &
-            & this % udot(k+1,:), &
-            & this % uddot(k+1,:))
-
-       rhs = rhs + matmul(transpose(jac(:,:)), this % lambda(k+1,:))
-
-       ! Add previous contributions
-       rhs = rhs + this % A(m,1) * this % psi(k+1,:)
-
-       rhs = rhs + this % A(m,1) * this % h * this % A(m,1) * this % phi(k+1,:)
-       rhs = rhs + this % A(m,1) * this % h * this % A(m,1) * this % phi(k+1,:)
-       
-    end if
-
-    ! current
     rhs = rhs + this % A(m,1) * this % psi(k,:)
-    rhs = rhs + this % A(m,1) * this % h * this % A(m,1) * this % phi(k,:)
-
-     ! Negate the RHS
+    
+    ! Negate the RHS
     rhs = - rhs
 
     if(allocated(jac)) deallocate(jac)
