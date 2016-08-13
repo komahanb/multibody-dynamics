@@ -12,7 +12,7 @@
 !=====================================================================!
 
 module integrator_class
-  
+
   use physics_class  , only : physics
   use function_class , only : abstract_function
 
@@ -20,7 +20,7 @@ module integrator_class
 
   private
   public ::  integrator
-  
+
   interface norm2
      module procedure znorm2
   end interface norm2
@@ -30,23 +30,23 @@ module integrator_class
   !===================================================================! 
 
   type, abstract :: integrator
-     
+
      !----------------------------------------------------------------!
      ! Contains the actual physical system
      !----------------------------------------------------------------!
-     
+
      class(physics), pointer :: system => null()
      integer                 :: nsvars = 0 ! number of states/equations
      integer                 :: ndvars = 0 ! number of design variables
-     
+
      !----------------------------------------------------------------!
      ! Variables for managing time marching
      !----------------------------------------------------------------!
 
-     integer  :: num_steps = 0                 ! number of time steps
-     real(dp) :: tinit     = 0.0d0                 ! initial time
-     real(dp) :: tfinal    = 1.0d0                ! final time
-     real(dp) :: h         = 0.1d0                     ! default step size
+     integer  :: num_steps = 0     ! number of time steps
+     real(dp) :: tinit     = 0.0d0 ! initial time
+     real(dp) :: tfinal    = 1.0d0 ! final time
+     real(dp) :: h         = 0.1d0 ! default step size
 
      !----------------------------------------------------------------!
      ! Nonlinear solution at each stage
@@ -67,13 +67,13 @@ module integrator_class
      !----------------------------------------------------------------!
      ! Adjoint variables
      !----------------------------------------------------------------!
-     
+
      integer                                   :: num_rhs_bins
      type(scalar), dimension(:,:), allocatable :: rhs
      type(scalar), dimension(:,:), allocatable :: psi
      type(scalar), dimension(:,:), allocatable :: phi
      type(scalar), dimension(:,:), allocatable :: lambda
-     
+
      !----------------------------------------------------------------!
      ! Miscellaneous variables
      !----------------------------------------------------------------!
@@ -85,7 +85,7 @@ module integrator_class
      logical :: approximate_jacobian = .false.
 
    contains
-     
+
      !----------------------------------------------------------------!
      ! Procedures                                                     !
      !----------------------------------------------------------------!
@@ -99,7 +99,7 @@ module integrator_class
      !----------------------------------------------------------------!
      ! Important setters
      !----------------------------------------------------------------!
-     
+
      procedure :: setApproximateJacobian
 
      !----------------------------------------------------------------!
@@ -108,7 +108,7 @@ module integrator_class
 
      procedure(InterfaceDefault)        , private, deferred :: approximateStates
      procedure(InterfaceGetLinearCoeff) , private, deferred :: getLinearCoeff
-     
+
      procedure(InterfaceAssembleRHS)    , private, deferred :: assembleRHS
      procedure(InterfaceMarch)          , public, deferred  :: marchBackwards
      procedure(InterfaceTotalDerivative), deferred          :: computeTotalDerivative
@@ -117,19 +117,19 @@ module integrator_class
      procedure :: integrate
      procedure :: adjointSolve
      procedure :: evalFunc
-     
+
      procedure :: evalFuncGrad
      procedure :: evalFDFuncGrad
 
   end type integrator
 
-  
+
   interface
 
      !===================================================================!
      ! Default interface without any arguments
      !===================================================================!
-     
+
      subroutine InterfaceDefault(this)
 
        import integrator
@@ -137,11 +137,11 @@ module integrator_class
        class(integrator) :: this
 
      end subroutine InterfaceDefault
-     
+
      !===================================================================!
      ! Interface for getting the coefficients for Residual linearization
      !===================================================================!
-     
+
      subroutine InterfaceGetLinearCoeff(this, alpha, beta, gamma)
 
        import integrator
@@ -150,32 +150,32 @@ module integrator_class
        type(scalar), intent(out) :: alpha, beta, gamma
 
      end subroutine InterfaceGetLinearCoeff
-     
+
 
      !===================================================================!
      ! Interface routine to assemble the RHS of the adjoint systen
      !===================================================================!
-     
+
      subroutine InterfaceAssembleRHS(this, rhs)
-       
+
        import integrator
 
        class(integrator)                     :: this
        type(scalar), dimension(:), intent(inout) :: rhs
 
      end subroutine InterfaceAssembleRHS
-     
+
      !===================================================================!
      ! Interface routine to assemble the RHS of the adjoint systen
      !===================================================================!
-     
+
      subroutine InterfaceTotalDerivative(this, dfdx)
 
        import integrator
 
        class(integrator)                     :: this
        type(scalar), dimension(:), intent(inout) :: dfdx
-       
+
      end subroutine InterfaceTotalDerivative
 
      !===================================================================!
@@ -183,17 +183,17 @@ module integrator_class
      !===================================================================!
 
      subroutine InterfaceMarch(this)
-       
+
        import integrator
-       
+
        class(integrator)                     :: this
-       
+
      end subroutine InterfaceMarch
 
      !===================================================================!
      ! Interface for evaluating the function of interest
      !===================================================================!
-     
+
      subroutine InterfaceEvalFunc(this, x, fval)
 
        import integrator
@@ -211,9 +211,9 @@ contains
   !======================================================================!
   ! Base class constructor logic
   !======================================================================!
-  
+
   subroutine construct(this, system, tinit, tfinal, h, second_order)
-    
+
     class(integrator)               :: this
     class(physics), target          :: system
     real(dp), OPTIONAL, intent(in)  :: tinit, tfinal
@@ -223,7 +223,7 @@ contains
     !-----------------------------------------------------------------!
     ! Set the physical system in to the integrator                    !
     !-----------------------------------------------------------------!
-    
+
     call this % setPhysicalSystem(system)
 
     !-----------------------------------------------------------------!
@@ -232,7 +232,7 @@ contains
 
     this % nsvars = system % getNumStateVars()
     print '("  >> Number of variables    : ",i4)', this % nsvars
-    
+
     if ( .not. (this % nsvars .gt. 0) ) then
        stop ">> Error: No state variable. Stopping."
     end if
@@ -240,7 +240,7 @@ contains
     !-----------------------------------------------------------------!
     ! Set the order of the governing equations
     !-----------------------------------------------------------------!
-    
+
     if (present(second_order)) then
        this % second_order = second_order
     end if
@@ -268,7 +268,7 @@ contains
        this % h = h 
     end if
     print '("  >> Step size              : ",E9.3)', this % h
-    
+
     !-----------------------------------------------------------------!
     ! Find the number of time steps required during integration
     !-----------------------------------------------------------------!
@@ -282,7 +282,7 @@ contains
 
     allocate(this % time(this % num_steps))
     this % time = 0.0d0
-    
+
     ! Set the start time
     this % time(1) = this % tinit
 
@@ -294,11 +294,11 @@ contains
 
     allocate(this % UDDOT(this % num_steps, this % nsvars))
     this % UDDOT = 0.0d0
-    
+
     !-----------------------------------------------------------------!
     ! Allocate space for the adjoint and RHS of adjoint equations
     !-----------------------------------------------------------------!
-        
+
     allocate(this % psi(this % num_steps, this % nsvars))
     this % psi = 0.0d0
 
@@ -307,13 +307,13 @@ contains
 
     allocate(this % lambda(this % num_steps, this % nsvars))
     this % lambda = 0.0d0
-  
+
   end subroutine construct
 
   !======================================================================!
   ! Base class destructor
   !======================================================================!
-  
+
   subroutine destruct(this)
 
     class(integrator) :: this
@@ -337,7 +337,7 @@ contains
   ! .false. the expects to provide implementation in assembleJacobian
   ! in a type that extends PHYSICS.
   !===================================================================!
-  
+
   subroutine setApproximateJacobian(this, approximateJacobian)
 
     class(integrator) :: this
@@ -352,7 +352,7 @@ contains
   ! implementation to the mandatory functions assembleResidual and
   ! getInitialStates
   !===================================================================!
-  
+
   subroutine setPhysicalSystem(this, physical_system)
 
     class(integrator)      :: this
@@ -361,11 +361,11 @@ contains
     this % system => physical_system
 
   end subroutine setPhysicalSystem
-  
+
   !===================================================================!
   ! Manages the amount of print
   !===================================================================!
-  
+
   subroutine setPrintLevel(this,print_level)
 
     class(integrator) :: this
@@ -380,13 +380,13 @@ contains
   !===================================================================!
 
   subroutine writeSolution(this, filename)
-    
+
     class(integrator)                      :: this
     character(len=*), OPTIONAL, intent(in) :: filename
     character(len=7), parameter            :: directory = "output/"
     character(len=32)                      :: path = ""
     integer                                :: k, j, ierr
-    
+
     path = trim(path)
 
     if (present(filename)) then
@@ -394,25 +394,26 @@ contains
     else
        path = directory//"solution.dat"
     end if
-    
+
     open(unit=90, file=trim(path), iostat= ierr)
-    
+
     if (ierr .ne. 0) then
        write(*,'("  >> Opening file ", 39A, " failed")') path
        return
     end if
 
     do k = 1, this % num_steps
-       write(90, *)  this % time(k), (dble(this % u(k,j)), j=1,this%nsvars ), &
-            & (dble(this % udot(k,j)), j=1,this%nsvars ),  &
-            & (dble(this % uddot(k,j)), j=1,this%nsvars ), & 
-            & (dble(this % psi(k,j)), j=1,this%nsvars )
+       write(90, *)  this % time(k), &
+            & (dble(this % u     (k,j) ), j=1,this%nsvars ), &
+            & (dble(this % udot  (k,j) ), j=1,this%nsvars ), &
+            & (dble(this % uddot (k,j) ), j=1,this%nsvars ), & 
+            & (dble(this % psi   (k,j) ), j=1,this%nsvars )
     end do
 
     close(90)
 
   end subroutine writeSolution
-  
+
   !===================================================================!
   ! Solve the nonlinear system at each step by driving the
   ! residual to zero
@@ -431,24 +432,24 @@ contains
   !===================================================================!
 
   subroutine newtonSolve( this, alpha, beta, gamma, t, q, qdot, qddot )
-    
+
     class(integrator)                         :: this
 
- ! Arguments
+    ! Arguments
     type(scalar), intent(in)                  :: alpha, beta, gamma
     real(dp), intent(in)                      :: t
     type(scalar), intent(inout), dimension(:) :: q, qdot, qddot
-    
- ! Lapack variables
+
+    ! Lapack variables
     integer, allocatable, dimension(:)        :: ipiv
     integer                                   :: info, size
-   
- ! Norms for tracking progress
+
+    ! Norms for tracking progress
     real(dp)                                  :: abs_res_norm = 0.0d0
     real(dp)                                  :: rel_res_norm = 0.0d0
     real(dp)                                  :: init_norm    = 0.0d0
-    
- ! Other Local variables
+
+    ! Other Local variables
     type(scalar), allocatable, dimension(:)   :: res, dq
     type(scalar), allocatable, dimension(:,:) :: jac, fd_jac
 
@@ -469,7 +470,7 @@ contains
     if ( this % print_level .ge. 1 .and. k .eq. 2) then
        write(*,'(/2A5, 2A12/)') "Step", "Iter", "|R|", "|R|/|R1|"
     end if
-    
+
     newton: do n = 1, this % max_newton
 
        ! Get the residual of the function
@@ -477,18 +478,18 @@ contains
 
        ! Get the jacobian matrix
        if ( this % approximate_jacobian ) then
-                    
+
           ! Compute an approximate Jacobian using finite differences
           call this % approximateJacobian(jac, alpha, beta, gamma, t, q, qdot, qddot)
 
        else
-          
+
           ! Use the user supplied Jacobian implementation
           call this % system % assembleJacobian(jac, alpha, beta, gamma, t, q, qdot, qddot)
-          
+
           ! Check the Jacobian implementation once at the beginning of integration
           if ( k .eq. 2 .and. n .eq. 1 ) then
-             
+
              ! Compute an approximate Jacobian using finite differences
              call this % approximateJacobian(fd_jac, alpha, beta, gamma, t, q, qdot, qddot)
 
@@ -504,11 +505,11 @@ contains
                 print *, "Jhat  =", fd_jac
                 print *, "WARNING: Possible error in jacobian", jac_err
              end if
-             
+
           end if
 
        end if
-       
+
        ! Find norm of the residual
        abs_res_norm = norm2(res)
        if ( n .eq. 1) init_norm = abs_res_norm
@@ -529,7 +530,7 @@ contains
 
        ! Call LAPACK to solve the stage values system
        dq = -res
-       
+
 #if defined USE_COMPLEX
        call ZGESV(size, 1, jac, size, IPIV, dq, size, INFO)
 #else
@@ -539,12 +540,12 @@ contains
           print*, "LAPACK ERROR:", info
           stop
        end if
-       
+
        ! Update the solution
        qddot = qddot + gamma * dq
        qdot  = qdot  + beta  * dq
        q     = q     + alpha * dq
-       
+
     end do newton
 
     if (this % print_level .eq. 1) then 
@@ -563,21 +564,21 @@ contains
     if (allocated(dq)) deallocate(dq)
     if (allocated(jac)) deallocate(jac)
     if (allocated(fd_jac)) deallocate(fd_jac)
-            
+
   end subroutine newtonSolve
 
   !===================================================================! 
   ! Routine that approximates the Jacobian based on finite differences
   ! [d{R}/d{q}] = alpha*[dR/dq] + beta*[dR/dqdot] + gamma*[dR/dqddot]
   !===================================================================!
-  
+
   subroutine approximateJacobian( this, jac, alpha, beta, gamma, t, q, qdot, qddot )
 
     class(integrator)                            :: this
-    
+
     ! Matrices
     type(scalar) , intent(inout), dimension(:,:) :: jac
-    
+
     ! Arrays
     real(dp)     , intent(in)                    :: t
     type(scalar) , intent(in), dimension(:)      :: q, qdot, qddot     ! states
@@ -593,7 +594,7 @@ contains
     !  Zero the supplied jacobian matrix for safety (as we are
     !  computing everything newly here)
     jac = 0.0d0
-    
+
     ! Allocate required arrays
     allocate(pstate(this % nsvars)); pstate = 0.0d0;
     allocate(R(this % nsvars));      R = 0.0d0;
@@ -681,7 +682,7 @@ contains
   !===================================================================!
   ! Time integration logic
   !===================================================================!
-  
+
   subroutine Integrate( this )
 
     class(integrator) :: this
@@ -727,28 +728,28 @@ contains
   ! Common routine to solve the adjoint linear system at each time
   ! step and/or stage
   !=====================================================================!
-  
+
   subroutine adjointSolve(this, psi, alpha, beta, gamma, t, q, qdot, qddot)
-    
+
     class(integrator) :: this
 
- ! Arguments
+    ! Arguments
     type(scalar), intent(in)                  :: alpha, beta, gamma
     real(dp), intent(in)                      :: t
     type(scalar), intent(inout), dimension(:) :: q, qdot, qddot
     type(scalar), intent(inout), dimension(:) :: psi
 
- ! Lapack variables
+    ! Lapack variables
     integer, allocatable, dimension(:)        :: ipiv
     integer                                   :: info, size
-       
- ! Other Local variables
+
+    ! Other Local variables
     type(scalar), allocatable, dimension(:)   :: rhs
     type(scalar), allocatable, dimension(:,:) :: jac
 
     ! find the size of the linear system based on the calling object
     size = this % nsvars
-    
+
     if (.not.allocated(ipiv)) allocate(ipiv(size))
     if (.not.allocated(rhs)) allocate(rhs(size))
     if (.not.allocated(jac)) allocate(jac(size,size))
@@ -776,31 +777,31 @@ contains
        print*, "LAPACK ERROR:", info
        stop
     end if
-    
+
     ! Store into the output array
     psi = rhs
-    
+
     if (allocated(ipiv)) deallocate(ipiv)
     if (allocated(rhs)) deallocate(rhs)
     if (allocated(jac)) deallocate(jac)
-    
+
   end subroutine adjointSolve
 
   !===================================================================!
   ! Public wrapper for all the adjoint gradient related sequence of
   ! calls
   !===================================================================!
-  
+
   subroutine evalFuncGrad( this, num_func, func, &
        & num_dv, x, fvals, dfdx )
-    
+
     class(integrator)                                   :: this
     class(abstract_function)       , target             :: func
     type(scalar), dimension(:), intent(in)              :: x
     integer, intent(in)                                 :: num_func, num_dv
     type(scalar), dimension(:), intent(inout), OPTIONAL :: dfdx
     type(scalar), intent(inout), OPTIONAL               :: fvals
-   
+
     !-----------------------------------------------------------------!
     ! Set the objective function into the system
     !-----------------------------------------------------------------!
@@ -810,12 +811,12 @@ contains
     !-----------------------------------------------------------------!
     ! Set the number of variables, design variables into the system
     !-----------------------------------------------------------------!
-    
+
     if (num_dv .ne. this % system % num_design_vars) stop "NDV mismatch"
 
     call this % system % setDesignVars(num_dv, x)
     this % nDVars = num_dv
-    
+
     !-----------------------------------------------------------------!
     ! Integrate forward in time to solve for the state variables
     !-----------------------------------------------------------------!
@@ -825,13 +826,13 @@ contains
     !-----------------------------------------------------------------!
     ! Compute the objective/ constraint function value
     !-----------------------------------------------------------------!
-    
+
     if (present(fvals)) then 
-       
+
        call this % evalFunc(x, fvals)
-       
+
     end if
-    
+
     if (present(dfdx)) then 
 
        !-----------------------------------------------------------------!
@@ -856,7 +857,7 @@ contains
   ! Compute the gradient of the function with respect to design
   ! variables
   !===================================================================!
-  
+
   subroutine evalFDFuncGrad( this, num_func, func, &
        & num_dv, x, fvals, dfdx, dh )
 
@@ -879,7 +880,7 @@ contains
     !-----------------------------------------------------------------!
     ! Set the number of variables, design variables into the system
     !-----------------------------------------------------------------!
-    
+
     if (num_dv .ne. this % system % num_design_vars) stop "NDV mismatch"
 
     call this % system % setDesignVars(num_dv, x)
@@ -896,7 +897,7 @@ contains
     !-----------------------------------------------------------------!
 
     call this % evalFunc(x, fvals)
-    
+
     do m = 1, this % ndvars
 
        ! Store the original x value
@@ -937,13 +938,13 @@ contains
     type(scalar), intent(inout)               :: fval
     type(scalar), dimension(this % num_steps) :: ftmp
     integer                                   :: k
-    
+
     do concurrent(k = 2 : this % num_steps)
        call this % system % func % getFunctionValue(ftmp(k), this % time(k), &
             & x, this % U(k,:), this % UDOT(k,:), this % UDDOT(k,:))
     end do
     fval = this % h * sum(ftmp)
-    
+
 !!$    do concurrent(k = 2 : this % num_steps)
 !!$       do concurrent(j = 1 : this % num_stages)
 !!$          call this % system % func % getFunctionValue(ftmp, this % T(j), &
@@ -958,16 +959,16 @@ contains
   !===================================================================!
   ! Norm of a complex number array
   !===================================================================!
-  
+
   real(dp) pure function znorm2(z)
-    
+
     complex(dp), dimension(:), intent(in) :: z
     integer :: j
-    
+
     do j = 1, size(z)
        znorm2 = znorm2 + sqrt(dble(z(j))**2 + aimag(z(j))**2)
     end do
-    
+
   end function znorm2
 
 end module integrator_class

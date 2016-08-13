@@ -104,6 +104,8 @@ program main
   print *, "Error       =", abs(dfdxtmp-dfdx)
   print*, "Rel. Error   =", abs(realpart(dfdxtmp)-realpart(dfdx))/realpart(dfdxtmp)
 
+  stop
+  
   !===================================================================!
   !                          TEST BDF                                 !
   !===================================================================!
