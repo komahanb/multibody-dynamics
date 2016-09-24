@@ -248,7 +248,7 @@ contains
        call this % adjointSolve(this % lambda(k,:), alpha, beta, gamma, &
             & this % time(k), this % u(k,:), this % udot(k,:), this % uddot(k,:))
        
-       print*, "k,lambda=", k, this % lambda(k,:)
+       !print*, "k,lambda=", k, this % lambda(k,:)
 
     end do time
     
