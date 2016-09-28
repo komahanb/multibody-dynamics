@@ -924,7 +924,7 @@ contains
              rhs = rhs + this % h * this % B(j) * this % A(j,ii) * this % psi(k,:)
           end do
 
-          ! Solve for lambda22
+          ! Solve for mu22
           this % lam(k,ii,:) = - rhs(1)/mat(1,1)
 
           !          print *, "LAMBDA: ", k,ii, this % lam(k,ii,:)
@@ -1004,10 +1004,10 @@ contains
          & this % T(2), this % system % X, &
          & this % Q(3,2,:), this % QDOT(3,2,:), this % QDDOT(3,2,:))
 
-    ! Solve for lambda22
+    ! Solve for mu22
     this % lam(3,2,:) = -rhs(1)/mat(1,1)
 
-    print *, "lambda32=", this % lam(3,2,:)
+    print *, "mu32=", this % lam(3,2,:)
 
     !-----------------------------------------------------------------!
     ! LAMBDA 31
@@ -1045,10 +1045,10 @@ contains
          & this % T(2), this % system % x, &
          & this % Q(3,2,:), this % qdot(3,2,:), this % qddot(3,2,:))
 
-    ! Solve for lambda22
+    ! Solve for mu22
     this % lam(3,1,:) = -rhs(1)/mat(1,1)
 
-    print *, "lambda31=", this % lam(3,1,:)
+    print *, "mu31=", this % lam(3,1,:)
 
     !=================================================================!
     
@@ -1150,10 +1150,10 @@ contains
     ! Add contribution from psi2
     rhs = rhs + this % B(2) * this % h * this % A(2,2) * this % psi(2,:)
 
-    ! Solve for lambda22
+    ! Solve for mu22
     this % lam(2,2,:) = - rhs(1)/mat(1,1) 
 
-    print *, "lambda22=", this % lam(2,2,:)
+    print *, "mu22=", this % lam(2,2,:)
 
     !-----------------------------------------------------------------!
     ! LAMBDA 21
@@ -1198,10 +1198,10 @@ contains
     rhs = rhs + this % B(1) * this % h * this % A(1,1) * this % psi(2,:)
     rhs = rhs + this % B(2) * this % h * this % A(2,1) * this % psi(2,:)
 
-    ! Solve for lambda22
+    ! Solve for mu22
     this % lam(2,1,:) = -rhs(1)/mat(1,1)
 
-    print *, "lambda21=", this % lam(2,1,:)
+    print *, "mu21=", this % lam(2,1,:)
    
     ! Compute the adjoint total derivative
     call this % computeTotalDerivative(dfdx)
@@ -1277,7 +1277,7 @@ contains
 
     rhs = rhs + this % psi(4,:)
 
-    ! Solve for lambda22
+    ! Solve for mu22
     this % lam(4,2,:) = -rhs(1)/mat(1,1)
 
     print *, "LAMBDA 42: ", this % lam(4,2,:)
@@ -1322,7 +1322,7 @@ contains
 
     rhs = rhs + this % psi(4,:)
     
-    ! Solve for lambda21
+    ! Solve for mu21
     this % lam(4,1,:) = - rhs(1) / mat(1,1)
 
     print *, "LAMBDA 41: ", this % lam(4,1,:)
@@ -1392,7 +1392,7 @@ contains
 
     rhs = rhs + this % psi(3,:)
 
-    ! Solve for lambda22
+    ! Solve for mu22
     this % lam(3,2,:) = -rhs(1)/mat(1,1)
 
     print *, "LAMBDA 32: ", this % lam(3,2,:)
@@ -1442,7 +1442,7 @@ contains
     ! Add contribution from time multiplier
     rhs = rhs + this % psi(3,:)
     
-    ! Solve for lambda21
+    ! Solve for mu21
     this % lam(3,1,:) = - rhs(1) / mat(1,1)
 
     print *, "LAMBDA 31: ", this % lam(3,1,:)
@@ -1514,7 +1514,7 @@ contains
 
     rhs = rhs + this % psi(2,:)
 
-    ! Solve for lambda22
+    ! Solve for mu22
     this % lam(2,2,:) = -rhs(1)/mat(1,1)
 
     print *, "LAMBDA 22: ", this % lam(2,2,:)
@@ -1564,7 +1564,7 @@ contains
     ! Add contribution from time multiplier
     rhs = rhs + this % psi(2,:)
     
-    ! Solve for lambda21
+    ! Solve for mu21
     this % lam(2,1,:) = - rhs(1) / mat(1,1)
 
     print *, "LAMBDA 21: ", this % lam(2,1,:)
@@ -1729,7 +1729,7 @@ contains
           
           rhs = rhs + this % psi(k,:)
 
-          ! Solve for lambda22
+          ! Solve for mu22
           this % lam(k,ii,:) = -rhs(1)/mat(1,1)
 
           print *, "LAMBDA: ", k,ii, this % lam(k,ii,:)
@@ -1836,7 +1836,7 @@ contains
          & this % T(2), this % system % X, &
          & this % Q(3,2,:), this % qdot(3,2,:), this % qddot(3,2,:))
 
-    ! Solve for lambda22
+    ! Solve for mu22
     this % lam(3,2,:) = -rhs(1)/mat(1,1)
 
     print *, "LAMBDA 32: ", this % lam(3,2,:)
@@ -1885,7 +1885,7 @@ contains
 
     rhs = rhs + this % psi(3,:)
     
-    ! Solve for lambda21
+    ! Solve for mu21
     this % lam(3,1,:) = - rhs(1) / mat(1,1)
 
     print *, "LAMBDA 31: ", this % lam(3,1,:)
@@ -1955,7 +1955,7 @@ contains
 
     rhs = rhs + this % psi(2,:)
 
-    ! Solve for lambda22
+    ! Solve for mu22
     this % lam(2,2,:) = -rhs(1)/mat(1,1)
 
     print *, "LAMBDA 22: ", this % lam(2,2,:)
@@ -2004,7 +2004,7 @@ contains
     ! Add contribution from time multiplier
     rhs = rhs + this % psi(2,:)
     
-    ! Solve for lambda21
+    ! Solve for mu21
     this % lam(2,1,:) = - rhs(1) / mat(1,1)
 
     print *, "LAMBDA 21: ", this % lam(2,1,:)

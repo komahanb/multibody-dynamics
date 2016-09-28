@@ -72,7 +72,7 @@ module integrator_class
      type(scalar), dimension(:,:), allocatable :: rhs
      type(scalar), dimension(:,:), allocatable :: psi
      type(scalar), dimension(:,:), allocatable :: phi
-     type(scalar), dimension(:,:), allocatable :: lambda
+     type(scalar), dimension(:,:), allocatable :: mu
 
      !----------------------------------------------------------------!
      ! Miscellaneous variables
@@ -305,8 +305,8 @@ contains
     allocate(this % phi(this % num_steps, this % nsvars))
     this % phi = 0.0d0
 
-    allocate(this % lambda(this % num_steps, this % nsvars))
-    this % lambda = 0.0d0
+    allocate(this % mu(this % num_steps, this % nsvars))
+    this % mu = 0.0d0
 
   end subroutine construct
 

@@ -205,13 +205,13 @@ contains
     do k = 2, this % num_steps
        call this % system % getResidualDVSens(dRdX, scale, this % time(k), &
             & this % system % x, this % u(k,:), this % udot(k,:), this % uddot(k,:))
-       dfdx = dfdx + matmul( transpose(dRdX), this % lambda(k,:)) ! check order
+       dfdx = dfdx + matmul( transpose(dRdX), this % mu(k,:)) ! check order
     end do
 
 !!$    ! Add constraint contribution
 !!$    call this % system % getResidualDVSens(dRdX, scale, this % time(1), &
 !!$         & this % system % x, this % u(1,:), this % udot(1,:), this % uddot(1,:))
-!!$    dfdx = dfdx + matmul(this % lambda(2,:), dRdX)
+!!$    dfdx = dfdx + matmul(this % mu(2,:), dRdX)
 
     ! Finally multiply by the scalar
     dfdx = this % h * dfdx
@@ -245,10 +245,10 @@ contains
        ! Solve the adjoint equation at each step
        !--------------------------------------------------------------!
 
-       call this % adjointSolve(this % lambda(k,:), alpha, beta, gamma, &
+       call this % adjointSolve(this % mu(k,:), alpha, beta, gamma, &
             & this % time(k), this % u(k,:), this % udot(k,:), this % uddot(k,:))
        
-       !print*, "k,lambda=", k, this % lambda(k,:)
+       !print*, "k,mu=", k, this % mu(k,:)
 
     end do time
     
@@ -338,7 +338,7 @@ contains
             & this % udot(k+1,:), &
             & this % uddot(k+1,:))
 
-       this % phi(k,:) = this % phi(k,:) + matmul(transpose(jac(:,:)), this % lambda(k+1,:))
+       this % phi(k,:) = this % phi(k,:) + matmul(transpose(jac(:,:)), this % mu(k+1,:))
 
     end if
 
@@ -369,7 +369,7 @@ contains
             & this % udot(k+1,:), &
             & this % uddot(k+1,:))
 
-       this % psi(k,:) = this % psi(k,:) + matmul(transpose(jac(:,:)), this % lambda(k+1,:))
+       this % psi(k,:) = this % psi(k,:) + matmul(transpose(jac(:,:)), this % mu(k+1,:))
 
     end if
     
