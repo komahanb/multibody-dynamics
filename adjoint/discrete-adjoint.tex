@@ -25,7 +25,7 @@
 \setlength{\parskip}{\smallskipamount} 
 \usepackage{color}
 \usepackage{tikz}
-\usepackage{tcolorbox}
+%\usepackage{tcolorbox}
 
 % Define commands
  \newcommand{\half}{\ensuremath{\frac{1}{2}}}
@@ -37,13 +37,13 @@
  \newcommand{\bed}{\begin{displaymath}}
  \newcommand{\eed}{\end{displaymath}}
 
- \newcommand{\pd}[2]{\frac{\partial #1}{\partial #2}}
- \newcommand{\pf}[2]{\frac{d #1}{d #2}}
- \newcommand{\pdt}[2]{\frac{\partial^2 #1}{\partial #2^2}}
- \newcommand{\pft}[2]{\frac{d^2 #1}{d #2^2}}
- \newcommand{\pdtno}[2]{\frac{\partial^2 #1}{\partial #2}}
- \newcommand{\pdd}[3]{\frac{\partial^2 #1}{\partial #2 \partial #3}}
- \newcommand{\pff}[3]{\frac{d^2 #1}{d #2 d #3}}
+ \newcommand{\pd}[2]{\dfrac{\partial #1}{\partial #2}}
+ \newcommand{\pf}[2]{\dfrac{d #1}{d #2}}
+ \newcommand{\pdt}[2]{\dfrac{\partial^2 #1}{\partial #2^2}}
+ \newcommand{\pft}[2]{\dfrac{d^2 #1}{d #2^2}}
+ \newcommand{\pdtno}[2]{\dfrac{\partial^2 #1}{\partial #2}}
+ \newcommand{\pdd}[3]{\dfrac{\partial^2 #1}{\partial #2 \partial #3}}
+ \newcommand{\pff}[3]{\dfrac{d^2 #1}{d #2 d #3}}
 
  \graphicspath{{../figures/}}
 
@@ -301,85 +301,64 @@ Time Dependent Discrete Adjoint Formulations for Structural Dynamics
     \pd{R_k}{x}^T \rho_k}.
     \end{equation}
 
-    The conditions $$\textcolor{red}{\pd{\cal{L}}{{q}_k}}, \textcolor{orange}{\pd{\cal{L}}{\dot{q}_k}},
-    \textcolor{blue}{\pd{\cal{L}}{\ddot{q}_k}} = 0$$ can be used to generate a coupled
-    system of equations to solve \underline{simultaneously} for the
-    adjoint variables at each time step. Since the equations $S_k$ and
-    $T_k$ are explicit, it becomes possible to solve
-    \underline{sequentially} for the adjoint variables at each step. This property
-    is beneficial in terms of reducing the size of the linear system.
+    The conditions $$\textcolor{red}{\pd{\cal{L}}{{q}_k}},
+    \textcolor{orange}{\pd{\cal{L}}{\dot{q}_k}},
+    \textcolor{blue}{\pd{\cal{L}}{\ddot{q}_k}} = 0$$ can be used to
+    generate a coupled system of equations to solve
+    \underline{simultaneously} for the adjoint variables at each time
+    step. Since the equations $S_k$ and $T_k$ are explicit, it becomes
+    possible to solve \underline{sequentially} for the adjoint
+    variables at each step. This property is beneficial in terms of
+    reducing the size of the linear system.
 
     \begin{block}{Matrix Structures}
-      \begin{equation}
-      \begin{bmatrix}
-        \textcolor{red}{ \pd{R_k}{\ddot{q}_k}}                                                & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}}     & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} \\ \\
-        \frac{\textcolor{orange}{\partial S_k }}{\textcolor{red}{\partial \ddot{q}_k}}        & \textcolor{orange}{\pd{S_k}{\dot{q}_k}}                                             & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} \\\\
-        \frac{\textcolor{blue}{\partial T_k }}{\textcolor{red}{\partial {q}_k}}               & \frac{\textcolor{blue}{\partial T_k }}{\textcolor{orange}{\partial {q}_k}}          & \textcolor{blue}{\pd{T_k}{{q}_k}}                                               & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} \\\\
-        \frac{\textcolor{red}{\partial R_{k+1} }}{\textcolor{red}{\partial \ddot{q}_{k+1}}}     & \frac{\textcolor{red}{\partial R_{k+1} }}{\textcolor{red}{\partial \ddot{q}_{k+1}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \textcolor{red}{ \pd{R_{k+1}}{\ddot{q}_{k+1}}}                                  & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} \\\\
-        \frac{\textcolor{orange}{\partial S_{k+1} }}{\textcolor{red}{\partial \dot{q}_{k+1}}}   & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}}     & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \textcolor{orange}{\pd{S_{k+1}}{\dot{q}_{k+1}}}                                 & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} \\\\
-        \frac{\textcolor{blue}{\partial T_{k+1} }}{\textcolor{red}{\partial {q}_{k+1}}}         & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}}     & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \textcolor{blue}{\pd{T_{k+1}}{{q}_{k+1}}}                                       & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} \\\\
-        \frac{\textcolor{red}{\partial R_{k+2} }}{\textcolor{red}{\partial \ddot{q}_{k+2}}}     & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}}     & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \textcolor{red}{ \pd{R_{k+2}}{\ddot{q}_{k+2}}}                                  & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} \\\\
-        \frac{\textcolor{orange}{\partial S_{k+2} }}{\textcolor{red}{\partial \dot{q}_{k+2}}}   & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}}     & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} \\\\
-        \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}}         & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}}     & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \textcolor{blue}{\pd{T_{k+2}}{{q}_{k+2}}}                                       \\\\
-      \end{bmatrix}
-      \end{equation}
+
+      \begin{minipage}{0.49\linewidth}
+        \begin{figure}
+          \centering
+          \includegraphics[width=\textwidth]{general-forward-matrix.pdf}
+          \label{Forward Mode}
+        \end{figure}
+      \end{minipage}
+      \begin{minipage}{0.49\linewidth}
+        \begin{figure}
+          \centering
+          \includegraphics[width=0.925\textwidth]{general-reverse-matrix.pdf}
+          \label{Reverse Mode}
+        \end{figure}
+      \end{minipage}
+
+      \begin{minipage}{0.49\linewidth}
+        \begin{figure}
+          \centering
+          \includegraphics[width=\textwidth]{nbg-forward-matrix.pdf}
+          \label{Forward Mode}
+        \end{figure}
+      \end{minipage}
+      \begin{minipage}{0.49\linewidth}
+        \begin{figure}
+          \centering
+          \includegraphics[width=0.925\textwidth]{nbg-reverse-matrix.pdf}
+          \label{Reverse Mode}
+        \end{figure}
+      \end{minipage}
     \end{block}
 
-    \begin{block}{Matrix Structures}
-      \begin{equation}
-        \begin{bmatrix}
-          \textcolor{red}{ \pd{R_k}{\ddot{q}_k}}                                                &                                                                                  & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} \\ \\
-          \frac{\textcolor{orange}{\partial S_k }}{\textcolor{red}{\partial \ddot{q}_k}}        & \textcolor{orange}{\pd{S_k}{\dot{q}_k}}                                           & \frac{\textcolor{orange}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} \\\\
-          \frac{\textcolor{blue}{\partial T_k }}{\textcolor{red}{\partial {q}_k}}               & \frac{\textcolor{blue}{\partial T_k }}{\textcolor{orange}{\partial {q}_k}}        & \textcolor{blue}{\pd{T_k}{{q}_k}}                                               & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} \\\\
-          \frac{\textcolor{red}{\partial R_{k+1} }}{\textcolor{red}{\partial \ddot{q}_{k+1}}}     & \frac{\textcolor{red}{\partial R_{k+1} }}{\textcolor{red}{\partial \ddot{q}_{k+1}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \textcolor{red}{ \pd{R_{k+1}}{\ddot{q}_{k+1}}}                                  & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} \\\\
-          \frac{\textcolor{orange}{\partial S_{k+1} }}{\textcolor{red}{\partial \dot{q}_{k+1}}}   & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}}     & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \textcolor{orange}{\pd{S_{k+1}}{\dot{q}_{k+1}}}                                 & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} \\\\
-          \frac{\textcolor{blue}{\partial T_{k+1} }}{\textcolor{red}{\partial {q}_{k+1}}}         & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}}     & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \textcolor{blue}{\pd{T_{k+1}}{{q}_{k+1}}}                                       & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} & \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial {q}_{k+2}}} \\\\
-          \frac{\textcolor{red}{\partial R_{k+2} }}{\textcolor{red}{\partial \ddot{q}_{k+2}}}     &
-          
-          \frac{\textcolor{red}{\partial R_{k+2} }}{\textcolor{orange}{\partial \dot{q}_{k+2}}}     &
-          \frac{\textcolor{red}{\partial R_{k+2} }}{\textcolor{blue}{\partial {q}_{k+2}}} &
-          \frac{\textcolor{red}{\partial R_{k+2} }}{\textcolor{red}{\partial \ddot{q}_{k+2}}} &
-          \frac{\textcolor{red}{\partial R_{k+2} }}{\textcolor{orange}{\partial \dot{q}_{k+2}}} &
-          \frac{\textcolor{red}{\partial R_{k+2} }}{\textcolor{blue}{\partial {q}_{k+2}}} &
-          \frac{\textcolor{red}{\partial R_{k+2} }}{\textcolor{blue}{\partial \ddot{q}_{k+2}}} & & \\\\
-
-          \frac{\textcolor{orange}{\partial S_{k+2} }}{\textcolor{red}{\partial \ddot{q}_{k  }}}   &
-          \frac{\textcolor{orange}{\partial S_{k+2} }}{\textcolor{orange}{\partial \dot{q}_{k  }}}     &
-          \frac{\textcolor{orange}{\partial S_{k+2} }}{\textcolor{blue}{\partial {q}_{k  }}} &
-          \frac{\textcolor{orange}{\partial S_{k+2} }}{\textcolor{red}{\partial \ddot{q}_{k+1}}} &
-          \frac{\textcolor{orange}{\partial S_{k+2} }}{\textcolor{orange}{\partial \dot{q}_{k+1}}} &
-          \frac{\textcolor{orange}{\partial S_{k+2} }}{\textcolor{blue}{\partial {q}_{k+1}}} &
-          \frac{\textcolor{orange}{\partial S_{k+2} }}{\textcolor{red}{\partial \ddot{q}_{k+2}}} &
-          \textcolor{orange}{\pd{S_{k+2}}{\dot{q}_{k+2}}}                                       \\\\
-          
-          \frac{\textcolor{blue}{\partial T_{k+2}}}{\textcolor{red}{\partial \ddot{q}_{k  }}}&
-          \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{orange}{\partial \dot{q}_{k  }}}     &
-          \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{blue}{\partial {q}_{k  }}} &
-          \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial \ddot{q}_{k+1}}} &
-          \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{blue}{\partial \dot{q}_{k+1}}} &
-          \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{orange}{\partial {q}_{k+1}}} &
-          \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{red}{\partial \ddot{q}_{k+2}}} &
-          \frac{\textcolor{blue}{\partial T_{k+2} }}{\textcolor{orange}{\partial \dot{q}_{k+2}}} &
-          \textcolor{blue}{\pd{T_{k+2}}{{q}_{k+2}}}                                       \\\\
-        \end{bmatrix}
-      \end{equation}
-    \end{block}
-        
-    The steps involved are detailed as follows.
-         Setting $\pd{\cal{L}}{{q}_k} = 0$ yields:
-         \begin{equation}
-           \begin{split}
-             \tau_k = \tau_{k+1} + \left\{h \pd{f_{k+1}}{{q}_{k+1}} \right\}^T + \left[ h \pd{R_{k+1}}{{q}_{k+1}} \right]^T \rho_{k+1}  
-           \end{split}
-         \end{equation}
+    The steps involved are detailed as follows.  Setting
+    $\pd{\cal{L}}{{q}_k} = 0$ yields:
+    \begin{equation}
+      \begin{split}
+        \tau_k = \tau_{k+1} + \left\{h \pd{f_{k+1}}{{q}_{k+1}} \right\}^T + \left[ h \pd{R_{k+1}}{{q}_{k+1}} \right]^T \rho_{k+1}  
+      \end{split}
+    \end{equation}
 
     Setting $\pd{\cal{L}}{\dot{q}_k} = 0$ yields:
-         \begin{equation}
-           \begin{split}
-             \sigma_k = \sigma_{k+1} + h \tau_{k+1}  + \left\{ h \pd{f_{k+1}}{\dot{q}_{k+1}} +  h^2 \pd{f_{k+1}}{{q}_{k+1}} \right\}^T + \left[ h \pd{R_{k+1}}{\dot{q}_{k+1}} +  h^2 \pd{R_{k+1}}{{q}_{k+1}} \right]^T \rho_{k+1} 
-           \end{split}
-         \end{equation}
-         
+    \begin{equation}
+      \begin{split}
+        \sigma_k = \sigma_{k+1} + h \tau_{k+1}  + \left\{ h \pd{f_{k+1}}{\dot{q}_{k+1}} +  h^2 \pd{f_{k+1}}{{q}_{k+1}} \right\}^T + \left[ h \pd{R_{k+1}}{\dot{q}_{k+1}} +  h^2 \pd{R_{k+1}}{{q}_{k+1}} \right]^T \rho_{k+1} 
+      \end{split}
+    \end{equation}
+    
     Figure~\ref{fig:nbg-illustration} shows the flow of information across
     states.
     \begin{figure}
@@ -389,18 +368,17 @@ Time Dependent Discrete Adjoint Formulations for Structural Dynamics
       \label{fig:nbg-illustration}
     \end{figure}
 
-         Setting $\pd{\cal{L}}{\ddot{q}_k} = 0$ yields:
-         \begin{equation}
-           \begin{split}
-             \left[ \pd{R_k}{\ddot{q}_k} + \gamma h \pd{R_k}{\dot{q}_k} + \beta h^2 \pd{R_k}{{q}_k} \right]^T \rho_k = &- \left\{ \pd{f_k}{\ddot{q}_k} + \gamma h \pd{f_k}{\dot{q}_k} + \beta h^2 \pd{f_k}{{q}_k} \right\}^T \\
-             & -  \frac{1}{h}\left\{  \gamma h  \sigma_k + \beta h^2   \tau_k \right\}^T\\
-             & -  \left\{ (1-\gamma) h \pd{f_{k+1}}{\dot{q}_{k+1}} + \frac{1-2\beta}{2} h^2 \pd{f_{k+1}}{{q}_{k+1}} \right\}^T \\
-                          & -  \left[ (1-\gamma) h \pd{R_{k+1}}{\dot{q}_{k+1}} + \frac{1-2\beta}{2} h^2 \pd{R_{k+1}}{{q}_{k+1}} \right]^T\rho_{k+1} \\
-             & -  \frac{1}{h} \left\{ (1-\gamma) h \sigma_{k+1} + \frac{1-2\beta}{2} h^2 \tau_{k+1} \right\}^T\\
-           \end{split}
-         \end{equation}
-
-}
+    Setting $\pd{\cal{L}}{\ddot{q}_k} = 0$ yields:
+    \begin{equation}
+      \begin{split}
+        \left[ \pd{R_k}{\ddot{q}_k} + \gamma h \pd{R_k}{\dot{q}_k} + \beta h^2 \pd{R_k}{{q}_k} \right]^T \rho_k = &- \left\{ \pd{f_k}{\ddot{q}_k} + \gamma h \pd{f_k}{\dot{q}_k} + \beta h^2 \pd{f_k}{{q}_k} \right\}^T \\
+        & -  \frac{1}{h}\left\{  \gamma h  \sigma_k + \beta h^2   \tau_k \right\}^T\\
+        & -  \left\{ (1-\gamma) h \pd{f_{k+1}}{\dot{q}_{k+1}} + \frac{1-2\beta}{2} h^2 \pd{f_{k+1}}{{q}_{k+1}} \right\}^T \\
+        & -  \left[ (1-\gamma) h \pd{R_{k+1}}{\dot{q}_{k+1}} + \frac{1-2\beta}{2} h^2 \pd{R_{k+1}}{{q}_{k+1}} \right]^T\rho_{k+1} \\
+        & -  \frac{1}{h} \left\{ (1-\gamma) h \sigma_{k+1} + \frac{1-2\beta}{2} h^2 \tau_{k+1} \right\}^T\\
+      \end{split}
+    \end{equation}
+  }
 \end{frame}
 \end{noheadline}
 \end{document}
