@@ -45,9 +45,9 @@ contains
     type(scalar), intent(in), dimension(:) :: x, u, udot, uddot
     real(dp), intent(in)                   :: time
 
-    ! f = 0.5d0*x(1)*uddot(1)**2 + 0.5d0*x(2)*udot(1)**2 + 0.5d0*x(3)*u(1)**2
+    f = 0.5d0*x(1)*uddot(1)**2 + 0.5d0*x(2)*udot(1)**2 + 0.5d0*x(3)*u(1)**2
     
-    f = 0.5d0*x(3)*u(1)**2
+    !f = 0.5d0*x(3)*u(1)**2
     
   end subroutine getFunctionValue
 
@@ -63,8 +63,8 @@ contains
     real(dp), intent(in)                      :: time
     type(scalar)                              :: scale
 
-!    res(1) = res(1) + scale*0.5d0*uddot(1)**2 ! wrt to m
-!    res(2) = res(2) + scale*0.5d0*udot(1)**2 ! wrt to c
+    res(1) = res(1) + scale*0.5d0*uddot(1)**2 ! wrt to m
+    res(2) = res(2) + scale*0.5d0*udot(1)**2 ! wrt to c
     res(3) = res(3) + scale*0.5d0*u(1)**2 ! wrt to k
     
   end subroutine addFuncDVSens
@@ -82,7 +82,7 @@ contains
     type(scalar), intent(in), dimension(:)    :: x, u, udot, uddot
     type(scalar), intent(in)                  :: alpha, beta, gamma
 
-    res(1) = res(1) + alpha*x(3)*u(1)
+    res(1) = res(1) + alpha*x(3)*u(1) + beta*x(2)*udot(1) + gamma*x(1)*uddot(1)
     
   end subroutine addFuncSVSens
 
