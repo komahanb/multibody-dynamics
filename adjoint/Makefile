@@ -1,12 +1,6 @@
 default:
-	pdflatex adjoint.tex
-	pdflatex adjoint.tex
-	evince adjoint.pdf
-
-adams:
-	pdflatex adams.tex
-	pdflatex adams.tex
-	evince adams.pdf
+	pdflatex discrete-adjoint.tex
+	pdflatex discrete-adjoint.tex
 
 clean:
 	rm *.aux *.out *.log

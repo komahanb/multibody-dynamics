@@ -1,456 +1,765 @@
-\documentclass{beamer}
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%                  Themes and such                         %%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\mode<presentation>
-{
-  %\usetheme{Copenhagen}  
-  %\usetheme{Warsaw}  
-  \usetheme{Malmoe}  
-  %  \setbeamertemplate{headline}{}
-  %make my huge toc fit on one slide (and not look horrible)
-  %\setbeamerfont{subsection in toc}{series=\bfseries}
-  %\setbeamerfont{subsection in toc}{size=\tiny,series=\bfseries}
-}
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%                       Packages                           %%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\usepackage{multimedia}
-\usepackage{multirow}
-\usepackage{subfigure}
+\documentclass[10pt,letter]{book}
+\usepackage[left=1in, right=1in, top=1in, bottom=1in]{geometry}
 \usepackage{amsmath}
-\usepackage{parskip}
-\setlength{\parskip}{\smallskipamount} 
-\usepackage{color}
-\usepackage{tikz}
-%\usepackage{tcolorbox}
+%\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{caption}
+\usepackage[belowskip=0pt, aboveskip=0pt]{subcaption}
+\usepackage{enumitem}
+\usepackage{float}
+\usepackage{url}
+\usepackage{fancyhdr}
 
-% Define commands
- \newcommand{\half}{\ensuremath{\frac{1}{2}}}
+% Draw a line on each page at the top
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[EL]{\nouppercase\leftmark}
+\fancyhead[OR]{\nouppercase\rightmark}
+\fancyhead[ER,OL]{\thepage}
 
- \newcommand{\bea}{\begin{eqnarray}}
- \newcommand{\eea}{\end{eqnarray}}
- \newcommand{\beq}{\begin{equation}}
- \newcommand{\eeq}{\end{equation}}
- \newcommand{\bed}{\begin{displaymath}}
- \newcommand{\eed}{\end{displaymath}}
+\newcommand{\pd}[2]{\dfrac{\partial #1}{\partial #2}}
+\newcommand{\pf}[2]{\dfrac{d #1}{d #2}}
+\newcommand{\pdt}[2]{\dfrac{\partial^2 #1}{\partial #2^2}}
+\newcommand{\pft}[2]{\dfrac{d^2 #1}{d #2^2}}
+\newcommand{\pdtno}[2]{\dfrac{\partial^2 #1}{\partial #2}}
+\newcommand{\pdd}[3]{\dfrac{\partial^2 #1}{\partial #2 \partial #3}}
+\newcommand{\pff}[3]{\dfrac{d^2 #1}{d #2 d #3}}
 
- \newcommand{\pd}[2]{\dfrac{\partial #1}{\partial #2}}
- \newcommand{\pf}[2]{\dfrac{d #1}{d #2}}
- \newcommand{\pdt}[2]{\dfrac{\partial^2 #1}{\partial #2^2}}
- \newcommand{\pft}[2]{\dfrac{d^2 #1}{d #2^2}}
- \newcommand{\pdtno}[2]{\dfrac{\partial^2 #1}{\partial #2}}
- \newcommand{\pdd}[3]{\dfrac{\partial^2 #1}{\partial #2 \partial #3}}
- \newcommand{\pff}[3]{\dfrac{d^2 #1}{d #2 d #3}}
+\renewcommand\floatpagefraction{0.99}
+\renewcommand\topfraction{0.99}
+\renewcommand\bottomfraction{0.99}
+\renewcommand\textfraction{0.0}
 
- \graphicspath{{../figures/}}
+\providecommand*\url[1]{\href{#1}{#1}}
 
-\makeatletter
-\newenvironment{noheadline}{
-    \setbeamertemplate{headline}{}
-    \addtobeamertemplate{frametitle}{\vspace*{-1.5\baselineskip}}{}
-}{}
-\makeatother
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%                     Title Info                           %%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-\title[\hspace{-0.2cm} Time Dependent Discrete Adjoint]
-{
-Time Dependent Discrete Adjoint Formulations for Structural Dynamics
-}
-
-\author[Komahan Boopathy]
-{
-  \Large {Komahan Boopathy}\\
-}
-
-\institute
-{
-  \large Structures and Multidisciplinary Optimization Laboratory \\
-  ~\\
-   Georgia Institute of Technology\\
- School of Aerospace Engineering\\
- Atlanta, GA
-}
-
-\date
-{
-\small \today
-}
+\title{\LARGE \textbf{Time Dependent Adjoint Sensitivities for Second-Order Systems}}
+\author{\textbf{Komahan Boopathy} \textit{and} \textbf{Graeme J. Kennedy}}
+\date{\today}
 
 \begin{document}
-\setbeamertemplate{background}{
-  \begin{tikzpicture}
-    \node[opacity=.1,inner sep=0pt]{
-     \includegraphics [height=\paperheight]{gt.png}};
-  \end{tikzpicture}
-}
-% Now we install the new template for the following frames:
-%\usebackgroundtemplate{%
-%  \includegraphics[width=\paperwidth,height=\paperheight]{}}
+\maketitle
+% \rule{\textwidth}{2pt}
 
-\begin{frame}
-  \titlepage
-\end{frame}
+% \noindent\makebox[\linewidth]{\rule{\paperwidth}{2pt}}
+%\tableofcontents
+% \clearpage
 
-\setbeamertemplate{background}{
-  \begin{tikzpicture}
-    \node[opacity=.03,inner sep=0pt]{
-     \includegraphics [height=\paperheight]{gt.png}};
-  \end{tikzpicture}
-}
-%\begin{frame}
-%  \frametitle{Outline}
-%  \tableofcontents
-%\end{frame}
-\begin{noheadline}
-\begin{frame}[allowframebreaks] \frametitle{Newmark--Beta--Gamma Method Adjoint}
-  \tiny{
+\part{Adjoint Sensitivities}
 
-\begin{minipage}{1.0\linewidth}
-\begin{block}{101. Notation:}
-    \begin{tabbing}
-      XXXXXX \= xxxx\kill
-      $t$     \> time \\
-      $k$     \> time index \\
-      $x$     \> design variables \\
-      $m$     \> number of design variables \\
-      $u,v,w$ \> state variables \\
-      $n$  \> number of state variables \\
-      $R, S, T$ \> constraint governing equations  \\
-      $\rho ,~ \sigma ,~\tau$ \> adjoint variables  \\
-      $F$     \> objective function \\
-      $\cal{L}$ \> Lagrangian \\
-    \end{tabbing}
-\end{block}
-\end{minipage}
-\begin{minipage}{1.0\linewidth}
-\begin{block}{1. Objective Function:}
-    A time-averaged objective function is considered (e.g. mean lift,
-    mean potential energy, mean thermal-stress). We can approximate
-    the integral as a discrete sum:
-    \begin{equation}\label{eqn:time-averaged-function}
-      F = \frac{1}{T}\int_{0}^T f_k(u,v,w,x,t)~dt=\sum_{k=0}^N h f_k(u_k,v_k,w_k,x)
-    \end{equation}
-    Other possibilities for the choice of objective function exist
-    too.
-\end{block}
-\end{minipage}
-\framebreak
+\chapter{Discrete Adjoint Formulations}
 
-\begin{block}{2. Optimization Problem:}
-  We would like to minimize the time-dependent objective function,
-  $F$, such that the governing constraint equations $(R, S, T)$ are
-  satisfied at all time steps.  Mathematically, a \underline{general}
-  optimization problem can be posed as follows:
-  \begin{equation}
-    \begin{aligned}
-      & \underset{x}{\text{minimize}}
-      & & F = F(u, v, w, x,t) \\
-      & \text{subject to} & &  R(u, x_r, t), S(v, x_s, t), T(w, x_t, t) = 0.\\
-      %        & & &  S(v) = 0,\\
-      %        & &  & T(w) = 0.\\
-      %& \text{bounds}
-      %& & \d^\text{L} \le \d \le \d^\text{U}.
-    \end{aligned}
-  \end{equation}
-  where $x = [x_r, x_s, x_t]$ is a vector of design variables.
-\end{block}
+\section{Backwards Difference Formulae}
 
-\begin{block}{3. Lagrangian:}
-  It would be nice and handy to pack all separate equations (objects)
-  into one equation (object) to operate with. We introduce
-  \textcolor{red}{$\rho_k$}, \textcolor{orange}{$\sigma_k$} and
-  \textcolor{blue}{$\tau_k$} as the adjoint variables associated with
-  each of these function objects at the each time step and the
-  Lagrangian function is written as:
-  \begin{equation}\label{eqn:nbg-lagrangian}
-    {\cal{L}} = \textcolor{brown}{\sum_{k=0}^N h f_k} + \textcolor{red}{ \sum_{k=0}^N h \rho_k^T R_k} 
-    +  \textcolor{orange}{ \sum_{k=0}^N\sigma_k^T S_k} +  \textcolor{blue}{ \sum_{k=0}^N\tau_k^T T_k}.
-  \end{equation}
-  The Lagrangian is nothing but a linear ``\texttt{\underline{F}AXPY}'' 
-  operator  (why not!) operating on vector objects -- just like \texttt{\underline{S}AXPY}, 
-  \texttt{\underline{D}AXPY}, \texttt{\underline{Z}AXPY} (being Fortranic).
-  Here $\rho,~\tau,~\sigma$ adjoint variables: they
-  manifest themselves as simple-scaling-scalars in linear-algebra and
-  as Lagrange multipliers in the context of optimization.
-\end{block}
+\section{Newmark--Beta--Gamma}
 
+The second--order governing differential equations are posed in the following
+descriptor form at the k-th time step:
+$$ R_k(\ddot{q}_k, \dot{q}_k, q_k, t_k , x) = 0.$$
+We use Newmark--Beta--Gamma (NBG) method to approximate the states:
+$$ S_k =  \dot{q}_{k-1}  + (1-\gamma) h \ddot{q}_{k-1} +  \gamma h \ddot{q}_{k}- \dot{q}_k=0$$ 
+$$ T_k = {q}_{k-1} + h \dot{q}_{k-1} +\frac{1-2\beta}{2}
+h^2\ddot{q}_{k-1}+ \beta h^2 \ddot{q}_k-{q}_k=0.$$ The acceleration
+states $\ddot{q}_k$ are the primary unknown at each time step. We
+introduce $\lambda_k$, $\psi_k$ and $\phi_k$ as adjoint variables
+associated with each of these equations. The Lagrangian function is
+written as:
+$${\cal{L}} = \sum_{k=0}^N h f_k(\underline{\ddot{q}_k},
+\dot{q}_k, q_k, x) + \sum_{k=0}^N h \lambda_k^T
+R_k(\underline{\ddot{q}_k}, \dot{q}_k, q_k, x) + \sum_{k=0}^N \psi_k^T
+S_k(\underline{\dot{q}_k}, \dot{q}_{k-1}, \ddot{q}_{k-1},
+\ddot{q}_{k}) + \sum_{k=0}^N \phi_k^T T_k(\underline{{q}_k},
+     {q}_{k-1}, \ddot{q}_{k-1}, \ddot{q}_{k}). $$     
+     The underlined variables denote the primary unknown in each equation. 
 
-\framebreak
+     The stationary points of the Lagrangian function with respect to the
+     state variables can be used to determine the adjoint
+     variables. Setting $\pd{\cal{L}}{{q}_k} = 0$ yields:
+     \begin{equation}
+       \begin{split}
+         \phi_k = \phi_{k+1} +  h \left\{\pd{f_{k+1}}{{q}_{k+1}} \right\}^T + h \left[ \pd{R_{k+1}}{{q}_{k+1}} \right]^T \lambda_{k+1}  
+       \end{split}
+     \end{equation}
+     Setting $\pd{\cal{L}}{\dot{q}_k} = 0$ yields:
+     \begin{equation}
+       \begin{split}
+         \psi_k = \psi_{k+1} + h \phi_{k+1} + h \left\{  \pd{f_{k+1}}{\dot{q}_{k+1}} +  h \pd{f_{k+1}}{{q}_{k+1}} \right\}^T 
+         + h \left[ \pd{R_{k+1}}{\dot{q}_{k+1}} +  h \pd{R_{k+1}}{{q}_{k+1}} \right]^T \lambda_{k+1}
+       \end{split}
+     \end{equation}
 
-\begin{block}{4. Adjoint Variables:}
-  This involves two main steps:
-  \begin{enumerate}
-  \item Forward mode for finding the state variables involving non-linear solves (2/3 of the
-    computational time)
-  \item Reverse mode for finding the adjoint variables involving
-    linear-solves (1/3 of the computational time). The
-    conditions $$\textcolor{red}{\pd{\cal{L}}{u_k}},
-    \textcolor{orange}{\pd{\cal{L}}{v_k}},
-    \textcolor{blue}{\pd{\cal{L}}{w_k}} = 0$$ can be used to generate
-    a typically coupled system of equations to solve for the adjoint
-    variables, $\textcolor{red}{\rho}$, $\textcolor{orange}{\sigma}$
-    and $\textcolor{blue}{\tau}$. We will get three vectors of
-    equations for the three vectors of adjoint variable
-    unknowns. Possibilities for decoupling the system exist -- case by
-    case basis. When decoupling is possible one or more of the
-    constraint equations fold into other equations and therefore the
-    corresponging adjoint variable need not be included in the
-    formulation of the Lagrangian, but is typically done for the sake
-    of generality.\vspace{0.25cm}
+     Setting $\pd{\cal{L}}{\ddot{q}_k} = 0$ yields:
+     \begin{equation}
+       \begin{split}
+         \left[ \pd{R_k}{\ddot{q}_k} + \gamma h \pd{R_k}{\dot{q}_k} + \beta h^2 \pd{R_k}{{q}_k} \right]^T \lambda_k = &- \left\{ \pd{f_k}{\ddot{q}_k} + \gamma h \pd{f_k}{\dot{q}_k} + \beta h^2 \pd{f_k}{{q}_k} \right\}^T \\
+         & -  \frac{1}{h}\left\{  \gamma h  \psi_k + \beta h^2   \phi_k \right\}^T\\
+         & -  \left\{ (1-\gamma) h \pd{f_{k+1}}{\dot{q}_{k+1}} + \frac{1-2\beta}{2} h^2 \pd{f_{k+1}}{{q}_{k+1}} \right\}^T \\
+         & -  \left[ (1-\gamma) h \pd{R_{k+1}}{\dot{q}_{k+1}} + \frac{1-2\beta}{2} h^2 \pd{R_{k+1}}{{q}_{k+1}} \right]^T\lambda_{k+1} \\
+         & -  \frac{1}{h} \left\{ (1-\gamma) h \psi_{k+1} + \frac{1-2\beta}{2} h^2 \phi_{k+1} \right\}^T\\
+       \end{split}
+     \end{equation}
 
-    \begin{minipage}{0.49\linewidth}
-      \begin{figure}
-        \centering
-        \includegraphics[width=\textwidth]{general-forward-matrix.pdf}
-        \label{Forward Mode}
-      \end{figure}
-    \end{minipage}
-    \begin{minipage}{0.49\linewidth}
-      \begin{figure}
-        \centering
-        \includegraphics[width=0.925\textwidth]{general-reverse-matrix.pdf}
-        \label{Reverse Mode}
-      \end{figure}
-    \end{minipage}
+     We can equivalently scale the equation with $1/h^2$ and represent as follows:
 
-  \end{enumerate}
+     \begin{equation}
+       \begin{split}
+         \left[ \frac{1}{h^2} \pd{R_k}{\ddot{q}_k} + \gamma \frac{1}{h} \pd{R_k}{\dot{q}_k} + \beta \pd{R_k}{{q}_k} \right]^T \lambda_k = &- \left\{ \frac{1}{h^2}  \pd{f_k}{\ddot{q}_k} + \gamma \frac{1}{h} \pd{f_k}{\dot{q}_k} + \beta \pd{f_k}{{q}_k} \right\}^T \\
+         & -  \frac{1}{h}\left\{  \gamma \frac{1}{h}  \psi_k + \beta   \phi_k \right\}^T\\
+         & -  \left\{ (1-\gamma) \frac{1}{h} \pd{f_{k+1}}{\dot{q}_{k+1}} + \frac{1-2\beta}{2} \pd{f_{k+1}}{{q}_{k+1}} \right\}^T \\
+         & -  \left[ (1-\gamma) \frac{1}{h} \pd{R_{k+1}}{\dot{q}_{k+1}} + \frac{1-2\beta}{2} \pd{R_{k+1}}{{q}_{k+1}} \right]^T\lambda_{k+1} \\
+         & -  \frac{1}{h} \left\{ (1-\gamma) \frac{1}{h} \psi_{k+1} + \frac{1-2\beta}{2} \phi_{k+1} \right\}^T\\
+       \end{split}
+     \end{equation}
 
-\end{block}
-\framebreak
+     
+     Grouping the terms together we get:
 
-  \begin{block}{5. Total Derivative:}
-    The total derivative can be
-    written as a \underline{linear combination} of contributions from the function
-    of interest and the constraints:
-    \begin{equation}\label{eqn:nbg-total-derivative}
-      \pd{\cal{L}}{x} = \pd{F}{x} = 
-      \textcolor{brown}{\sum_{k=0}^N h \pd{f_k}{x}^T} + 
-      \textcolor{red}{\sum_{k=0}^N h \pd{R_k}{x}^T \rho_k} + 
-      \textcolor{orange}{\sum_{k=0}^N \pd{S_k}{x}^T \sigma_k} + 
-      \textcolor{blue}{\sum_{k=0}^N \pd{T_k}{x}^T \tau_k}.
-    \end{equation}
-  \end{block}
-  %The projections of every other vector is used to 
-  The objective function value $F$ and the gradient $\pd{F}{x}$ goes
-  to the optimization code.
+     \begin{equation}
+       \begin{split}
+         \left[ \frac{1}{h^2} \pd{R_k}{\ddot{q}_k} + \gamma \frac{1}{h} \pd{R_k}{\dot{q}_k} + \beta \pd{R_k}{{q}_k} \right]^T \lambda_k = &- \left\{ \frac{1}{h^2}  \pd{f_k}{\ddot{q}_k} + \gamma \frac{1}{h} \pd{f_k}{\dot{q}_k} + \beta \pd{f_k}{{q}_k} \right\}^T \\
+         & -  \left\{  \gamma \frac{1}{h}  \pd{f_{k+1}}{\dot{q}_{k+1}} +  \gamma \pd{f_{k+1}}{{q}_{k+1}} \right\}^T \\ 
+         & -  \left[  \gamma \frac{1}{h}  \pd{R_{k+1}}{\dot{q}_{k+1}} + \gamma \pd{R_{k+1}}{{q}_{k+1}} \right]^T \lambda_{k+1}  \\
+         & -  \left\{ \beta \pd{f_{k+1}}{{q}_{k+1}} \right\}^T \\ 
+         & - \left[  \beta\pd{R_{k+1}}{{q}_{k+1}} \right]^T \lambda_{k+1}  \\
+         & -  \left\{ (1-\gamma) \frac{1}{h} \pd{f_{k+1}}{\dot{q}_{k+1}} + (\frac{1}{2}-\beta) \pd{f_{k+1}}{{q}_{k+1}} \right\}^T \\
+         & -  \left[ (1-\gamma) \frac{1}{h} \pd{R_{k+1}}{\dot{q}_{k+1}} + (\frac{1}{2}-\beta) \pd{R_{k+1}}{{q}_{k+1}} \right]^T\lambda_{k+1} \\
+         & -  \frac{1}{h} \left\{ \frac{1}{h} \psi_{k+1} + (\frac{1}{2} +\gamma) \phi_{k+1} \right\}^T\\
+       \end{split}
+     \end{equation}
+     
+     \begin{equation}
+       \begin{split}
+         \left[ \frac{1}{h^2} \pd{R_k}{\ddot{q}_k} + \gamma \frac{1}{h} \pd{R_k}{\dot{q}_k} + \beta \pd{R_k}{{q}_k} \right]^T \lambda_k = &- \left\{ \frac{1}{h^2}  \pd{f_k}{\ddot{q}_k} + \gamma \frac{1}{h} \pd{f_k}{\dot{q}_k} + \beta \pd{f_k}{{q}_k} \right\}^T \\
+         & -  \left\{  \frac{1}{h} \pd{f_{k+1}}{\dot{q}_{k+1}} +  (\frac{1}{2} +\gamma) \pd{f_{k+1}}{{q}_{k+1}} \right\}^T \\
+         & -  \left[  \frac{1}{h} \pd{R_{k+1}}{\dot{q}_{k+1}} +  (\frac{1}{2} +\gamma)  \pd{R_{k+1}}{{q}_{k+1}} \right]^T\lambda_{k+1} \\
+         & -  \frac{1}{h} \left\{ \frac{1}{h} \psi_{k+1} + (\frac{1}{2} +\gamma) \phi_{k+1} \right\}^T\\
+       \end{split}
+     \end{equation}
 
-  \framebreak
+     The total derivative can be computed as follows:
+     $$\pd{\cal{L}}{x} = \pd{F}{x} = \sum_{k=0}^N h \pd{f_k}{x}^T + \sum_{k=0}^N h
+     \pd{R_k}{x}^T \lambda_k.$$
 
-  \begin{block}{Context of Structural Dynamics and Time Marching}
-    \begin{minipage}{0.45\linewidth}
-      \begin{tabbing}
-        XXXXXX \= xxxx\kill
-        $t$     \> time \\
-        $k$     \> time index \\
-        $x$     \> design variables \\
-        $m$     \> number of design variables \\
-        \colorbox{blue!20}{$u,v,w$} \> \colorbox{blue!20}{state variables} \\
-        $n$  \> number of state variables \\
-         \colorbox{green!20}{$R, S, T$} \> constraint governing equations  \\
-        $\rho ,~ \sigma ,~\tau$ \> adjoint variables  \\
-        $F$     \> objective function \\
-        $\cal{L}$ \> Lagrangian \\
-      \end{tabbing}
-    \end{minipage}\hfill
-    \begin{minipage}{0.45\linewidth}
-      \begin{tabbing}
-        XXXXXX \= xxxx\kill
-        $t$     \> time \\
-        $k$     \> time index \\
-        $x$     \> design variables \\
-        $m$     \> number of design variables \\
-        \colorbox{blue!20}{$q,\dot{q},\ddot{q}$} \> \colorbox{blue!20}{position, velocity and acceleration states} \\
-        $n$  \> number of state variables \\
-        \colorbox{green!20}{$R, S, T$} \> constraint governing equations  \\
-        $\rho ,~ \sigma ,~\tau$ \> adjoint variables  \\
-        $F$     \> objective function \\
-        $\cal{L}$ \> Lagrangian \\
-      \end{tabbing}
-    \end{minipage}
-  \end{block}
+     \section{Adams--Bashforth--Moulton}
 
-    The residual of the governing equations from structural dynamics
-    can be posed as: 
-    \begin{equation}\label{eqn:nbg-residual}
-      \textcolor{red}{R_k = R_k(\underline{\ddot{q}_k}, \dot{q}_k, q_k, x) = 0}.
-    \end{equation}
-    \textbf{Example:} $R = m\ddot{q} + c\dot{q} + k{q} = 0$, x = $[m,
-      c, k]$ can be the design variables of choice, the objective be
-    minimizing the time-averaged potential energy $F = \frac{1}{T}
-    \int_{0}^T f_k~dt$, where $f_k = \frac{1}{2} kq^2$ is the
-    instantaneous PE.
+     The second--order governing differential equations are posed in the following
+     descriptor form at the k-th time step:
+     $$ R_k(\underline{\ddot{q}_k}, \dot{q}_k, q_k, t_k , x) = 0.$$
 
-    \begin{minipage}{0.6\linewidth}
-      We use \textbf{Newmark--Beta--Gamma (NBG)} time-marching method to
-      integrate and solve for the states over time.  The states
-      approximation equations are:
-      \begin{equation}\label{eqn:nbg-approx-qdot}
-        \textcolor{orange}{S_k =  \dot{q}_{k-1}  + (1-\gamma) h \ddot{q}_{k-1} +  \gamma h \ddot{q}_{k}- \dot{q}_k=0, }
-      \end{equation}
-      \begin{equation}\label{eqn:nbg-approx-q}
-        \textcolor{blue}{T_k = {q}_{k-1} + h \dot{q}_{k-1} +\frac{1-2\beta}{2}
-          h^2\ddot{q}_{k-1} + \beta h^2 \ddot{q}_k-{q}_k=0}. 
-      \end{equation}
-      The underlined varibles are the primary variables in each equation.
-    \end{minipage}
-    \begin{minipage}{0.39\linewidth}
-      \begin{figure}
-        \centering
-        \includegraphics[width=\textwidth]{nbg-node.pdf}
-        %\caption{Illustrations showing the working of NBG method.}
-        \label{fig:nbg-illustration}
-      \end{figure}
-    \end{minipage}
-    
-    Eq~\eqref{eqn:nbg-residual} comes from the governing physics of
-    the system. Eqs.~\eqref{eqn:nbg-approx-qdot} and
-    ~\eqref{eqn:nbg-approx-q} come from the time-marching
-    scheme. Therefore, the equations $S_k$ and $T_k$ are independent
-    of the design variables $x$ -- they do not contribute to the total
-    derivative:
-    \begin{equation}\label{eqn:nbg-total-derivative}
-      \pd{\cal{L}}{x} = \pd{F}{x} = \textcolor{brown}{\sum_{k=0}^N h \pd{f_k}{x}^T} +\textcolor{red}{ \sum_{k=0}^N h
-    \pd{R_k}{x}^T \rho_k}.
-    \end{equation}
+     We use Adams--Bashforth--Moulton (ABM) method to approximate the states:
+     $$ S_k =   \dot{q}_{k-1}  + h \sum_{i=0}^{m-1} a_i \ddot{q}_{k-i} - \underline{\dot{q}_k}  = 0 $$ 
+     $$ T_k =   {q}_{k-1}  + h \sum_{i=0}^{m-1} a_i \dot{q}_{k-i} - \underline{{q}_k} = 0.$$
 
-    \begin{minipage}{1.0\linewidth}
-      \begin{figure}
-        \centering
-        \includegraphics[width=0.925\textwidth]{nbg-reverse-matrix.pdf}
-        \label{Reverse Mode}
-      \end{figure}
-    \end{minipage}
+     The acceleration states $\ddot{q}_k$ are the primary unknown at each time step. We introduce $\lambda_k$, $\psi_k$ and $\phi_k$ as adjoint variables
+     associated with each of these equations. The Lagrangian function is written
+     as:
 
-    \begin{itemize}
+     $${\cal{L}} = \sum_{k=0}^N h f_k + \sum_{k=0}^N h \lambda_k^T
+     R_k + \sum_{k=0}^N \psi_k^T S_k + \sum_{k=0}^N \phi_k^T T_k. $$
 
-    \item Since the equations $S_k$ and $T_k$ are explicit, it becomes
-      possible to solve \underline{sequentially} for the adjoint
-      variables at each step. This property is beneficial in terms of
-      reducing the size of the linear system. The matrix is upper
-      triangular and we can solve for the adjoint variables sequentially
-      via back-substitution -- we march backwards in time. The above
-      treatment is based on the application of chain rule of
-      differentiation. 
+     The underlined variables denote the primary unknown in each
+     equation.
+     
+     % Differentiate wrt to q
 
-    \item Differentiate the terms that carry information within the
-      current-step from the ones that carry them across time-steps.
+     $\star$ Setting $\pd{\cal{L}}{{q}_k} = 0$ yields:
+     $$ \phi_{k}^T \pd{T_k}{q_k} + \phi_{k+1}^T \pd{T_{k+1}}{q_k} + h \lambda_{k+1}^T \pd{R_{k+1}}{q_{k}}
+     + h \pd{f_{k+1}}{q_{k}}
+     = 0 $$ which simplifies to
 
-    \item It is easy to show that equivalent results are obtained by using
-      the conditions:
-      $$\textcolor{red}{\pd{\cal{L}}{u_k}},
-      \textcolor{orange}{\pd{\cal{L}}{v_k}},
-      \textcolor{blue}{\pd{\cal{L}}{w_k}} = 0.$$      
-    \end{itemize}
+     \begin{center}
+       \boxed{
+         $$
+         \phi_k = \phi_{k+1} + h \left[  \pd{R_{k+1}}{q_{k+1}} \right]^T \lambda_{k+1} + h \left\{ \pd{f_{k+1}}{q_{k+1}} \right\}^T
+         $$
+       }
+     \end{center}
 
-    \begin{itemize}
-    \item
-      Setting $\pd{\cal{L}}{{q}_k} = 0$ yields:
-      \begin{equation}
-        \begin{split}
-          \tau_k = \tau_{k+1} + \left\{h \pd{f_{k+1}}{{q}_{k+1}} \right\}^T + \left[ h \pd{R_{k+1}}{{q}_{k+1}} \right]^T \rho_{k+1}  
-        \end{split}
-      \end{equation}
+     % Differentiate wrt to qdot
 
-    \item Setting $\pd{\cal{L}}{\dot{q}_k} = 0$ yields:
-      \begin{equation}
-        \begin{split}
-          \sigma_k = \sigma_{k+1} + h \tau_{k+1}  + \left\{ h \pd{f_{k+1}}{\dot{q}_{k+1}} +  h^2 \pd{f_{k+1}}{{q}_{k+1}} \right\}^T + \left[ h \pd{R_{k+1}}{\dot{q}_{k+1}} +  h^2 \pd{R_{k+1}}{{q}_{k+1}} \right]^T \rho_{k+1} 
-        \end{split}
-      \end{equation}
-      
-    \item    Setting $\pd{\cal{L}}{\ddot{q}_k} = 0$ yields:
-      \begin{equation}
-        \begin{split}
-          \left[ \pd{R_k}{\ddot{q}_k} + \gamma h \pd{R_k}{\dot{q}_k} + \beta h^2 \pd{R_k}{{q}_k} \right]^T \rho_k = &- \left\{ \pd{f_k}{\ddot{q}_k} + \gamma h \pd{f_k}{\dot{q}_k} + \beta h^2 \pd{f_k}{{q}_k} \right\}^T \\
-          & -  \frac{1}{h}\left\{  \gamma h  \sigma_k + \beta h^2   \tau_k \right\}^T\\
-          & -  \left\{ (1-\gamma) h \pd{f_{k+1}}{\dot{q}_{k+1}} + \frac{1-2\beta}{2} h^2 \pd{f_{k+1}}{{q}_{k+1}} \right\}^T \\
-          & -  \left[ (1-\gamma) h \pd{R_{k+1}}{\dot{q}_{k+1}} + \frac{1-2\beta}{2} h^2 \pd{R_{k+1}}{{q}_{k+1}} \right]^T\rho_{k+1} \\
-          & -  \frac{1}{h} \left\{ (1-\gamma) h \sigma_{k+1} + \frac{1-2\beta}{2} h^2 \tau_{k+1} \right\}^T\\
-        \end{split}
-      \end{equation}
-    \end{itemize}
+     $\star$ Setting $\pd{\cal{L}}{\dot{q}_k} = 0$ yields:
 
-    Figure~\ref{fig:nbg-illustration} shows the flow of information across
-    states.
-    \begin{figure}
-      \centering
-      \includegraphics[width=\textwidth]{nbg-chart.pdf}
-      %\caption{Illustrations showing the working of NBG method.}
-      \label{fig:nbg-illustration}
-    \end{figure}
+     $$
+     \psi_k^T \pd{S_k}{\dot{q}_k} + \psi_{k+1}^T \pd{S_{k+1}}{\dot{q}_k} +
+     \sum_{i=0}^{m-1} \phi_{k+i}^T \pd{T_{k+i}}{\dot{q}_k}  + h \sum_{i=1}^{m-1} \lambda_{k+i}^T \pd{R_{k+i}}{\dot{q}_k} 
+     + h \sum_{i=1}^{m-1} \pd{f_{k+i}}{\dot{q}_k} = 0
+     $$
+
+     which simplifies to
+
+     \begin{equation}
+       \begin{split}
+         \psi_k = \psi_{k+1} + h \sum_{i=0}^{m-1} a_i \phi_{k+i} & + h \sum_{i=1}^{m-1}
+         \left[ \pd{R_{k+i}}{\dot{q}_{k+i}} + \sum_{j=0}^{i} ha_j \pd{R_{k+i}}{{q}_{k+i}}  \right]^T \lambda_{k+1}\\
+         & + h \sum_{i=1}^{m-1}
+         \left\{ \pd{f_{k+i}}{\dot{q}_{k+i}} + \sum_{j=0}^{i} ha_j \pd{f_{k+i}}{{q}_{k+i}}  \right\}^T
+       \end{split}
+     \end{equation}
+
+     % Differentiate wrt to qddot
+
+     $\star$ Setting $\pd{\cal{L}}{\ddot{q}_k} = 0$ yields:
+
+     $$ h \lambda_k^T \pd{R_k}{\ddot{q}_k} + h \pd{f_k}{\ddot{q}_k} +
+     \sum_{i=1}^{m-1} h \lambda_{K+i} \pd{R_{k+i}}{\ddot{q}_k} + \sum_{i=1}^{m-1} h
+     \pd{f_{k+1}}{\ddot{q}_k} + \sum_{i=0}^{m-1} \psi_{k+i}^T
+     \pd{S_{k+i}}{\ddot{q}_k} =0
+     $$
+
+     which simplifies to
+
+     \begin{equation}
+       \begin{split}
+         h \left[ \pd{R_k}{\ddot{q}_k} + h a_0 \pd{R_k}{\dot{q}_k} +  h^2 a_0^2  \pd{R_k}{{q}_k} \right]^T \lambda_k = & -  h \left\{ \pd{R_k}{\ddot{q}_k} + h a_0 \pd{R_k}{\dot{q}_k} +  h^2 a_0^2  \pd{R_k}{{q}_k} \right\}^T\\
+         & - h \sum_{i=0}^{m-1} a_i \psi_{k+i} \\
+         & - h \sum_{i=1}^{m-1} h \left[ \pd{R_{k+i}}{\dot{q}_{k+i}}\pd{\dot{q}_{k+i}}{\ddot{q}_k} + \pd{R_{k+i}}{q_{k+i}}\pd{q_{k+i}}{\ddot{q}_k} \right]^T \lambda_{k+i}\\
+         & - h \sum_{i=1}^{m-1} h \left\{ \pd{f_{k+i}}{\dot{q}_{k+i}}\pd{\dot{q}_{k+i}}{\ddot{q}_k} + \pd{f_{k+i}}{q_{k+i}}\pd{q_{k+i}}{\ddot{q}_k} \right\}^T
+       \end{split}
+     \end{equation}
+
+     \begin{equation}
+       \begin{split}
+         h \left[ \pd{R_k}{\ddot{q}_k} + h a_0 \pd{R_k}{\dot{q}_k} +  h^2 a_0^2  \pd{R_k}{{q}_k} \right]^T \lambda_k = & -  h \left\{ \pd{R_k}{\ddot{q}_k} + h a_0 \pd{R_k}{\dot{q}_k} +  h^2 a_0^2  \pd{R_k}{{q}_k} \right\}^T\\
+         & - h \sum_{i=0}^{m-1} a_i \psi_{k+i} \\
+         & - h \sum_{i=1}^{m-1} h \left[ ha_i \pd{R_{k+i}}{\dot{q}_{k+i}} + \pd{R_{k+i}}{q_{k+i}} \left( \pd{q_{k+i}}{q_{k+i-1}}  \pd{q_{k+i-1}} {\ddot{q}_k} +  \pd{q_{k+i}}{\dot{q}_{k}} \pd{\dot{q}_{k}} {\ddot{q}_k} \right) \right]^T \lambda_{k+i}\\
+         & - h \sum_{i=1}^{m-1} h \left\{ \pd{f_{k+i}}{\dot{q}_{k+i}}\pd{\dot{q}_{k+i}}{\ddot{q}_k} + \pd{f_{k+i}}{q_{k+i}}\pd{q_{k+i}}{\ddot{q}_k} \right\}^T
+       \end{split}
+     \end{equation}
+
+     We demonstrate the adjoint development for three steps of time
+     integation.
+
+     \section{Diagonally--Implicit--Runge--Kutta}
+     The DIRK state approximations are given as follows:
+     $${q_{ki}} = q_{k-1} + h \sum_{j=1}^s a_{ij} \dot{q}_{kj}$$
+     $${\dot{q}_{ki}} = \dot{q}_{k-1} + h \sum_{j=1}^s a_{ij} \ddot{q}_{kj}$$
+
+     We represent the above equations in the following form.
+     $$ S = S_k(q_{k-1} + h \sum_{i=1}^s b_k \dot{q}_{ki} - q_{k})  = 0$$
+     $$ T = T_k(\dot{q}_{k-1} + h \sum_{i=1}^s b_k \ddot{q}_{ki} - \dot{q}_{k}) = 0$$
+     
+
+     $$\mathbf{q_1} \xrightarrow[\dot{q}_{21},\dot{q}_{22}\ldots\dot{q}_{2s}]{q_{21},q_{22}\ldots q_{2s}} \mathbf{q_2} \xrightarrow[\dot{q}_{31},\dot{q}_{32}\ldots\dot{q}_{3s}]{q_{31},q_{32}\ldots q_{3s}} \mathbf{q_3} \xrightarrow[\dot{q}_{N,1},\dot{q}_{N,2}\ldots\dot{q}_{N,s}]{q_{N,1},q_{N,2}\ldots q_{N,s}} \mathbf{q_N}$$
+
+     $$\mathbf{\dot{q}_1} \xrightarrow[\ddot{q}_{21},\ddot{q}_{22}\ldots\ddot{q}_{2s}]{\dot{q}_{21},\dot{q}_{22}\ldots \dot{q}_{2s}} \mathbf{\dot{q}_2} \xrightarrow[\ddot{q}_{31},\ddot{q}_{32}\ldots\ddot{q}_{3s}]{\dot{q}_{31},\dot{q}_{32}\ldots \dot{q}_{3s}} \mathbf{\dot{q}_3} \xrightarrow[\ddot{q}_{N,1},\ddot{q}_{N,2}\ldots\ddot{q}_{N,s}]{\dot{q}_{N,1},\dot{q}_{N,2}\ldots \dot{q}_{N,s}} \mathbf{\dot{q}_N}$$
+
+     The residual of the governing equations and the objective
+     function of interest are written as follows.
+
+     $$R_{ki} = R_{ki}(\ddot{q_{ki}},\dot{q_{ki}},q_{ki},t_{ki}, x)=0$$
+     and 
+     $$F_{ki} =  h b_i f_{ki}(\ddot{q_{ki}},\dot{q_{ki}},q_{ki},t_{ki}, x)$$
+
+     We form an Lagrangian function:
+     $$ {\cal{L}} = \sum_{k=2}^{N} \sum_{i=1}^s h b_i f_{ki} +
+     \sum_{k=2}^{N} \sum_{i=1}^s\lambda_{ki}^T h b_i R_{ki} +
+     \sum_{k=1}^N \phi_k^T T_k + \sum_{k=1}^N \psi_k^T S_k. $$
+
+     We find the stationary points of the Lagrangian in an attempt to
+     generate the system of equations to solve for the adjoint variables.
+
+     \subsection{One--Staged DIRK}
+     The one-staged DIRK is a second-order scheme. We write out a few
+     time steps of integration and study the recursive relations.
+
+     \subsection{Two--Staged DIRK}
+     The two-staged DIRK is a third-order scheme. We write out a few
+     time steps of integration and study the recursive relations.
 
 
-  }
+     \paragraph{Time Step $k=2$:}
+     The state variables have the following relations at this time-step.
+     \begin{equation}\nonumber
+       \begin{split}
+         q_{21} &= q_1 + h a_{11} \dot{q}_{21} \\
+         q_{22} &= q_1 + h a_{21} \dot{q}_{21} + h a_{22} \dot{q}_{22} \\
+         \dot{q}_{21} &= \dot{q}_1 + h a_{11} \ddot{q}_{21} \\
+         \dot{q}_{22} &= \dot{q}_1 + h a_{21} \ddot{q}_{21} + h a_{22} \ddot{q}_{22} \\
+       \end{split}
+     \end{equation}
 
-\end{frame}
-\end{noheadline}
+     \begin{table}[H]
+       \centering
+       \begin{tabular}{l | l  |l}
+         $\lambda_{21}^T$ & $hb_1$ & $\mathbf{R_{21}}\left(\underline{\mathbf{\ddot{q}_{21}}},\mathbf{\dot{q}_{21}}(\dot{q_1},\ddot{q_{21}}),\mathbf{{q}_{21}}({q_1},\dot{q_{21}}(\dot{q_1},\ddot{q_{21}}))\right) $ \\
+         $\lambda_{22}^T$ & $hb_2$ & $\mathbf{R_{22}}\left(\underline{\mathbf{\ddot{q}_{22}}},\mathbf{\dot{q}_{22}}(\dot{q_1},\ddot{q_{21}},\ddot{q_{22}}),\mathbf{{q}_{22}}({q_1},\dot{q_{21}}(\dot{q_1},\ddot{q_{21}}),\dot{q_{22}}(\dot{q_1},\ddot{q_{21}},\ddot{q_{22}}))\right) $ \\
+         & $h b_1$ & $\mathbf{f_{21}}\left(\underline{\mathbf{\ddot{q}_{21}}},\mathbf{\dot{q}_{21}}(\dot{q_1},\ddot{q_{21}}),\mathbf{{q}_{21}}({q_1},\dot{q_{21}}(q_1,\ddot{q_{21}}))\right) $ \\
+         & $h b_2$ & $\mathbf{f_{22}}\left(\underline{\mathbf{\ddot{q}_{22}}},\mathbf{\dot{q}_{22}}(\dot{q_1},\ddot{q_{21}},\ddot{q_{22}}),\mathbf{{q}_{22}}({q_1},\dot{q_{21}}(\dot{q_1},\ddot{q_{21}}),\dot{q_{22}}(\dot{q_1},\ddot{q_{21}},\ddot{q_{22}}))\right) $\\
+         $\psi_2^T$ & & $\mathbf{S_2}\left(q_1 + h b_1 \dot{q}_{21}(\dot{q_1},\ddot{q_{21}}) +  h b_2 \dot{q}_{22} (\dot{q_1},\ddot{q_{21}},\ddot{q_{22}}) - \underline{\mathbf{q_2}} \right) $ \\
+         $\phi_2^T$ & & $\mathbf{T_2}\left(\dot{q}_1 + h b_1 \ddot{q}_{21} +  h b_2 \ddot{q}_{22} - \underline{\mathbf{\dot{q}_2}} \right)$ \\
+       \end{tabular}
+     \end{table}
+
+     \paragraph{Time Step $k=3$:}
+     The state variables have the following relations at this time-step.
+     \begin{equation}\nonumber
+       \begin{split}
+         q_{31} &= q_2 + h a_{11} \dot{q}_{31} \\
+         q_{32} &= q_2 + h a_{21} \dot{q}_{31} + h a_{22} \dot{q}_{32} \\
+         \dot{q}_{31} &= \dot{q}_2 + h a_{11} \ddot{q}_{31} \\
+         \dot{q}_{32} &= \dot{q}_2 + h a_{21} \ddot{q}_{31} + h a_{22} \ddot{q}_{32} \\
+       \end{split}
+     \end{equation}
+
+     The equations from this step are:
+     \begin{table}[H]
+       \centering
+       \begin{tabular}{l | l | l}
+         $\lambda_{31}^T$ & $h b_1$ & $\mathbf{R_{31}}\left(\underline{\mathbf{\ddot{q}_{31}}},
+         \mathbf{\dot{q}_{31}}(\dot{q_2},\ddot{q_{31}}),
+         \mathbf{{q}_{31}}(q_2,\dot{q_{31}}(\dot{q_2},\ddot{q_{31}}))\right) $ \\
+         $\lambda_{32}^T$ & $h b_2$ &  $\mathbf{R_{32}}\left(\underline{\mathbf{\ddot{q}_{32}}},\mathbf{\dot{q}_{32}}(\dot{q_2},\ddot{q_{31}},\ddot{q_{32}}), \mathbf{{q}_{32}}(q_2,\dot{q_{31}}(\dot{q_2},\ddot{q_{31}}),\dot{q_{32}}(\dot{q_2},\ddot{q_{31}},\ddot{q_{32}}))\right) $ \\
+         & $h b_1$ & $\mathbf{f_{31}}\left(\underline{\mathbf{\ddot{q}_{31}}}, \mathbf{\dot{q}_{31}}(\dot{q_2},\ddot{q_{31}}), \mathbf{{q}_{31}}(q_2,\dot{q_{31}}(\dot{q_2},\ddot{q_{31}}))\right) $ \\
+         & $h b_2$ & $\mathbf{f_{32}}\left(\underline{\mathbf{\ddot{q}_{32}}},
+         \mathbf{\dot{q}_{32}}(\dot{q_2},\ddot{q_{31}},\ddot{q_{32}}),
+         \mathbf{{q}_{32}}(q_2,\dot{q_{31}}(\dot{q_2},\ddot{q_{31}}),\dot{q_{32}}(\dot{q_2},\ddot{q_{31}},\ddot{q_{32}}))\right) $ \\
+         $\psi_3^T$ && $\mathbf{S_3}(q_2 + h b_1 \dot{q}_{31}(\dot{q}_2,\ddot{q_{31}}) +  h b_2 \dot{q}_{32}(\dot{q}_2,\ddot{q_{31}},\ddot{q_{32}}) - \underline{\mathbf{q_3}} ) $\\
+         $\phi_3^T$ && $\mathbf{T_3}(\dot{q}_2 + h b_1 \ddot{q}_{31} +  h b_2 \ddot{q}_{32} - \underline{\mathbf{\dot{q}_3}} )$ \\
+       \end{tabular}
+     \end{table}
+
+     We operate on these equations and generate the adjoint system of equations.
+
+     \begin{table}[H]
+       \centering
+       \begin{tabular}{c|l}
+         $\pd{{\mathcal L}}{\dot{q}_{3}}  = 0$  & $ \pd{{T_3}}{\dot{q}_{3}}^T \phi_3 = 0$  \\
+         &\\
+         $\pd{{\mathcal L}}{{q}_{3}}  = 0$      & $\pd{S_3}{q_3}^T \psi_3 = 0$ \\
+         &\\
+         $\pd{{\mathcal L}}{\ddot{q}_{32}} = 0$ & $hb_2\pd{R_{32}}{\ddot{q}_{32}}^T\lambda_{32}+ \pd{S_3}{\ddot{q}_{32}}^T \psi_3 + \pd{T_3}{\ddot{q}_{32}}^T \phi_3 + hb_2\pd{f_{32}}{\ddot{q}_{32}}^T = 0$ \\
+         &\\
+         $\pd{{\mathcal L}}{\ddot{q}_{31}} = 0$ &   $ h b_1 \pd{R_{31}}{\ddot{q}_{31}}^T \lambda_{31} +  h b_2 \pd{R_{32}}{\ddot{q}_{31}}^T \lambda_{32} +  h b_1 \pd{f_{31}}{\ddot{q}_{31}}^T +  h b_2 \pd{f_{32}}{\ddot{q}_{31}}^T  + \pd{T_3}{\ddot{q}_{31}}^T \phi_3 + \pd{S_3}{\ddot{q}_{31}}^T \psi_3 = 0  $ \\
+       \end{tabular}
+     \end{table}
+
+     These equations simplify to the following relations:
+     \begin{equation}
+       \phi_3 = 0
+     \end{equation}
+
+     \begin{equation}
+       \psi_3 = 0
+     \end{equation}
+
+     % equation for lamda 32
+     \begin{equation}
+       \begin{split}
+         hb_2\left[\pd{R_{32}}{\ddot{q}_{32}} + ha_{22}\pd{R_{32}}{\dot{q}_{32}} + h^2a_{22}^2 \pd{R_{32}}{{q}_{32}} \right]^T \lambda_{32} = & - hb_2 \left[\pd{f_{32}}{\ddot{q}_{32}} + ha_{22}\pd{f_{32}}{\dot{q}_{32}} + h^2a_{22}^2 \pd{f_{32}}{{q}_{32}} \right]^T \\ 
+         & - hb_2 I \phi_3 \\ 
+         & - hb_2ha_{22} I  \psi_3
+       \end{split}
+     \end{equation}
+
+     % equation for lamda 31
+     \begin{equation}
+       \begin{split}
+         hb_1\left[\pd{R_{31}}{\ddot{q}_{31}} + ha_{11}\pd{R_{31}}{\dot{q}_{31}} + h^2a_{11}^2 \pd{R_{31}}{{q}_{31}} \right]^T \lambda_{31} = & - hb_1 \left[\pd{f_{31}}{\ddot{q}_{31}} + ha_{11}\pd{f_{31}}{\dot{q}_{31}} + h^2a_{11}^2 \pd{f_{31}}{{q}_{31}} \right]^T \\ 
+         & - hb_2 \left[ha_{21}\pd{f_{32}}{\dot{q}_{32}} + (ha_{21}ha_{11} + ha_{22}ha_{21}) \pd{f_{32}}{{q}_{32}} \right]^T \\
+         & - hb_2 \left[ha_{21}\pd{R_{32}}{\dot{q}_{32}} + (ha_{21}ha_{11} + ha_{22}ha_{21}) \pd{R_{32}}{{q}_{32}} \right]^T\lambda_{32} \\
+         & - hb_1I \phi_3 \\ 
+         & - (hb_1ha_{11} + hb_2ha_{21}) I \psi_3
+       \end{split}
+     \end{equation}
+
+     \begin{table}[h]
+       \centering
+       \label{adjoint_step2}
+       \begin{tabular}{c|l}
+         $\pd{{\mathcal L}}{\dot{q}_{2}}  = 0$  & $ \pd{{T_2}}{\dot{q}_{2}}^T \phi_2 + h b_1 \pd{R_{31}}{\dot{q}_2}^T \lambda_{31} + hb_2 \pd{R_{32}}{\dot{q}_2}^T \lambda_{32} + h b_1 \pd{f_{31}}{\dot{q}_2}^T + hb_2 \pd{f_{32}}{\dot{q}_2}^T + \pd{S_3}{\dot{q}_2}^T\psi_3 + \pd{T_3}{\dot{q}_2}^T \phi_3 = 0$  \\
+         &\\
+         $\pd{{\mathcal L}}{{q}_{2}}  = 0$      & $\pd{S_2}{q_2}^T \psi_2 + hb_1\pd{R_{31}}{q_2}^T\lambda_{31} + hb_2\pd{R_{32}}{q_2}^T \lambda_{32} + hb_1\pd{f_{31}}{q_2}^T + hb_2\pd{f_{32}}{q_2}^T + \pd{S_3}{q_2}^T \psi_3  = 0$ \\
+         &\\
+         $\pd{{\mathcal L}}{\ddot{q}_{22}} = 0$ & $hb_2\pd{R_{22}}{\ddot{q}_{22}}^T\lambda_{22}+ \pd{S_2}{\ddot{q}_{22}}^T \psi_2 + \pd{T_2}{\ddot{q}_{22}}^T \phi_2 + hb_2\pd{f_{22}}{\ddot{q}_{22}}^T = 0$ \\
+         &\\
+         $\pd{{\mathcal L}}{\ddot{q}_{21}} = 0$ & $hb_1\pd{R_{21}}{\ddot{q}_{21}}^T \lambda_{21} +  h b_2 \pd{R_{22}}{\ddot{q}_{21}}^T \lambda_{22} +  h b_1 \pd{f_{21}}{\ddot{q}_{21}}^T +  h b_2 \pd{f_{22}}{\ddot{q}_{21}}^T  + \pd{T_2}{\ddot{q}_{21}}^T \phi_2 + \pd{S_2}{\ddot{q}_{21}}^T \psi_2 = 0$ \\
+       \end{tabular}
+     \end{table}
+
+     % equation for phi2
+     \begin{equation}
+       \begin{split}
+         I \phi_2 = & I \phi_3 + (hb_1 + hb_2) I \psi_3  + hb_1 \left[ \pd{R_{31}}{\dot{q}_{31}} + ha_{11} \pd{R_{31}}{q_{31}}  \right]^T \lambda_{31} + hb_1 \left[ \pd{f_{31}}{\dot{q}_{31}} + ha_{11} \pd{f_{31}}{{q}_{31}} \right]^T \\
+         & + hb_2 \left[ \pd{R_{32}}{\dot{q_{32}}} + (ha_{21} + ha_{22}) \pd{R_{32}}{q_{32}} \right]^T \lambda_{32} + hb_2 \left[ \pd{f_{32}}{\dot{q_{32}}} + (ha_{21} + ha_{22}) \pd{f_{32}}{q_{32}} \right]^T               
+       \end{split}
+     \end{equation}
+
+     % equation for psi2
+     \begin{equation}
+       \begin{split}
+         I \psi_2 = I \psi_3 + hb_1 \pd{R_{31}}{q_{31}}^T \lambda_{31} + hb_1 \pd{f_{31}}{q_{31}}^T  + hb_2 \pd{R_{32}}{q_{32}}^T \lambda_{32} + hb_2 \pd{f_{32}}{q_{32}}^T
+       \end{split}
+     \end{equation}
+
+
+     % equation for lamda 22
+     \begin{equation}
+       \begin{split}
+         hb_2\left[\pd{R_{22}}{\ddot{q}_{22}} + ha_{22}\pd{R_{22}}{\dot{q}_{22}} + h^2a_{22}^2 \pd{R_{22}}{{q}_{22}} \right]^T \lambda_{22} = & - hb_2 \left[\pd{f_{22}}{\ddot{q}_{22}} + ha_{22}\pd{f_{22}}{\dot{q}_{22}} + h^2a_{22}^2 \pd{f_{22}}{{q}_{22}} \right]^T \\ 
+         & - hb_2 I \phi_2 - hb_2 ha_{22} I  \psi_2
+       \end{split}
+     \end{equation}
+
+     % equation for lamda 21
+     \begin{equation}
+       \begin{split}
+         hb_1\left[\pd{R_{21}}{\ddot{q}_{21}} + ha_{11}\pd{R_{21}}{\dot{q}_{21}} + h^2a_{11}^2 \pd{R_{21}}{{q}_{21}} \right]^T \lambda_{21} = & - hb_1 \left[\pd{f_{21}}{\ddot{q}_{21}} + ha_{11}\pd{f_{21}}{\dot{q}_{21}} + h^2a_{11}^2 \pd{f_{21}}{{q}_{21}} \right]^T \\ 
+         & - hb_2 \left[ha_{21}\pd{f_{22}}{\dot{q}_{22}} + (ha_{21}ha_{11} + ha_{22}ha_{21}) \pd{f_{22}}{{q}_{22}} \right]^T \\
+         & - hb_2 \left[ha_{21}\pd{R_{22}}{\dot{q}_{22}} + (ha_{21}ha_{11} + ha_{22}ha_{21}) \pd{R_{22}}{{q}_{22}} \right]^T\lambda_{22} \\
+         & - hb_1I \phi_2  - (hb_1ha_{11} + hb_2ha_{21}) I \psi_2
+       \end{split}
+     \end{equation}
+
+     \begin{equation}\nonumber
+       \begin{split}
+         &\lambda_{31}^T h b_1 \mathbf{R_{31}}\left(\underline{\mathbf{\ddot{q}_{31}}},
+         \mathbf{\dot{q}_{31}}(\dot{q_2},\ddot{q_{31}}),
+         \mathbf{{q}_{31}}(q_2,\dot{q_{31}}(\dot{q_2},\ddot{q_{31}}))\right) = 0 \\
+         &\lambda_{32}^T h b_2  \mathbf{R_{32}}\left(\underline{\mathbf{\ddot{q}_{32}}},
+         \mathbf{\dot{q}_{32}}(\dot{q_2},\ddot{q_{31}},\ddot{q_{32}}),
+         \mathbf{{q}_{32}}(q_2,\dot{q_{31}}(\dot{q_2},\ddot{q_{31}}),\dot{q_{32}}(\dot{q_2},\ddot{q_{31}},\ddot{q_{32}}))\right) = 0 \\
+         &\lambda_{33}^T h b_3 \mathbf{R_{33}} \left(\underline{\mathbf{\ddot{q}_{33}}},
+         \mathbf{\dot{q}_{33}}(\dot{q_2},\ddot{q_{31}},\ddot{q_{32}},\ddot{q_{33}}),
+         \mathbf{{q}_{33}}(q_2,\dot{q_{31}}(\dot{q_2},\ddot{q_{31}}),\dot{q_{32}}(\dot{q_2},\ddot{q_{31}},\ddot{q_{32}}),\dot{q_{33}}(\dot{q_2},\ddot{q_{31}},\ddot{q_{32}},\ddot{q_{33}}))\right) = 0\\
+         &h b_1 \mathbf{f_{31}}\left(\underline{\mathbf{\ddot{q}_{31}}},
+         \mathbf{\dot{q}_{31}}(\dot{q_2},\ddot{q_{31}}),
+         \mathbf{{q}_{31}}(q_2,\dot{q_{31}}(\dot{q_2},\ddot{q_{31}}))\right) = 0 \\
+         &h b_2 \mathbf{f_{32}}\left(\underline{\mathbf{\ddot{q}_{32}}},
+         \mathbf{\dot{q}_{32}}(\dot{q_2},\ddot{q_{31}},\ddot{q_{32}}),
+         \mathbf{{q}_{32}}(q_2,\dot{q_{31}}(\dot{q_2},\ddot{q_{31}}),\dot{q_{32}}(\dot{q_2},\ddot{q_{31}},\ddot{q_{32}}))\right) = 0\\
+         &h b_3 \mathbf{f_{33}}\left(\underline{\mathbf{\ddot{q}_{33}}},
+         \mathbf{\dot{q}_{33}}(\dot{q_2},\ddot{q_{31}},\ddot{q_{33}},\ddot{q_{33}}),
+         \mathbf{{q}_{32}}(q_2,\dot{q_{31}}(\dot{q_2},\ddot{q_{31}}),\dot{q_{32}}(\dot{q_2},\ddot{q_{31}},\ddot{q_{32}}),\dot{q_{33}}(\dot{q_2},\ddot{q_{31}},\ddot{q_{32}},\ddot{q_{33}}))\right) = 0\\
+         &\psi_3^T \mathbf{S_3}(q_2 + h b_1 \dot{q}_{31}(\dot{q}_2,\ddot{q_{31}}) +  h b_2 \dot{q}_{32}(\dot{q}_2,\ddot{q_{31}},\ddot{q_{32}}) +  h b_3 \dot{q}_{33}(\dot{q}_2,\ddot{q_{31}},\ddot{q_{32}},\ddot{q_{33}}) - \underline{\mathbf{q_3}} ) = 0\\
+         &\phi_3^T \mathbf{T_3}(\dot{q}_2 + h b_1 \ddot{q}_{31} +  h b_2 \ddot{q}_{32}  +  h b_3 \ddot{q}_{33} - \underline{\mathbf{\dot{q}_3}} ) = 0\\
+       \end{split}
+     \end{equation}
+
+     \begin{equation}\nonumber
+       \begin{split}
+         q_{31} &= q_2 + h a_{11} \dot{q}_{31} \\
+         q_{32} &= q_2 + h a_{21} \dot{q}_{31} + h a_{22} \dot{q}_{32} \\
+         q_{33} &= q_2 + h a_{31} \dot{q}_{31} + h a_{32} \dot{q}_{32}+ h a_{33} \dot{q}_{33}  \\\hline
+         \dot{q}_{31} &= \dot{q}_2 + h a_{11} \ddot{q}_{31} \\
+         \dot{q}_{32} &= \dot{q}_2 + h a_{21} \ddot{q}_{31} + h a_{22} \ddot{q}_{32} \\
+         \dot{q}_{33} &= \dot{q}_2 + h a_{31} \ddot{q}_{31} + h a_{32} \ddot{q}_{32} + h a_{33} \ddot{q}_{33} \\
+       \end{split}
+     \end{equation}
+
+     Adjoint Variables Step 3: $\phi_3,\psi_3,\lambda_{31},\lambda_{32},\lambda_{33}$
+     \begin{table}[h]
+       \centering
+       \label{adjoint_step3}
+       \begin{tabular}{l|l}
+         $\pd{{\mathcal L}}{\dot{q}_{3}}  = 0$  & $ \pd{{T_3}}{\dot{q}_{3}}^T \phi_3 = 0$  \\
+         &\\
+         $\pd{{\mathcal L}}{{q}_{3}}  = 0$      & $\pd{S_3}{q_3}^T \psi_3 = 0$ \\
+         &\\
+         $\pd{{\mathcal L}}{\ddot{q}_{33}} = 0$ & $hb_3\pd{R_{33}}{\ddot{q}_{33}}^T\lambda_{33} + \pd{S_3}{\ddot{q}_{33}}^T \psi_3 + \pd{T_3}{\ddot{q}_{33}}^T \phi_3 + hb_3\pd{f_{33}}{\ddot{q}_{33}}^T = 0$ \\
+         &\\
+         $\pd{{\mathcal L}}{\ddot{q}_{32}} = 0$ & $hb_2\pd{R_{32}}{\ddot{q}_{32}}^T\lambda_{32} + hb_3\pd{R_{33}}{\ddot{q}_{32}}^T\lambda_{33} + \pd{S_3}{\ddot{q}_{32}}^T \psi_3 + \pd{T_3}{\ddot{q}_{32}}^T \phi_3 + hb_2\pd{f_{32}}{\ddot{q}_{32}}^T + + hb_3\pd{f_{33}}{\ddot{q}_{32}}^T= 0$ \\
+         &\\
+         $\pd{{\mathcal L}}{\ddot{q}_{31}} = 0$ & $hb_1 \pd{R_{31}}{\ddot{q}_{31}}^T \lambda_{31} +  h b_2 \pd{R_{32}}{\ddot{q}_{31}}^T \lambda_{32} + h b_3 \pd{R_{33}}{\ddot{q}_{31}}^T \lambda_{33}  + \pd{T_3}{\ddot{q}_{31}}^T \phi_3 + \pd{S_3}{\ddot{q}_{31}}^T \psi_3 + $ \\ 
+         & $ h b_1 \pd{f_{31}}{\ddot{q}_{31}}^T +  h b_2 \pd{f_{32}}{\ddot{q}_{31}}^T +  h b_3 \pd{f_{33}}{\ddot{q}_{31}}^T = 0  $ \\
+       \end{tabular}
+     \end{table}
+
+     \begin{equation}
+       \phi_3 = 0
+     \end{equation}
+
+     \begin{equation}
+       \psi_3 = 0
+     \end{equation}
+
+     % equation for lamda 33
+     \begin{equation}
+       \begin{split}
+         hb_3\left[\pd{R_{33}}{\ddot{q}_{33}} + ha_{33}\pd{R_{33}}{\dot{q}_{33}} + h^2a_{33}^2 \pd{R_{33}}{{q}_{33}} \right]^T \lambda_{33} = & - hb_3 \left[\pd{f_{33}}{\ddot{q}_{33}} + ha_{33}\pd{f_{33}}{\dot{q}_{33}} + h^2a_{33}^2 \pd{f_{33}}{{q}_{33}} \right]^T \\ 
+         & - hb_3 I \phi_3 \\ 
+         & - hb_3ha_{33} I  \psi_3
+       \end{split}
+     \end{equation}
+
+     % equation for lamda 32
+     \begin{equation}
+       \begin{split}
+         hb_2\left[\pd{R_{32}}{\ddot{q}_{32}} + ha_{22}\pd{R_{32}}{\dot{q}_{32}} + h^2a_{22}^2 \pd{R_{32}}{{q}_{32}} \right]^T \lambda_{32} = & - hb_2 \left[\pd{f_{32}}{\ddot{q}_{32}} + ha_{22}\pd{f_{32}}{\dot{q}_{32}} + h^2a_{22}^2 \pd{f_{32}}{{q}_{32}} \right]^T \\ 
+         & - hb_3 \left[ha_{32}\pd{f_{33}}{\dot{q}_{33}} + (ha_{32}ha_{22} + ha_{33}ha_{32}) \pd{f_{33}}{{q}_{33}} \right]^T \\  
+         & - hb_3 \left[ha_{32}\pd{R_{33}}{\dot{q}_{33}} + (ha_{32}ha_{22} + ha_{33}ha_{32}) \pd{R_{33}}{{q}_{33}} \right]^T\lambda_{33} \\  
+         & - hb_2 I \phi_3 \\ 
+         & - (hb_2ha_{22} + hb_3 ha_{32}) I  \psi_3
+       \end{split}
+     \end{equation}
+
+     % equation for lamda 31
+     \begin{equation}
+       \begin{split}
+         hb_1\left[\pd{R_{31}}{\ddot{q}_{31}} + ha_{11}\pd{R_{31}}{\dot{q}_{31}} + h^2a_{11}^2 \pd{R_{31}}{{q}_{31}} \right]^T \lambda_{31} = & - hb_1 \left[\pd{f_{31}}{\ddot{q}_{31}} + ha_{11}\pd{f_{31}}{\dot{q}_{31}} + h^2a_{11}^2 \pd{f_{31}}{{q}_{31}} \right]^T \\ 
+         & - hb_2 \left[ ha_{21} \pd{R_{32}}{\dot{q}_{32}} + (ha_{21}ha_{11} + ha_{22}ha_{21}) \pd{R_{32}}{{q}_{32}} \right]\lambda_{32} \\
+         & - hb_2 \left[ ha_{21} \pd{f_{32}}{\dot{q}_{32}} + (ha_{21}ha_{11} + ha_{22}ha_{21}) \pd{f_{32}}{{q}_{32}} \right] \\
+         & - hb_3 \left[ ha_{31} \pd{R_{33}}{\dot{q}_{33}} + (ha_{31}ha_{11} + ha_{32}ha_{21} + ha_{33}ha_{31}) \pd{R_{33}}{{q}_{33}} \right] \lambda_{33} \\
+         & - hb_3 \left[ ha_{31} \pd{f_{33}}{\dot{q}_{33}} + (ha_{31}ha_{11} + ha_{32}ha_{21} + ha_{33}ha_{31}) \pd{f_{33}}{{q}_{33}} \right] \\
+         & - hb_1I \phi_3 \\ 
+         & - (hb_1ha_{11} + hb_2ha_{21}+ hb_3ha_{31}) I \psi_3
+       \end{split}
+     \end{equation}
+
+     % Second step
+     \begin{equation}\nonumber
+       \begin{split}
+         &\lambda_{21}^T h b_1 \mathbf{R_{21}}\left(\underline{\mathbf{\ddot{q}_{21}}},\mathbf{\dot{q}_{21}}(\dot{q_1},\ddot{q_{21}}),\mathbf{{q}_{21}}({q_1},\dot{q_{21}}(\dot{q_1},\ddot{q_{21}}))\right) = 0 \\
+         &\lambda_{22}^T h b_2 \mathbf{R_{22}}\left(\underline{\mathbf{\ddot{q}_{22}}},\mathbf{\dot{q}_{22}}(\dot{q_1},\ddot{q_{21}},\ddot{q_{22}}),\mathbf{{q}_{22}}({q_1},\dot{q_{21}}(\dot{q_1},\ddot{q_{21}}),\dot{q_{22}}(\dot{q_1},\ddot{q_{21}},\ddot{q_{22}}))\right) = 0 \\
+         &\lambda_{22}^T h b_3 \mathbf{R_{23}}\left(\underline{\mathbf{\ddot{q}_{23}}},
+         \mathbf{\dot{q}_{23}}(\dot{q_1},\ddot{q_{21}},\ddot{q_{22}},\ddot{q_{23}}),
+         \mathbf{{q}_{23}}({q_1},\dot{q_{21}}(\dot{q_1},\ddot{q_{21}}),\dot{q_{22}}(\dot{q_1},\ddot{q_{21}},\ddot{q_{22}}),\dot{q_{23}}(\dot{q_1},\ddot{q_{21}},\ddot{q_{22}},\ddot{q_{23}}))\right) = 0 \\
+         &h b_1 \mathbf{f_{21}}\left(\underline{\mathbf{\ddot{q}_{21}}},\mathbf{\dot{q}_{21}}(\dot{q_1},\ddot{q_{21}}),\mathbf{{q}_{21}}({q_1},\dot{q_{21}}(q_1,\ddot{q_{21}}))\right) = 0 \\
+         &h b_2 \mathbf{f_{22}}\left(\underline{\mathbf{\ddot{q}_{22}}},\mathbf{\dot{q}_{22}}(\dot{q_1},\ddot{q_{21}},\ddot{q_{22}}),\mathbf{{q}_{22}}({q_1},\dot{q_{21}}(\dot{q_1},\ddot{q_{21}}),\dot{q_{22}}(\dot{q_1},\ddot{q_{21}},\ddot{q_{22}}))\right) = 0 \\
+         &h b_3 \mathbf{f_{23}}\left(\underline{\mathbf{\ddot{q}_{23}}},\mathbf{\dot{q}_{23}}(\dot{q_1},\ddot{q_{21}},\ddot{q_{22}},\ddot{q_{23}}),\mathbf{{q}_{23}}({q_1},\dot{q_{21}}(\dot{q_1},\ddot{q_{21}}),\dot{q_{22}}(\dot{q_1},\ddot{q_{21}},\ddot{q_{22}}),\dot{q_{23}}(\dot{q_1},\ddot{q_{21}},\ddot{q_{22}},\ddot{q_{23}}))\right) = 0 \\
+         &\psi_2^T \mathbf{S_2}\left(q_1 + h b_1 \dot{q}_{21}(\dot{q_1},\ddot{q_{21}}) +  h b_2 \dot{q}_{22} (\dot{q_1},\ddot{q_{21}},\ddot{q_{22}}) +  h b_3 \dot{q}_{23} (\dot{q_1},\ddot{q_{21}},\ddot{q_{22}},\ddot{q_{23}}) - \underline{\mathbf{q_2}} \right) = 0\\
+         &\phi_2^T \mathbf{T_2}\left(\dot{q}_1 + h b_1 \ddot{q}_{21} +  h b_2 \ddot{q}_{22} +  h b_2 \ddot{q}_{23} - \underline{\mathbf{\dot{q}_2}} \right) = 0 \\
+       \end{split}
+     \end{equation}
+
+     \begin{equation}\nonumber
+       \begin{split}
+         q_{21} &= q_1 + h a_{11} \dot{q}_{21} \\
+         q_{22} &= q_1 + h a_{21} \dot{q}_{21} + h a_{22} \dot{q}_{22} \\
+         q_{23} &= q_1 + h a_{31} \dot{q}_{21} + h a_{32} \dot{q}_{22} + h a_{33} \dot{q}_{23} \\\hline
+         \dot{q}_{21} &= \dot{q}_1 + h a_{11} \ddot{q}_{21} \\
+         \dot{q}_{22} &= \dot{q}_1 + h a_{21} \ddot{q}_{21} + h a_{22} \ddot{q}_{22} \\
+         \dot{q}_{23} &= \dot{q}_1 + h a_{31} \ddot{q}_{21} + h a_{32} \ddot{q}_{22} + h a_{33} \ddot{q}_{23} \\
+       \end{split}
+     \end{equation}
+     
+     \section{Adjoint Variables Step 2: $\phi_2,\psi_2,\lambda_{31},\lambda_{32},\lambda_{33}$}
+     \begin{table}[h]
+       \centering
+       \label{adjoint_step2}
+       \begin{tabular}{c|c}
+         $\pd{{\mathcal L}}{\dot{q}_{2}}   = 0$ & $\pd{{T_2}}{\dot{q}_{2}}^T \phi_2 + h b_1 \pd{R_{31}}{\dot{q}_2}^T\lambda_{31} +  hb_2 \pd{R_{32}}{\dot{q}_2}^T \lambda_{32}  +  hb_3 \pd{R_{33}}{\dot{q}_2}^T \lambda_{33}$ \\
+         & $ + h b_1 \pd{f_{31}}{\dot{q}_2}^T + h b_2 \pd{f_{32}}{\dot{q}_2}^T + h b_3 \pd{f_{33}}{\dot{q}_2}^T + \pd{S_3}{\dot{q}_2}^T \psi_3 + \pd{T_3}{\dot{q}_2}^T \phi_3 = 0$  \\
+         &\\
+         $\pd{{\mathcal L}}{{q}_{2}}       = 0$ & $\pd{S_2}{q_2}^T \psi_2 + hb_1\pd{R_{31}}{q_2}^T\lambda_{31} + hb_2\pd{R_{32}}{q_2}^T \lambda_{32} + hb_3\pd{R_{33}}{q_2}^T \lambda_{33}$\\ 
+         &$  + hb_1\pd{f_{31}}{q_2}^T + hb_2\pd{f_{32}}{q_2}^T + hb_3\pd{f_{33}}{q_2}^T + \pd{S_3}{q_2}^T \psi_3  = 0$ \\
+         &\\
+         $\pd{{\mathcal L}}{\ddot{q}_{23}} = 0$ & $hb_3\pd{R_{23}}{\ddot{q}_{23}}^T\lambda_{23} + \pd{S_2}{\ddot{q}_{23}}^T \psi_2 + \pd{T_2}{\ddot{q}_{23}}^T \phi_2 + hb_3\pd{f_{23}}{\ddot{q}_{23}}^T = 0$ \\
+         &\\
+         $\pd{{\mathcal L}}{\ddot{q}_{22}} = 0$ & $hb_2\pd{R_{22}}{\ddot{q}_{22}}^T\lambda_{22} + hb_3\pd{R_{23}}{\ddot{q}_{22}}^T\lambda_{23} + \pd{S_3}{\ddot{q}_{22}}^T \psi_3 + \pd{T_3}{\ddot{q}_{22}}^T \phi_3 + hb_2\pd{f_{22}}{\ddot{q}_{22}}^T + + hb_3\pd{f_{23}}{\ddot{q}_{22}}^T= 0$ \\
+         &\\
+         $\pd{{\mathcal L}}{\ddot{q}_{21}} = 0$ & $hb_1 \pd{R_{21}}{\ddot{q}_{21}}^T \lambda_{21} +  h b_2 \pd{R_{22}}{\ddot{q}_{21}}^T \lambda_{22} + h b_3 \pd{R_{23}}{\ddot{q}_{21}}^T \lambda_{23}  + \pd{T_3}{\ddot{q}_{21}}^T \phi_3 + \pd{S_3}{\ddot{q}_{21}}^T \psi_3 + $ \\ 
+         & $ h b_1 \pd{f_{21}}{\ddot{q}_{21}}^T +  h b_2 \pd{f_{22}}{\ddot{q}_{21}}^T +  h b_3 \pd{f_{23}}{\ddot{q}_{21}}^T = 0  $ \\
+       \end{tabular}
+     \end{table}
+
+     % equation for phi2
+     \begin{equation}
+       \begin{split}
+         I \phi_2 =  & I \phi_3 + (hb_1 + hb_2 + hb_3) I \psi_3  \\ 
+         & + hb_1 \left[ \pd{R_{31}}{\dot{q}_{31}} + ha_{11} \pd{R_{31}}{q_{31}}  \right]^T \lambda_{31} + hb_1 \left[ \pd{f_{31}}{\dot{q}_{31}} + ha_{11} \pd{f_{31}}{{q}_{31}} \right]^T \\
+         & + hb_2 \left[ \pd{R_{32}}{\dot{q_{32}}} + (ha_{21} + ha_{22}) \pd{R_{32}}{q_{32}} \right]^T \lambda_{32} + hb_2 \left[ \pd{f_{32}}{\dot{q_{32}}} + (ha_{21} + ha_{22}) \pd{f_{32}}{q_{32}} \right]^T \\               
+         & + hb_3 \left[ \pd{R_{33}}{\dot{q_{33}}} + (ha_{31} + ha_{32} + ha_{33}) \pd{R_{33}}{q_{33}} \right]^T \lambda_{33} + hb_3 \left[ \pd{f_{33}}{\dot{q_{33}}} + (ha_{31} + ha_{32} + ha_{33}) \pd{f_{33}}{q_{33}} \right]^T
+       \end{split}
+     \end{equation}
+
+     % equation for psi2
+     \begin{equation}
+       \begin{split}
+         I \psi_2 = I \psi_3 + hb_1 \pd{R_{31}}{q_{31}}^T \lambda_{31} + hb_1 \pd{f_{31}}{q_{31}}^T + hb_2 \pd{R_{32}}{q_{32}}^T \lambda_{32} + hb_2 \pd{f_{32}}{q_{32}}^T + hb_3 \pd{R_{33}}{q_{33}}^T \lambda_{33} + hb_3 \pd{f_{33}}{q_{33}}^T \\
+       \end{split}
+     \end{equation}
+
+     % equation for lamda 23
+     \begin{equation}
+       \begin{split}
+         hb_3\left[\pd{R_{23}}{\ddot{q}_{23}} + ha_{33}\pd{R_{23}}{\dot{q}_{23}} + h^2a_{33}^2 \pd{R_{23}}{{q}_{23}} \right]^T \lambda_{23} = & - hb_3 \left[\pd{f_{23}}{\ddot{q}_{23}} + ha_{33}\pd{f_{23}}{\dot{q}_{23}} + h^2a_{33}^2 \pd{f_{23}}{{q}_{23}} \right]^T \\ 
+         & - hb_3 I \phi_2 \\ 
+         & - hb_3ha_{33} I  \psi_2
+       \end{split}
+     \end{equation}
+
+     % equation for lamda 22
+     \begin{equation}
+       \begin{split}
+         hb_2\left[\pd{R_{22}}{\ddot{q}_{22}} + ha_{22}\pd{R_{22}}{\dot{q}_{22}} + h^2a_{22}^2 \pd{R_{22}}{{q}_{22}} \right]^T \lambda_{22} = & - hb_2 \left[\pd{f_{22}}{\ddot{q}_{22}} + ha_{22}\pd{f_{22}}{\dot{q}_{22}} + h^2a_{22}^2 \pd{f_{22}}{{q}_{22}} \right]^T \\ 
+         & - hb_3 \left[ha_{32}\pd{f_{23}}{\dot{q}_{23}} + (ha_{32}ha_{22} + ha_{33}ha_{32}) \pd{f_{23}}{{q}_{23}} \right]^T \\  
+         & - hb_3 \left[ha_{32}\pd{R_{23}}{\dot{q}_{23}} + (ha_{32}ha_{22} + ha_{33}ha_{32}) \pd{R_{23}}{{q}_{23}} \right]^T\lambda_{23} \\  
+         & - hb_2 I \phi_2 \\ 
+         & - (hb_2ha_{22} + hb_3 ha_{32}) I  \psi_2
+       \end{split}
+     \end{equation}
+
+     % equation for lamda 21
+     \begin{equation}
+       \begin{split}
+         hb_1\left[\pd{R_{21}}{\ddot{q}_{21}} + ha_{11}\pd{R_{21}}{\dot{q}_{21}} + h^2a_{11}^2 \pd{R_{21}}{{q}_{21}} \right]^T \lambda_{21} = & - hb_1 \left[\pd{f_{21}}{\ddot{q}_{21}} + ha_{11}\pd{f_{21}}{\dot{q}_{21}} + h^2a_{11}^2 \pd{f_{21}}{{q}_{21}} \right]^T \\ 
+         & - hb_2 \left[ ha_{21} \pd{R_{22}}{\dot{q}_{22}} + (ha_{21}ha_{11} + ha_{22}ha_{21}) \pd{R_{22}}{{q}_{22}} \right]\lambda_{22} \\
+         & - hb_2 \left[ ha_{21} \pd{f_{22}}{\dot{q}_{22}} + (ha_{21}ha_{11} + ha_{22}ha_{21}) \pd{f_{22}}{{q}_{22}} \right] \\
+         & - hb_3 \left[ ha_{31} \pd{R_{23}}{\dot{q}_{23}} + (ha_{31}ha_{11} + ha_{32}ha_{21} + ha_{33}ha_{31}) \pd{R_{23}}{{q}_{23}} \right] \lambda_{23} \\
+         & - hb_3 \left[ ha_{31} \pd{f_{23}}{\dot{q}_{23}} + (ha_{31}ha_{11} + ha_{32}ha_{21} + ha_{33}ha_{31}) \pd{f_{23}}{{q}_{23}} \right] \\
+         & - hb_1I \phi_2 \\ 
+         & - (hb_1ha_{11} + hb_2ha_{21}+ hb_3ha_{31}) I \psi_2
+       \end{split}
+     \end{equation}
+
+
+     \section{General Adjoint Relations}
+     \subsection{Posiiton Adjoint}
+     \begin{equation}\nonumber
+       \begin{split}
+         \phi_k = & \phi_{k+1} + \left(h\sum_{i=1}^s b_i\right) \psi_{k+1}  + h \sum_{i=1}^sb_i \left[\pd{R_{k+1,i}}{\dot{q}_{k+1,i}} + \left( h \sum_{j=1}^i a_{ij} \right) \pd{R_{k+1,i}}{q_{k+1,i}} \right]^T \lambda_{k+1,i}  \\
+         & + h \sum_{i=1}^sb_i \left[\pd{f_{k+1,i}}{\dot{q}_{k+1,i}} + \left( h \sum_{j=1}^i a_{ij} \right) \pd{f_{k+1,i}}{q_{k+1,i}} \right]^T
+       \end{split}
+     \end{equation}
+     Noting that $\sum_{i=1}^s b_i = 1$, and $\sum_{j=1}^i a_{ij} = c_i$,
+     \begin{equation}\nonumber
+       \begin{split}
+         \phi_k = & \phi_{k+1} + h \psi_{k+1}  + h \sum_{i=1}^sb_i \left[\pd{R_{k+1,i}}{\dot{q}_{k+1,i}} + hc_i \pd{R_{k+1,i}}{q_{k+1,i}} \right]^T \lambda_{k+1,i}  \\ &+ h \sum_{i=1}^sb_i \left[\pd{f_{k+1,i}}{\dot{q}_{k+1,i}} +hc_i \pd{f_{k+1,i}}{q_{k+1,i}} \right]^T
+       \end{split}
+     \end{equation}
+     Therefore  $$\beta = hb_i, \alpha = \beta hc_i, \gamma = 0.$$
+
+     \subsection{Velocity Adjoint}
+
+     \begin{equation}\nonumber
+       \psi_k = \psi_{k+1} + h \sum_{i=1}^s b_i \left[ \pd{R_{k+1,i}}{q_{k+1,i}} \right]^T \lambda_{k+1,i} + h \sum_{i=1}^s b_i \left[ \pd{f_{k+1,i}}{q_{k+1,i}} \right]^T
+     \end{equation}
+     Here, $$ \alpha = hb_i, \beta = 0, \gamma = 0$$
+     
+     \subsection{Stage Adjoint}
+
+     \begin{equation}\nonumber
+       \begin{split}
+         b_i \left[ \pd{R_{ki}}{\ddot{q}_{ki}} + ha_{ii} \pd{R_{ki}}{\dot{q}_{ki}} + h^2 a_{ii}^2 \pd{R_{ki}}{{q}_{ki}} \right]^T \lambda_{ki} = & - b_i \left[ \pd{f_{ki}}{\ddot{q}_{ki}} + h^2a_{ii}^2 \pd{f_{ki}}{\dot{q}_{ki}} + h^2a_{ii}^2 \pd{f_{ki}}{{q}_{ki}} \right]^T \\
+         & - \sum_{j=i+1}^s b_j \left[ ha_{ji} \pd{R_{kj}}{\dot{q}_{kj}} 
+           + h^2 (\sum_{p=i}^j a_{jp}a_{pi}) 
+           \pd{R_{kj}}{{q}_{kj}} \right]^T \lambda_{kj} \\
+         & -  \sum_{j=i+1}^s b_j \left[ ha_{ji} \pd{f_{kj}}{\dot{q}_{kj}} 
+           + h^2 (\sum_{p=i}^j a_{jp}a_{pi}) 
+           \pd{f_{kj}}{{q}_{kj}} \right]^T  \\
+         & -   (\sum_{j=i}^s h b_j a_{ji}) \psi_{k}  \\
+         &  - b_i \phi_{k} 
+       \end{split}
+     \end{equation}
+
+     We introduce $\lambda$, $\psi$ and $\phi$ as adjoint variables associated with equations $R$, $S$ and $T$. The Lagrangian is
+     $$ {\cal{L}} = \sum_{k=2}^{N} \sum_{i=1}^s h b_i f_{ki}  +  \sum_{k=2}^{N} \sum_{i=1}^s\lambda_{ki}^T  h b_i R_{ki}   + \sum_{k=1}^N \psi_k^T S_k + \sum_{k=1}^N \phi_k^T T_k. $$
+
+     Taking $\partial{\cal{L}}/\partial{\ddot{q}_{ki}}$ = 0 yields the stage adjoint relations as follows:
+     \begin{equation}\nonumber
+       \begin{split}
+         0 & = hb_i \pd{f_{ki}}{\ddot{q}_{ki}} + \sum_{j=i+1}^s b_j \left[ ha_{ji} \pd{f_{kj}}{\dot{q}_{kj}} 
+           + h^2 (\sum_{p=i}^j a_{jp}a_{pi}) 
+           \pd{f_{kj}}{{q}_{kj}} \right]^T \\
+         &  + hb_i \pd{R_{ki}}{\ddot{q}_{ki}} + \sum_{j=i+1}^s b_j \left[ ha_{ji} \pd{R_{kj}}{\dot{q}_{kj}} 
+           + h^2 (\sum_{p=i}^j a_{jp}a_{pi}) 
+           \pd{R_{kj}}{{q}_{kj}} \right]^T \lambda_{kj} \\ 
+         &  + \sum_{j=i}^s h b_j h a_{ji} \psi_{k}  \\
+         &  +  h b_i \phi_{k} \\
+       \end{split}
+     \end{equation}
+     Note the similarities in the terms arising from the governing
+     equation and the function.
+
+     We can retieve the inter-step adjoint contributions with
+     $\partial{{\cal L}}/\partial{{q}_k}=0$ and $\partial{{\cal L}}/\partial{\dot{q}_k}=0$.
+     
+     \begin{equation}\nonumber
+       \psi_k = \psi_{k+1} + h \sum_{i=1}^s b_i \left[ \pd{R_{k+1,i}}{q_{k+1,i}} \right]^T \lambda_{k+1,i} + h \sum_{i=1}^s b_i \left[ \pd{f_{k+1,i}}{q_{k+1,i}} \right]^T
+     \end{equation}
+     Here, $$ \alpha_i = hb_i, \beta_i = 0, \gamma_i = 0$$
+
+     \begin{equation}\nonumber
+       \begin{split}
+         \phi_k = & \phi_{k+1} + \left(h\sum_{i=1}^s b_i\right) \psi_{k+1}  + h \sum_{i=1}^sb_i \left[\pd{R_{k+1,i}}{\dot{q}_{k+1,i}} + \left( h \sum_{j=1}^i a_{ij} \right) \pd{R_{k+1,i}}{q_{k+1,i}} \right]^T \lambda_{k+1,i}  \\
+         & + h \sum_{i=1}^sb_i \left[\pd{f_{k+1,i}}{\dot{q}_{k+1,i}} + \left( h \sum_{j=1}^i a_{ij} \right) \pd{f_{k+1,i}}{q_{k+1,i}} \right]^T
+       \end{split}
+     \end{equation}
+     Noting that $\sum_{i=1}^s b_i = 1$, and $\sum_{j=1}^i a_{ij} = c_i$,
+     \begin{equation}\nonumber
+       \begin{split}
+         \phi_k = & \phi_{k+1} + h \psi_{k+1}  + h \sum_{i=1}^sb_i \left[\pd{R_{k+1,i}}{\dot{q}_{k+1,i}} + hc_i \pd{R_{k+1,i}}{q_{k+1,i}} \right]^T \lambda_{k+1,i}  \\ &+ h \sum_{i=1}^sb_i \left[\pd{f_{k+1,i}}{\dot{q}_{k+1,i}} +hc_i \pd{f_{k+1,i}}{q_{k+1,i}} \right]^T
+       \end{split}
+     \end{equation}
+     Therefore  $$\alpha = hb_ihc_i, \beta = hb_i, \gamma = 0.$$
+
+     May not be needed
+
+     \section{Adjoint Derivation}
+
+     $\mathbf{q_1} \xrightarrow[\dot{q}_{21},\dot{q}_{22}]{q_{21},q_{22}} \mathbf{q_2} \xrightarrow[\dot{q}_{31},\dot{q}_{32}]{q_{31},q_{32}} \mathbf{q_3}$
+
+     \begin{equation}\nonumber
+       \begin{split}
+         {\cal{L}} = &  hb_1f_{11} + hb_2f_{12} + \psi_1^T S_1 + h b_1 \lambda_{11}^TR_{11} + h b_2 \lambda_{12}^TR_{12} + \\
+         & hb_1f_{21} + hb_2f_{22} + \psi_2^T S_2 + h b_1 \lambda_{21}^TR_{21} + h b_2 \lambda_{22}^TR_{22} + \\
+         & hb_1f_{31} + hb_2f_{32} + \psi_3^T S_3 + h b_1 \lambda_{31}^TR_{31} + h b_2 \lambda_{32}^TR_{32} \\
+       \end{split}
+     \end{equation}
+
+     \begin{eqnarray}\nonumber
+       S_1({q_1} - u(x))\\\nonumber
+     \end{eqnarray}
+
+     \begin{eqnarray}\nonumber
+       h b_1 R_{21}\left( \underline{\dot{q_{21}}}, q_1 + h a_{11} \underline{\dot{q_{21}}}  \right)\\ \nonumber
+       h b_2 R_{22}( \underline{\dot{q_{22}}}, q_1 + h (a_{21} \dot{q_{21}} + a_{22} \underline{\dot{q_{22}}}) )\\ \nonumber
+       h b_1 f_{21}\left( \underline{\dot{q_{21}}}, q_1 + h a_{11} \underline{\dot{q_{21}}}  \right)\\ \nonumber
+       h b_2 f_{22}( \underline{\dot{q_{22}}}, q_1 + h (a_{21} \dot{q_{21}} + a_{22} \underline{\dot{q_{22}}}) )\\ \nonumber
+       S_2(  q_1 + h ( b_1\dot{q_{21}} + b_2\dot{q_{22}} ) - \underline{q_2})\\\nonumber
+     \end{eqnarray}
+
+     \begin{eqnarray}\nonumber
+       h b_1 R_{31}\left( \underline{\dot{q_{31}}}, q_2 + h a_{11} \underline{\dot{q_{31}}}  \right)\\ \nonumber
+       h b_2 R_{32}( \underline{\dot{q_{32}}}, q_2 + h (a_{21} \dot{q_{31}} + a_{22} \underline{\dot{q_{32}}}) )\\ \nonumber
+       h b_1 f_{31}\left( \underline{\dot{q_{31}}}, q_2 + h a_{11} \underline{\dot{q_{31}}}  \right)\\ \nonumber
+       h b_2 f_{32}( \underline{\dot{q_{32}}}, q_2 + h (a_{21} \dot{q_{31}} + a_{22} \underline{\dot{q_{32}}}) )\\ \nonumber
+       S_3(q_2 + h ( b_1\dot{q_{31}} + b_2\dot{q_{32}} ) - \underline{q_3})\\\nonumber
+     \end{eqnarray}
+
+     Using $ \pd{{\cal L}}{q_3} = 0 $, we get  
+     $$ \psi_3^T \pd{S_3}{q_3} = 0 $$
+     which turns out to be
+     $$ -{I} \psi_3 = 0$$
+
+     Using $\pd{{\cal L}}{\dot{q}_{32}}=0 $, we obtain
+
+     $$ \psi_3^T \pd{S_3}{\dot{q}_{32}} 
+     + hb_2\lambda_{32}^T \pd{R_{32}}{\dot{q}_{32}} 
+     + hb_2\pd{f_{32}}{\dot{q}_{32}} = 0 $$
+     which turns out to be
+     $$ hb_2\left[ \pd{R_{32}}{\dot{q}_{32}} + ha_{22}  \pd{R_{32}}{{q}_{32}} \right]^T\lambda_{32} = 
+     - hb_2\left[ \pd{f_{32}}{\dot{q}_{32}} + ha_{22}  \pd{f_{32}}{{q}_{32}} \right]^T 
+     - hb_2I \psi_3 $$
+
+     Using $\pd{{\cal L}}{\dot{q}_{31}}=0$, we obtain
+     $$ 
+     \psi_3^T \pd{S_3}{\dot{q}_{31}} 
+     + \lambda_{31}^T hb_1\pd{R_{31}}{\dot{q}_{31}} 
+     + \lambda_{32}^T hb_2\pd{R_{32}}{\dot{q}_{31}} 
+     + hb_1\pd{f_{31}}{\dot{q}_{31}} 
+     + hb_2\pd{f_{32}}{\dot{q}_{31}} = 0 
+     $$
+
+     Using $\pd{{\cal L}}{\dot{q}_{2}}=0$:
+
+     \begin{equation}\nonumber
+       \pd{S_2}{{q}_{2}}    + hb_1\pd{R_{31}}{q_2} + hb_2 \pd{R_{32}}{q_2} +
+       hb_1\pd{f_{31}}{q_2} + hb_2\pd{f_{32}}{q_2} +\pd{S_3}{q_2} = 0
+     \end{equation}
+
+     \begin{equation}\nonumber
+       \begin{split}
+         \pd{S_2}{q_2}  =  & - hb_1\lambda_{31} \pd{R_{31}}{q_{31}} \\
+         &- hb_2 \lambda_{32} \pd{R_{32}}{q_{32}} \\
+         &- hb_1\pd{f_{31}}{q_{31}} \\ 
+         &- hb_2\pd{f_{32}}{q_{32}} \\ 
+         &- I \psi_3
+       \end{split}
+     \end{equation}
+     
+%     \chapter{Continuous Adjoint Formulations}
+
+%     \part{Direct Sensitivities}
+
 \end{document}
 
-%         We explore further simplifications by substituting equations.
-%
-%         \begin{equation}
-%           \begin{split}
-%             \left[ \frac{1}{h^2} \pd{R_k}{\ddot{q}_k} + \gamma \frac{1}{h} \pd{R_k}{\dot{q}_k} + \beta \pd{R_k}{{q}_k} \right]^T \rho_k = &- \left\{ \frac{1}{h^2}  \pd{f_k}{\ddot{q}_k} + \gamma \frac{1}{h} \pd{f_k}{\dot{q}_k} + \beta \pd{f_k}{{q}_k} \right\}^T \\
-%             & -  \frac{1}{h}\left\{  \gamma \frac{1}{h}  \left( \sigma_{k+1} + h \tau_{k+1}  + \left\{ h \pd{f_{k+1}}{\dot{q}_{k+1}} +  h^2 \pd{f_{k+1}}{{q}_{k+1}} \right\}^T + \left[ h \pd{R_{k+1}}{\dot{q}_{k+1}} +  h^2 \pd{R_{k+1}}{{q}_{k+1}} \right]^T \rho_{k+1}  \right) \right\}^T \\
-%             & -  \frac{1}{h}\left\{  \beta  \left( \tau_{k+1} + \left\{h \pd{f_{k+1}}{{q}_{k+1}} \right\}^T + \left[ h \pd{R_{k+1}}{{q}_{k+1}} \right]^T \rho_{k+1}  \right) \right\}^T\\
-%             & -  \left\{ (1-\gamma) \frac{1}{h} \pd{f_{k+1}}{\dot{q}_{k+1}} + \frac{1-2\beta}{2} \pd{f_{k+1}}{{q}_{k+1}} \right\}^T \\
-%             & -  \left[ (1-\gamma) \frac{1}{h} \pd{R_{k+1}}{\dot{q}_{k+1}} + \frac{1-2\beta}{2} \pd{R_{k+1}}{{q}_{k+1}} \right]^T\rho_{k+1} \\
-%             & -  \frac{1}{h} \left\{ (1-\gamma) \frac{1}{h} \sigma_{k+1} + \frac{1-2\beta}{2} \tau_{k+1} \right\}^T\\
-%           \end{split}
-%         \end{equation}
-%
-%         \framebreak
-
-
-         \framebreak
-        
-         Grouping the terms together we get:
-
-         \begin{equation}
-           \begin{split}
-             \left[ \frac{1}{h^2} \pd{R_k}{\ddot{q}_k} + \gamma \frac{1}{h} \pd{R_k}{\dot{q}_k} + \beta \pd{R_k}{{q}_k} \right]^T \rho_k = &- \left\{ \frac{1}{h^2}  \pd{f_k}{\ddot{q}_k} + \gamma \frac{1}{h} \pd{f_k}{\dot{q}_k} + \beta \pd{f_k}{{q}_k} \right\}^T \\
-             & -  \left\{  \gamma \frac{1}{h}  \pd{f_{k+1}}{\dot{q}_{k+1}} +  \gamma \pd{f_{k+1}}{{q}_{k+1}} \right\}^T \\ 
-             & -  \left[  \gamma \frac{1}{h}  \pd{R_{k+1}}{\dot{q}_{k+1}} + \gamma \pd{R_{k+1}}{{q}_{k+1}} \right]^T \rho_{k+1}  \\
-             & -  \left\{ \beta \pd{f_{k+1}}{{q}_{k+1}} \right\}^T \\ 
-             & - \left[  \beta\pd{R_{k+1}}{{q}_{k+1}} \right]^T \rho_{k+1}  \\
-             & -  \left\{ (1-\gamma) \frac{1}{h} \pd{f_{k+1}}{\dot{q}_{k+1}} + (\frac{1}{2}-\beta) \pd{f_{k+1}}{{q}_{k+1}} \right\}^T \\
-             & -  \left[ (1-\gamma) \frac{1}{h} \pd{R_{k+1}}{\dot{q}_{k+1}} + (\frac{1}{2}-\beta) \pd{R_{k+1}}{{q}_{k+1}} \right]^T\rho_{k+1} \\
-             & -  \frac{1}{h} \left\{ \frac{1}{h} \sigma_{k+1} + (\frac{1}{2} +\gamma) \tau_{k+1} \right\}^T\\
-           \end{split}
-         \end{equation}
-        
-         \begin{equation}
-           \begin{split}
-             \left[ \frac{1}{h^2} \pd{R_k}{\ddot{q}_k} + \gamma \frac{1}{h} \pd{R_k}{\dot{q}_k} + \beta \pd{R_k}{{q}_k} \right]^T \rho_k = &- \left\{ \frac{1}{h^2}  \pd{f_k}{\ddot{q}_k} + \gamma \frac{1}{h} \pd{f_k}{\dot{q}_k} + \beta \pd{f_k}{{q}_k} \right\}^T \\
-             & -  \left\{  \frac{1}{h} \pd{f_{k+1}}{\dot{q}_{k+1}} +  (\frac{1}{2} +\gamma) \pd{f_{k+1}}{{q}_{k+1}} \right\}^T \\
-             & -  \left[  \frac{1}{h} \pd{R_{k+1}}{\dot{q}_{k+1}} +  (\frac{1}{2} +\gamma)  \pd{R_{k+1}}{{q}_{k+1}} \right]^T\rho_{k+1} \\
-             & -  \frac{1}{h} \left\{ \frac{1}{h} \sigma_{k+1} + (\frac{1}{2} +\gamma) \tau_{k+1} \right\}^T\\
-           \end{split}
-         \end{equation}
-
-         Once the primary adjoint variables $\rho_k$ have been
-         determined, the total derivative is readily obtained using
-         Eq.\eqref{eqn:nbg-total-derivative}:
-         $$\pd{\cal{L}}{x} = \pd{F}{x} = \sum_{k=0}^N h \pd{f_k}{x}^T
-         + \sum_{k=0}^N h \pd{R_k}{x}^T \rho_k.$$ Notice that
-         $\pd{S_k}{x} = \pd{T_k}{x} = 0$.  
-  
-
-
-         We can equivalently scale the equation with $1/h^2$ and represent as follows:
-         
-         \begin{equation}
-           \begin{split}
-             \left[ \frac{1}{h^2} \pd{R_k}{\ddot{q}_k} + \gamma \frac{1}{h} \pd{R_k}{\dot{q}_k} + \beta \pd{R_k}{{q}_k} \right]^T \rho_k = &- \left\{ \frac{1}{h^2}  \pd{f_k}{\ddot{q}_k} + \gamma \frac{1}{h} \pd{f_k}{\dot{q}_k} + \beta \pd{f_k}{{q}_k} \right\}^T \\
-             & -  \frac{1}{h}\left\{  \gamma \frac{1}{h}  \sigma_k + \beta   \tau_k \right\}^T\\
-             & -  \left\{ (1-\gamma) \frac{1}{h} \pd{f_{k+1}}{\dot{q}_{k+1}} + \frac{1-2\beta}{2} \pd{f_{k+1}}{{q}_{k+1}} \right\}^T \\
-                          & -  \left[ (1-\gamma) \frac{1}{h} \pd{R_{k+1}}{\dot{q}_{k+1}} + \frac{1-2\beta}{2} \pd{R_{k+1}}{{q}_{k+1}} \right]^T\rho_{k+1} \\
-             & -  \frac{1}{h} \left\{ (1-\gamma) \frac{1}{h} \sigma_{k+1} + \frac{1-2\beta}{2} \tau_{k+1} \right\}^T\\
-           \end{split}
-         \end{equation}
