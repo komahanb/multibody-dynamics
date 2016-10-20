@@ -248,7 +248,7 @@ contains
        call this % adjointSolve(this % mu(k,:), alpha, beta, gamma, &
             & this % time(k), this % u(k,:), this % udot(k,:), this % uddot(k,:))
        
-       !print*, "k,mu=", k, this % mu(k,:)
+       ! print *, this % mu(k,:), this % psi(k,:), this % phi(k,:)
 
     end do time
     
@@ -299,13 +299,10 @@ contains
 
     class(ABM)                                :: this
     type(scalar), dimension(:), intent(inout) :: rhs
-    type(scalar), dimension(:,:), allocatable :: jac
     type(scalar)                              :: scale
     integer                                   :: k, m
     type(scalar)                              :: alpha, beta, gamma
     
-    allocate( jac(this % nSVars, this % nSVars) )
-
     ! Zero the RHS first
     rhs = 0.0d0
 
@@ -322,23 +319,9 @@ contains
        beta  = 0.0d0
        alpha = this % h
 
-       call this % system % func % addFuncSVSens(this % phi(k,:), &
-            & alpha, beta, gamma, &
-            & this % time(k+1), &
-            & this % system % X, &
-            & this % u(k+1,:), &
-            & this % udot(k+1,:), &
-            & this % uddot(k+1,:))
-
-       ! Add the residual adjoint product from the previous step
-       call this % system % assembleJacobian(jac, &
-            & alpha, beta, gamma, &
-            & this % time(k+1), &
-            & this % u(k+1,:), &
-            & this % udot(k+1,:), &
-            & this % uddot(k+1,:))
-
-       this % phi(k,:) = this % phi(k,:) + matmul(transpose(jac(:,:)), this % mu(k+1,:))
+       call this % addFuncResAdjPdt(alpha, beta, gamma, this % time(k+1), &
+            & this % u(k+1,:), this % udot(k+1,:), this % uddot(k+1,:), &
+            & this % mu(k+1,:), this % phi(k,:))
 
     end if
 
@@ -351,25 +334,14 @@ contains
        
        gamma = 0.0d0
        beta  = this % h
-       alpha = this % h * this % h * this % A(m,1)
+       alpha = this % h * this % h * this % A(this % getOrder(k+1),2)
+       
+       call this % addFuncResAdjPdt(alpha, beta, gamma, this % time(k+1), &
+            & this % u(k+1,:), this % udot(k+1,:), this % uddot(k+1,:), &
+            & this % mu(k+1,:), this % psi(k,:))
 
-       call this % system % func % addFuncSVSens(this % psi(k,:), &
-            & alpha, beta, gamma, &
-            & this % time(k+1), &
-            & this % system % X, &
-            & this % u(k+1,:), &
-            & this % udot(k+1,:), &
-            & this % uddot(k+1,:))
-
-       ! Add the residual adjoint product from the previous step
-       call this % system % assembleJacobian(jac, &
-            & alpha, beta, gamma, &
-            & this % time(k+1), &
-            & this % u(k+1,:), &
-            & this % udot(k+1,:), &
-            & this % uddot(k+1,:))
-
-       this % psi(k,:) = this % psi(k,:) + matmul(transpose(jac(:,:)), this % mu(k+1,:))
+       this % psi(k,:) = this % psi(k,:) &
+            & + this % h * this % A(this % getOrder(k+1),2) * this % phi(k+1,:) ! check coeff
 
     end if
     
@@ -388,11 +360,32 @@ contains
 
     rhs = rhs + this % A(m,1) * this % psi(k,:)
     
+    if ( k + 1 .le. this % num_steps ) then
+      
+       gamma = 0.0d0
+       if ( k .eq. 2) then
+          beta  = this % h * this % A(2,2)
+          alpha = this % h * this % A(2,2) * this % h * this % A(2,1) + &
+               & this % h * this % A(2,2) * this % h * this % A(1,1)
+          rhs = rhs + beta/ this % h * this % psi(k+1,:)
+          rhs = rhs + alpha/ this % h * this % phi(k+1,:) ! this term corrects the error from third step onwards
+       else
+          beta  = this % h * this % A(2,2)
+          alpha = this % h * this % A(2,2) * this % h * this % A(2,1) + &
+               & this % h * this % A(2,1) * this % h * this % A(2,2)
+          rhs = rhs + beta/ this % h * this % psi(k+1,:)
+          rhs = rhs + alpha/ this % h * this % phi(k+1,:) ! this term corrects the error from third step onwards
+       end if
+
+       call this % addFuncResAdjPdt(alpha, beta, gamma, this % time(k+1), &
+            & this % u(k+1,:), this % udot(k+1,:), this % uddot(k+1,:), &
+            & this % mu(k+1,:), rhs)
+       
+    end if
+    
     ! Negate the RHS
     rhs = - rhs
 
-    if(allocated(jac)) deallocate(jac)
-
   end subroutine assembleRHS
-
+  
 end module abm_integrator
