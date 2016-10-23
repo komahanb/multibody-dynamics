@@ -33,7 +33,7 @@ module abm_integrator
      
      ! Destructor
      procedure, public  :: finalize
-
+     procedure :: writeSolution => writeSolution
      ! Routines for integration
      procedure, private :: approximateStates
      procedure, private :: getLinearCoeff
@@ -248,9 +248,12 @@ contains
        call this % adjointSolve(this % mu(k,:), alpha, beta, gamma, &
             & this % time(k), this % u(k,:), this % udot(k,:), this % uddot(k,:))
        
-       ! print *, this % mu(k,:), this % psi(k,:), this % phi(k,:)
-
     end do time
+
+    do k = 2, this % num_steps
+       print *, real(this % mu(k,:)), real(this % psi(k,:)), real(this % phi(k,:))
+    end do 
+           
     
   end subroutine marchBackwards
   
@@ -334,7 +337,7 @@ contains
        
        gamma = 0.0d0
        beta  = this % h
-       alpha = this % h * this % h * this % A(this % getOrder(k+1),2)
+       alpha = this % h * this % h * this % A(this % getOrder(k+1), 2)
        
        call this % addFuncResAdjPdt(alpha, beta, gamma, this % time(k+1), &
             & this % u(k+1,:), this % udot(k+1,:), this % uddot(k+1,:), &
@@ -387,5 +390,48 @@ contains
     rhs = - rhs
 
   end subroutine assembleRHS
+
+  
+  !===================================================================!
+  ! Write solution to file
+  !===================================================================!
+
+  subroutine writeSolution(this, filename)
+
+    class(ABM)                      :: this
+    character(len=*), OPTIONAL, intent(in) :: filename
+    character(len=7), parameter            :: directory = "output/"
+    character(len=32)                      :: path = ""
+    integer                                :: k, j, ierr
+
+    path = trim(path)
+
+    if (present(filename)) then
+       path = directory//filename
+    else
+       path = directory//"solution.dat"
+    end if
+
+    open(unit=90, file=trim(path), iostat= ierr)
+
+    if (ierr .ne. 0) then
+       write(*,'("  >> Opening file ", 39A, " failed")') path
+       return
+    end if
+
+    do k = 1, this % num_steps
+       write(90, *)  this % time(k), &
+            & (dble(this % u     (k,j) ), j=1,this%nsvars ), &
+            & (dble(this % udot  (k,j) ), j=1,this%nsvars ), &
+            & (dble(this % uddot (k,j) ), j=1,this%nsvars ), & 
+            & (dble(this % phi   (k,j) ), j=1,this%nsvars ), &
+            & (dble(this % psi   (k,j) ), j=1,this%nsvars ), &
+            & (dble(this % mu   (k,j) ), j=1,this%nsvars )
+    end do
+
+    close(90)
+
+  end subroutine writeSolution
+
   
 end module abm_integrator
