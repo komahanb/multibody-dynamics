@@ -6,9 +6,9 @@
 \mode<presentation>
 {
   %\usetheme{Copenhagen}  
-  %\usetheme{Warsaw}  
-  \usetheme{Malmoe}  
-  %  \setbeamertemplate{headline}{}
+  \usetheme{Warsaw}  
+  %\usetheme{Malmoe}  
+   % \setbeamertemplate{headline}{}
   %make my huge toc fit on one slide (and not look horrible)
   %\setbeamerfont{subsection in toc}{series=\bfseries}
   %\setbeamerfont{subsection in toc}{size=\tiny,series=\bfseries}
@@ -60,12 +60,14 @@
 
 \title[\hspace{-0.2cm} Time Dependent Discrete Adjoint]
 {
-Time Dependent Discrete Adjoint Formulations for Structural Dynamics
+Adjoint-Based Derivative Evaluation Methods for Flexible Multibody Systems
 }
 
-\author[Komahan Boopathy]
+\author[K. Boopathy and G. J. Kennedy]
 {
-  \Large {Komahan Boopathy}\\
+  \Large {Komahan Boopathy} \\ 
+  and \\
+  \Large {Graeme Kennedy} \\
 }
 
 \institute
@@ -85,7 +87,7 @@ Time Dependent Discrete Adjoint Formulations for Structural Dynamics
 \begin{document}
 \setbeamertemplate{background}{
   \begin{tikzpicture}
-    \node[opacity=.1,inner sep=0pt]{
+    \node[opacity=.01,inner sep=0pt]{
      \includegraphics [height=\paperheight]{gt.png}};
   \end{tikzpicture}
 }
@@ -99,7 +101,7 @@ Time Dependent Discrete Adjoint Formulations for Structural Dynamics
 
 \setbeamertemplate{background}{
   \begin{tikzpicture}
-    \node[opacity=.03,inner sep=0pt]{
+    \node[opacity=.003,inner sep=0pt]{
      \includegraphics [height=\paperheight]{gt.png}};
   \end{tikzpicture}
 }
@@ -107,9 +109,46 @@ Time Dependent Discrete Adjoint Formulations for Structural Dynamics
 %  \frametitle{Outline}
 %  \tableofcontents
 %\end{frame}
+
+\begin{frame}[fragile] 
+  \frametitle{Motivation: Need for Derivatives}
+  \begin{minipage}{\linewidth}
+  \begin{minipage}{0.5\linewidth}\scriptsize{
+      \begin{block}{Finite differences and complex-step}   
+          \begin{itemize}
+          \item Simple, robust but inefficient
+          \item Doesn't require knowledge of governing equations
+          \end{itemize}
+      \end{block}
+      \begin{block}{Adjoint and direct method}
+      \begin{itemize}
+      \item Efficient, robust but complicated
+      \item Precise to the tolerance to which the governing ODEs/DAEs/PDEs
+        are solved $(10^{-8}, 10^{-12}, 10^{-16})$
+      \item Direct sensitivities are beyond scope
+      \item Requires knowledge of governing equations (semi-analytic)
+        \begin{enumerate}
+        \item \scriptsize{Patience}
+        \item \scriptsize{Calculus}
+        \item \scriptsize{Linear algebra}
+        \end{enumerate}
+      \item Adjoint details, to follow...
+      \end{itemize}
+      \end{block}}
+  \end{minipage}
+  \begin{minipage}{0.6\linewidth}
+    \begin{figure}
+      \centering
+      \includegraphics[trim={2pt 0 0 0}, clip,width=0.75\textwidth]{fd-csd.pdf}
+    \end{figure}
+    \end{minipage}
+  \end{minipage}
+\end{frame}
+
 \begin{noheadline}
-\begin{frame}[allowframebreaks] \frametitle{Newmark--Beta--Gamma Method Adjoint}
-  \tiny{
+\begin{frame}[allowframebreaks] 
+  \frametitle{Newmark--Beta--Gamma Method Adjoint}
+  \scriptsize{
 
 \begin{minipage}{1.0\linewidth}
 \begin{block}{101. Notation:}
@@ -122,7 +161,7 @@ Time Dependent Discrete Adjoint Formulations for Structural Dynamics
       $u,v,w$ \> state variables \\
       $n$  \> number of state variables \\
       $R, S, T$ \> constraint governing equations  \\
-      $\rho,\sigma,\tau$ \> adjoint variables  \\
+      $\lambda,\psi,\phi$ \> adjoint variables  \\
       $F$     \> objective function \\
       $\cal{L}$ \> Lagrangian \\
     \end{tabbing}
@@ -164,18 +203,18 @@ Time Dependent Discrete Adjoint Formulations for Structural Dynamics
 \begin{block}{3. Lagrangian:}
   It would be nice and handy to pack all separate equations (objects)
   into one equation (object) to operate with. We introduce
-  \textcolor{red}{$\rho_k$}, \textcolor{orange}{$\sigma_k$} and
-  \textcolor{blue}{$\tau_k$} as the adjoint variables associated with
+  \textcolor{red}{$\lambda_k$}, \textcolor{orange}{$\psi_k$} and
+  \textcolor{blue}{$\phi_k$} as the adjoint variables associated with
   each of these function objects at the each time step and the
   Lagrangian function is written as:
   \begin{equation}\label{eqn:nbg-lagrangian}
-    {\cal{L}} = \textcolor{brown}{\sum_{k=0}^N h f_k} + \textcolor{red}{ \sum_{k=0}^N h \rho_k^T R_k} 
-    +  \textcolor{orange}{ \sum_{k=0}^N\sigma_k^T S_k} +  \textcolor{blue}{ \sum_{k=0}^N\tau_k^T T_k}.
+    {\cal{L}} = \textcolor{brown}{\sum_{k=0}^N h f_k} + \textcolor{red}{ \sum_{k=0}^N h \lambda_k^T R_k} 
+    +  \textcolor{orange}{ \sum_{k=0}^N\psi_k^T S_k} +  \textcolor{blue}{ \sum_{k=0}^N\phi_k^T T_k}.
   \end{equation}
   The Lagrangian is nothing but a linear ``\texttt{\underline{F}AXPY}'' 
   operator  (why not!) operating on vector objects -- just like \texttt{\underline{S}AXPY}, 
   \texttt{\underline{D}AXPY}, \texttt{\underline{Z}AXPY} (being Fortranic).
-  Here $\rho,~\tau,~\sigma$ adjoint variables: they
+  Here $\lambda,~\phi,~\psi$ adjoint variables: they
   manifest themselves as simple-scaling-scalars in linear-algebra and
   as Lagrange multipliers in the context of optimization.
 \end{block}
@@ -194,34 +233,43 @@ Time Dependent Discrete Adjoint Formulations for Structural Dynamics
     \textcolor{orange}{\pd{\cal{L}}{v_k}},
     \textcolor{blue}{\pd{\cal{L}}{w_k}} = 0$$ can be used to generate
     a typically coupled system of equations to solve for the adjoint
-    variables, $\textcolor{red}{\rho}$, $\textcolor{orange}{\sigma}$
-    and $\textcolor{blue}{\tau}$. We will get three vectors of
-    equations for the three vectors of adjoint variable
-    unknowns. Possibilities for decoupling the system exist -- case by
-    case basis. When decoupling is possible one or more of the
-    constraint equations fold into other equations and therefore the
-    corresponging adjoint variable need not be included in the
-    formulation of the Lagrangian, but is typically done for the sake
-    of generality.\vspace{0.25cm}
-
-    \begin{minipage}{0.49\linewidth}
-      \begin{figure}
-        \centering
-        \includegraphics[width=\textwidth]{general-forward-matrix.pdf}
-        \label{Forward Mode}
-      \end{figure}
-    \end{minipage}
-    \begin{minipage}{0.49\linewidth}
-      \begin{figure}
-        \centering
-        \includegraphics[width=0.925\textwidth]{general-reverse-matrix.pdf}
-        \label{Reverse Mode}
-      \end{figure}
-    \end{minipage}
-
+    variables, $\textcolor{red}{\lambda}$, $\textcolor{orange}{\psi}$
+    and $\textcolor{blue}{\phi}$. 
   \end{enumerate}
 
 \end{block}
+
+\begin{block}{Remark}
+  We will get three vectors of equations for the three vectors of
+  adjoint variable unknowns. Possibilities for decoupling the system
+  exist -- case by case basis. 
+\end{block}
+
+\begin{block}{Remark}
+  When decoupling is possible one or more of the
+  constraint equations fold into other equations and therefore the
+  corresponging adjoint variable need not be included in the
+  formulation of the Lagrangian, but is typically done for the sake of
+  convenience/generality of the implementation.
+\end{block}
+
+\begin{block}{Matrix Structure}
+  \begin{minipage}{0.49\linewidth}
+    \begin{figure}
+      \centering
+      \includegraphics[width=\textwidth]{general-forward-matrix.pdf}
+      \label{Forward Mode}
+    \end{figure}
+  \end{minipage}
+  \begin{minipage}{0.49\linewidth}
+    \begin{figure}
+      \centering
+      \includegraphics[width=0.925\textwidth]{general-reverse-matrix.pdf}
+      \label{Reverse Mode}
+    \end{figure}
+  \end{minipage}
+\end{block}
+
 \framebreak
 
   \begin{block}{5. Total Derivative:}
@@ -231,9 +279,9 @@ Time Dependent Discrete Adjoint Formulations for Structural Dynamics
     \begin{equation}\label{eqn:nbg-total-derivative}
       \pd{\cal{L}}{x} = \pd{F}{x} = 
       \textcolor{brown}{\sum_{k=0}^N h \pd{f_k}{x}^T} + 
-      \textcolor{red}{\sum_{k=0}^N h \pd{R_k}{x}^T \rho_k} + 
-      \textcolor{orange}{\sum_{k=0}^N \pd{S_k}{x}^T \sigma_k} + 
-      \textcolor{blue}{\sum_{k=0}^N \pd{T_k}{x}^T \tau_k}.
+      \textcolor{red}{\sum_{k=0}^N h \pd{R_k}{x}^T \lambda_k} + 
+      \textcolor{orange}{\sum_{k=0}^N \pd{S_k}{x}^T \psi_k} + 
+      \textcolor{blue}{\sum_{k=0}^N \pd{T_k}{x}^T \phi_k}.
     \end{equation}
   \end{block}
   %The projections of every other vector is used to 
@@ -252,8 +300,8 @@ Time Dependent Discrete Adjoint Formulations for Structural Dynamics
         $m$     \> number of design variables \\
         \colorbox{blue!20}{$u,v,w$} \> \colorbox{blue!20}{state variables} \\
         $n$  \> number of state variables \\
-         \colorbox{green!20}{$R, S, T$} \> constraint governing equations  \\
-        $\rho ,~ \sigma ,~\tau$ \> adjoint variables  \\
+        \colorbox{green!20}{$R, S, T$} \> constraint governing equations  \\
+        $\lambda ,~ \psi ,~\phi$ \> adjoint variables  \\
         $F$     \> objective function \\
         $\cal{L}$ \> Lagrangian \\
       \end{tabbing}
@@ -268,126 +316,130 @@ Time Dependent Discrete Adjoint Formulations for Structural Dynamics
         \colorbox{blue!20}{$q,\dot{q},\ddot{q}$} \> \colorbox{blue!20}{position, velocity and acceleration states} \\
         $n$  \> number of state variables \\
         \colorbox{green!20}{$R, S, T$} \> constraint governing equations  \\
-        $\rho ,~ \sigma ,~\tau$ \> adjoint variables  \\
+        $\lambda ,~ \psi ,~\phi$ \> adjoint variables  \\
         $F$     \> objective function \\
         $\cal{L}$ \> Lagrangian \\
       \end{tabbing}
     \end{minipage}
   \end{block}
 
-    The residual of the governing equations from structural dynamics
-    can be posed as: 
-    \begin{equation}\label{eqn:nbg-residual}
-      \textcolor{red}{R_k = R_k(\underline{\ddot{q}_k}, \dot{q}_k, q_k, x) = 0}.
-    \end{equation}
-    \textbf{Example:} $R = m\ddot{q} + c\dot{q} + k{q} = 0$, x = $[m,
+  The residual of the governing equations from structural dynamics
+  can be posed as: 
+  \begin{equation}\label{eqn:nbg-residual}
+    \textcolor{red}{R_k = R_k(\underline{\ddot{q}_k}, \dot{q}_k, q_k, x) = 0}.
+  \end{equation}
+  \begin{example} 
+    $R = m\ddot{q} + c\dot{q} + k{q} = 0$, x = $[m,
       c, k]$ can be the design variables of choice, the objective be
     minimizing the time-averaged potential energy $F = \frac{1}{T}
     \int_{0}^T f_k~dt$, where $f_k = \frac{1}{2} kq^2$ is the
     instantaneous PE.
+  \end{example}
+}
+\end{frame}
 
-    \begin{minipage}{0.6\linewidth}
-      We use \textbf{Newmark--Beta--Gamma (NBG)} time-marching method to
-      integrate and solve for the states over time.  The states
-      approximation equations are:
-      \begin{equation}\label{eqn:nbg-approx-qdot}
-        \textcolor{orange}{S_k =  \dot{q}_{k-1}  + (1-\gamma) h \ddot{q}_{k-1} +  \gamma h \ddot{q}_{k}- \dot{q}_k=0, }
-      \end{equation}
-      \begin{equation}\label{eqn:nbg-approx-q}
-        \textcolor{blue}{T_k = {q}_{k-1} + h \dot{q}_{k-1} +\frac{1-2\beta}{2}
-          h^2\ddot{q}_{k-1} + \beta h^2 \ddot{q}_k-{q}_k=0}. 
-      \end{equation}
-      The underlined varibles are the primary variables in each equation.
-    \end{minipage}
-    \begin{minipage}{0.39\linewidth}
-      \begin{figure}
-        \centering
-        \includegraphics[width=\textwidth]{nbg-node.pdf}
-        %\caption{Illustrations showing the working of NBG method.}
-        \label{fig:nbg-illustration}
-      \end{figure}
-    \end{minipage}
-    
+\begin{frame}\frametitle{Newmark--Beta--Gamma Adjoint}
+\scriptsize{
+  \begin{minipage}{0.6\linewidth}
+    We use \textbf{Newmark--Beta--Gamma (NBG)} time-marching method to
+    integrate and solve for the states over time.  The states
+    approximation equations are:
+    \begin{equation}\label{eqn:nbg-approx-qdot}
+      \textcolor{orange}{S_k =  \dot{q}_{k-1}  + (1-\gamma) h \ddot{q}_{k-1} +  \gamma h \ddot{q}_{k}- \dot{q}_k=0, }
+    \end{equation}
+    \begin{equation}\label{eqn:nbg-approx-q}
+      \textcolor{blue}{T_k = {q}_{k-1} + h \dot{q}_{k-1} +\frac{1-2\beta}{2}
+        h^2\ddot{q}_{k-1} + \beta h^2 \ddot{q}_k-{q}_k=0}. 
+    \end{equation}
+    The underlined varibles are the primary variables in each equation.
     Eq~\eqref{eqn:nbg-residual} comes from the governing physics of
     the system. Eqs.~\eqref{eqn:nbg-approx-qdot} and
     ~\eqref{eqn:nbg-approx-q} come from the time-marching
     scheme. Therefore, the equations $S_k$ and $T_k$ are independent
     of the design variables $x$ -- they do not contribute to the total
-    derivative:
-    \begin{equation}\label{eqn:nbg-total-derivative}
-      \pd{\cal{L}}{x} = \pd{F}{x} = \textcolor{brown}{\sum_{k=0}^N h \pd{f_k}{x}^T} +\textcolor{red}{ \sum_{k=0}^N h
-    \pd{R_k}{x}^T \rho_k}.
-    \end{equation}
-
-    \begin{minipage}{1.0\linewidth}
-      \begin{figure}
-        \centering
-        \includegraphics[width=0.925\textwidth]{nbg-reverse-matrix.pdf}
-        \label{Reverse Mode}
-      \end{figure}
-    \end{minipage}
-
-    \begin{itemize}
-
-    \item Since the equations $S_k$ and $T_k$ are explicit, it becomes
-      possible to solve \underline{sequentially} for the adjoint
-      variables at each step. This property is beneficial in terms of
-      reducing the size of the linear system. The matrix is upper
-      triangular and we can solve for the adjoint variables sequentially
-      via back-substitution -- we march backwards in time. The above
-      treatment is based on the application of chain rule of
-      differentiation. 
-
-    \item Differentiate the terms that carry information within the
-      current-step from the ones that carry them across time-steps.
-
-    \item It is easy to show that equivalent results are obtained by using
-      the conditions:
-      $$\textcolor{red}{\pd{\cal{L}}{u_k}},
-      \textcolor{orange}{\pd{\cal{L}}{v_k}},
-      \textcolor{blue}{\pd{\cal{L}}{w_k}} = 0.$$      
-    \end{itemize}
-
-    \begin{itemize}
-    \item
-      Setting $\pd{\cal{L}}{{q}_k} = 0$ yields:
-      \begin{equation}
-        \begin{split}
-          \tau_k = \tau_{k+1} + \left\{h \pd{f_{k+1}}{{q}_{k+1}} \right\}^T + \left[ h \pd{R_{k+1}}{{q}_{k+1}} \right]^T \rho_{k+1}  
-        \end{split}
-      \end{equation}
-
-    \item Setting $\pd{\cal{L}}{\dot{q}_k} = 0$ yields:
-      \begin{equation}
-        \begin{split}
-          \sigma_k = \sigma_{k+1} + h \tau_{k+1}  + \left\{ h \pd{f_{k+1}}{\dot{q}_{k+1}} +  h^2 \pd{f_{k+1}}{{q}_{k+1}} \right\}^T + \left[ h \pd{R_{k+1}}{\dot{q}_{k+1}} +  h^2 \pd{R_{k+1}}{{q}_{k+1}} \right]^T \rho_{k+1} 
-        \end{split}
-      \end{equation}
-      
-    \item    Setting $\pd{\cal{L}}{\ddot{q}_k} = 0$ yields:
-      \begin{equation}
-        \begin{split}
-          \left[ \pd{R_k}{\ddot{q}_k} + \gamma h \pd{R_k}{\dot{q}_k} + \beta h^2 \pd{R_k}{{q}_k} \right]^T \rho_k = &- \left\{ \pd{f_k}{\ddot{q}_k} + \gamma h \pd{f_k}{\dot{q}_k} + \beta h^2 \pd{f_k}{{q}_k} \right\}^T \\
-          & -  \frac{1}{h}\left\{  \gamma h  \sigma_k + \beta h^2   \tau_k \right\}^T\\
-          & -  \left\{ (1-\gamma) h \pd{f_{k+1}}{\dot{q}_{k+1}} + \frac{1-2\beta}{2} h^2 \pd{f_{k+1}}{{q}_{k+1}} \right\}^T \\
-          & -  \left[ (1-\gamma) h \pd{R_{k+1}}{\dot{q}_{k+1}} + \frac{1-2\beta}{2} h^2 \pd{R_{k+1}}{{q}_{k+1}} \right]^T\rho_{k+1} \\
-          & -  \frac{1}{h} \left\{ (1-\gamma) h \sigma_{k+1} + \frac{1-2\beta}{2} h^2 \tau_{k+1} \right\}^T\\
-        \end{split}
-      \end{equation}
-    \end{itemize}
-
-    Figure~\ref{fig:nbg-illustration} shows the flow of information across
-    states.
+    derivative. 
+  \end{minipage}
+  \begin{minipage}{0.39\linewidth}
     \begin{figure}
       \centering
-      \includegraphics[width=\textwidth]{nbg-chart.pdf}
+      \includegraphics[width=\textwidth]{nbg-lagrangian.pdf}
       %\caption{Illustrations showing the working of NBG method.}
       \label{fig:nbg-illustration}
     \end{figure}
+  \end{minipage}
+  
+  \textbf{Total Derivative:}
+  \begin{equation}\label{eqn:nbg-total-derivative}
+    \pd{\cal{L}}{x} = \pd{F}{x} = \textcolor{brown}{\sum_{k=0}^N h \pd{f_k}{x}^T} +\textcolor{red}{ \sum_{k=0}^N h
+      \pd{R_k}{x}^T \lambda_k}.
+  \end{equation}
 
+  %    \begin{minipage}{1.0\linewidth}
+  %      \begin{figure}
+  %        \centering
+  %        \includegraphics[width=0.925\textwidth]{nbg-reverse-matrix.pdf}
+  %        \label{Reverse Mode}
+  %      \end{figure}
+  %    \end{minipage}
 
-  }
+  %    \begin{itemize}
 
+  %    \item Since the equations $S_k$ and $T_k$ are explicit, it becomes
+  %      possible to solve \underline{sequentially} for the adjoint
+  %      variables at each step. This property is beneficial in terms of
+  %      reducing the size of the linear system. The matrix is upper
+  %      triangular and we can solve for the adjoint variables sequentially
+  %      via back-substitution -- we march backwards in time. The above
+  %      treatment is based on the application of chain rule of
+  %      differentiation. 
+
+  %   \item Differentiate the terms that carry information within the
+  %     current-step from the ones that carry them across time-steps.
+  \textbf{Adjoint Equations:}
+  The system of equations for the adjoint variables is given by
+  $$\textcolor{red}{\pd{\cal{L}}{\ddot{q}_k}},
+  \textcolor{orange}{\pd{\cal{L}}{\dot{q}_k}},
+  \textcolor{blue}{\pd{\cal{L}}{q_k}} = 0.$$      
+
+  %    \end{itemize}
+  \begin{itemize}
+  \item Solving for $\phi$ using $\pd{\cal{L}}{{q}_k} = 0$:
+    \begin{equation}
+      \begin{split}
+        \phi_k = \phi_{k+1} + h \left\{ \pd{f_{k+1}}{{q}_{k+1}} \right\}^T + h \left[\pd{R_{k+1}}{{q}_{k+1}} \right]^T \lambda_{k+1}  
+      \end{split}
+    \end{equation}
+
+  \item Solving for $\psi_k$ using $\pd{\cal{L}}{\dot{q}_k} = 0$:
+    \begin{equation}
+      \begin{split}
+        \psi_k = \psi_{k+1} + h \phi_{k+1}  +h \left\{ \pd{f_{k+1}}{\dot{q}_{k+1}} +  h \pd{f_{k+1}}{{q}_{k+1}} \right\}^T + h\left[ \pd{R_{k+1}}{\dot{q}_{k+1}} +  h \pd{R_{k+1}}{{q}_{k+1}} \right]^T \lambda_{k+1} 
+      \end{split}
+    \end{equation}
+
+  \item Solving for $\lambda_k$ using $\pd{\cal{L}}{\ddot{q}_k} = 0$:
+    
+    \begin{equation}
+      \begin{split}
+        \left[ \pd{R_k}{\ddot{q}_k} + \gamma h \pd{R_k}{\dot{q}_k} + \beta h^2 \pd{R_k}{{q}_k} \right]^T \lambda_k = &- \left\{ \pd{f_k}{\ddot{q}_k} + \gamma h \pd{f_k}{\dot{q}_k} + \beta h^2 \pd{f_k}{{q}_k} \right\}^T \\
+        & -  \frac{1}{h}\left\{  \gamma h  \psi_k + \beta h^2   \phi_k \right\}^T\\
+        & -  \left\{ (1-\gamma) h \pd{f_{k+1}}{\dot{q}_{k+1}} + \frac{1-2\beta}{2} h^2 \pd{f_{k+1}}{{q}_{k+1}} \right\}^T \\
+        & -  \left[ (1-\gamma) h \pd{R_{k+1}}{\dot{q}_{k+1}} + \frac{1-2\beta}{2} h^2 \pd{R_{k+1}}{{q}_{k+1}} \right]^T\lambda_{k+1} \\
+        & -  \frac{1}{h} \left\{ (1-\gamma) h \psi_{k+1} + \frac{1-2\beta}{2} h^2 \phi_{k+1} \right\}^T\\
+      \end{split}
+    \end{equation}
+  \end{itemize}
+  
+  Figure~\ref{fig:nbg-illustration} shows the flow of information across
+  states.
+  \begin{figure}
+    \centering
+    \includegraphics[width=\textwidth]{nbg-chart.pdf}
+    %\caption{Illustrations showing the working of NBG method.}
+    \label{fig:nbg-illustration}
+  \end{figure}
+
+}
 \end{frame}
 \end{noheadline}
 \end{document}
@@ -396,12 +448,12 @@ Time Dependent Discrete Adjoint Formulations for Structural Dynamics
 %
 %         \begin{equation}
 %           \begin{split}
-%             \left[ \frac{1}{h^2} \pd{R_k}{\ddot{q}_k} + \gamma \frac{1}{h} \pd{R_k}{\dot{q}_k} + \beta \pd{R_k}{{q}_k} \right]^T \rho_k = &- \left\{ \frac{1}{h^2}  \pd{f_k}{\ddot{q}_k} + \gamma \frac{1}{h} \pd{f_k}{\dot{q}_k} + \beta \pd{f_k}{{q}_k} \right\}^T \\
-%             & -  \frac{1}{h}\left\{  \gamma \frac{1}{h}  \left( \sigma_{k+1} + h \tau_{k+1}  + \left\{ h \pd{f_{k+1}}{\dot{q}_{k+1}} +  h^2 \pd{f_{k+1}}{{q}_{k+1}} \right\}^T + \left[ h \pd{R_{k+1}}{\dot{q}_{k+1}} +  h^2 \pd{R_{k+1}}{{q}_{k+1}} \right]^T \rho_{k+1}  \right) \right\}^T \\
-%             & -  \frac{1}{h}\left\{  \beta  \left( \tau_{k+1} + \left\{h \pd{f_{k+1}}{{q}_{k+1}} \right\}^T + \left[ h \pd{R_{k+1}}{{q}_{k+1}} \right]^T \rho_{k+1}  \right) \right\}^T\\
+%             \left[ \frac{1}{h^2} \pd{R_k}{\ddot{q}_k} + \gamma \frac{1}{h} \pd{R_k}{\dot{q}_k} + \beta \pd{R_k}{{q}_k} \right]^T \lambda_k = &- \left\{ \frac{1}{h^2}  \pd{f_k}{\ddot{q}_k} + \gamma \frac{1}{h} \pd{f_k}{\dot{q}_k} + \beta \pd{f_k}{{q}_k} \right\}^T \\
+%             & -  \frac{1}{h}\left\{  \gamma \frac{1}{h}  \left( \psi_{k+1} + h \phi_{k+1}  + \left\{ h \pd{f_{k+1}}{\dot{q}_{k+1}} +  h^2 \pd{f_{k+1}}{{q}_{k+1}} \right\}^T + \left[ h \pd{R_{k+1}}{\dot{q}_{k+1}} +  h^2 \pd{R_{k+1}}{{q}_{k+1}} \right]^T \lambda_{k+1}  \right) \right\}^T \\
+%             & -  \frac{1}{h}\left\{  \beta  \left( \phi_{k+1} + \left\{h \pd{f_{k+1}}{{q}_{k+1}} \right\}^T + \left[ h \pd{R_{k+1}}{{q}_{k+1}} \right]^T \lambda_{k+1}  \right) \right\}^T\\
 %             & -  \left\{ (1-\gamma) \frac{1}{h} \pd{f_{k+1}}{\dot{q}_{k+1}} + \frac{1-2\beta}{2} \pd{f_{k+1}}{{q}_{k+1}} \right\}^T \\
-%             & -  \left[ (1-\gamma) \frac{1}{h} \pd{R_{k+1}}{\dot{q}_{k+1}} + \frac{1-2\beta}{2} \pd{R_{k+1}}{{q}_{k+1}} \right]^T\rho_{k+1} \\
-%             & -  \frac{1}{h} \left\{ (1-\gamma) \frac{1}{h} \sigma_{k+1} + \frac{1-2\beta}{2} \tau_{k+1} \right\}^T\\
+%             & -  \left[ (1-\gamma) \frac{1}{h} \pd{R_{k+1}}{\dot{q}_{k+1}} + \frac{1-2\beta}{2} \pd{R_{k+1}}{{q}_{k+1}} \right]^T\lambda_{k+1} \\
+%             & -  \frac{1}{h} \left\{ (1-\gamma) \frac{1}{h} \psi_{k+1} + \frac{1-2\beta}{2} \phi_{k+1} \right\}^T\\
 %           \end{split}
 %         \end{equation}
 %
@@ -414,31 +466,31 @@ Time Dependent Discrete Adjoint Formulations for Structural Dynamics
 
          \begin{equation}
            \begin{split}
-             \left[ \frac{1}{h^2} \pd{R_k}{\ddot{q}_k} + \gamma \frac{1}{h} \pd{R_k}{\dot{q}_k} + \beta \pd{R_k}{{q}_k} \right]^T \rho_k = &- \left\{ \frac{1}{h^2}  \pd{f_k}{\ddot{q}_k} + \gamma \frac{1}{h} \pd{f_k}{\dot{q}_k} + \beta \pd{f_k}{{q}_k} \right\}^T \\
+             \left[ \frac{1}{h^2} \pd{R_k}{\ddot{q}_k} + \gamma \frac{1}{h} \pd{R_k}{\dot{q}_k} + \beta \pd{R_k}{{q}_k} \right]^T \lambda_k = &- \left\{ \frac{1}{h^2}  \pd{f_k}{\ddot{q}_k} + \gamma \frac{1}{h} \pd{f_k}{\dot{q}_k} + \beta \pd{f_k}{{q}_k} \right\}^T \\
              & -  \left\{  \gamma \frac{1}{h}  \pd{f_{k+1}}{\dot{q}_{k+1}} +  \gamma \pd{f_{k+1}}{{q}_{k+1}} \right\}^T \\ 
-             & -  \left[  \gamma \frac{1}{h}  \pd{R_{k+1}}{\dot{q}_{k+1}} + \gamma \pd{R_{k+1}}{{q}_{k+1}} \right]^T \rho_{k+1}  \\
+             & -  \left[  \gamma \frac{1}{h}  \pd{R_{k+1}}{\dot{q}_{k+1}} + \gamma \pd{R_{k+1}}{{q}_{k+1}} \right]^T \lambda_{k+1}  \\
              & -  \left\{ \beta \pd{f_{k+1}}{{q}_{k+1}} \right\}^T \\ 
-             & - \left[  \beta\pd{R_{k+1}}{{q}_{k+1}} \right]^T \rho_{k+1}  \\
+             & - \left[  \beta\pd{R_{k+1}}{{q}_{k+1}} \right]^T \lambda_{k+1}  \\
              & -  \left\{ (1-\gamma) \frac{1}{h} \pd{f_{k+1}}{\dot{q}_{k+1}} + (\frac{1}{2}-\beta) \pd{f_{k+1}}{{q}_{k+1}} \right\}^T \\
-             & -  \left[ (1-\gamma) \frac{1}{h} \pd{R_{k+1}}{\dot{q}_{k+1}} + (\frac{1}{2}-\beta) \pd{R_{k+1}}{{q}_{k+1}} \right]^T\rho_{k+1} \\
-             & -  \frac{1}{h} \left\{ \frac{1}{h} \sigma_{k+1} + (\frac{1}{2} +\gamma) \tau_{k+1} \right\}^T\\
+             & -  \left[ (1-\gamma) \frac{1}{h} \pd{R_{k+1}}{\dot{q}_{k+1}} + (\frac{1}{2}-\beta) \pd{R_{k+1}}{{q}_{k+1}} \right]^T\lambda_{k+1} \\
+             & -  \frac{1}{h} \left\{ \frac{1}{h} \psi_{k+1} + (\frac{1}{2} +\gamma) \phi_{k+1} \right\}^T\\
            \end{split}
          \end{equation}
         
          \begin{equation}
            \begin{split}
-             \left[ \frac{1}{h^2} \pd{R_k}{\ddot{q}_k} + \gamma \frac{1}{h} \pd{R_k}{\dot{q}_k} + \beta \pd{R_k}{{q}_k} \right]^T \rho_k = &- \left\{ \frac{1}{h^2}  \pd{f_k}{\ddot{q}_k} + \gamma \frac{1}{h} \pd{f_k}{\dot{q}_k} + \beta \pd{f_k}{{q}_k} \right\}^T \\
+             \left[ \frac{1}{h^2} \pd{R_k}{\ddot{q}_k} + \gamma \frac{1}{h} \pd{R_k}{\dot{q}_k} + \beta \pd{R_k}{{q}_k} \right]^T \lambda_k = &- \left\{ \frac{1}{h^2}  \pd{f_k}{\ddot{q}_k} + \gamma \frac{1}{h} \pd{f_k}{\dot{q}_k} + \beta \pd{f_k}{{q}_k} \right\}^T \\
              & -  \left\{  \frac{1}{h} \pd{f_{k+1}}{\dot{q}_{k+1}} +  (\frac{1}{2} +\gamma) \pd{f_{k+1}}{{q}_{k+1}} \right\}^T \\
-             & -  \left[  \frac{1}{h} \pd{R_{k+1}}{\dot{q}_{k+1}} +  (\frac{1}{2} +\gamma)  \pd{R_{k+1}}{{q}_{k+1}} \right]^T\rho_{k+1} \\
-             & -  \frac{1}{h} \left\{ \frac{1}{h} \sigma_{k+1} + (\frac{1}{2} +\gamma) \tau_{k+1} \right\}^T\\
+             & -  \left[  \frac{1}{h} \pd{R_{k+1}}{\dot{q}_{k+1}} +  (\frac{1}{2} +\gamma)  \pd{R_{k+1}}{{q}_{k+1}} \right]^T\lambda_{k+1} \\
+             & -  \frac{1}{h} \left\{ \frac{1}{h} \psi_{k+1} + (\frac{1}{2} +\gamma) \phi_{k+1} \right\}^T\\
            \end{split}
          \end{equation}
 
-         Once the primary adjoint variables $\rho_k$ have been
+         Once the primary adjoint variables $\lambda_k$ have been
          determined, the total derivative is readily obtained using
          Eq.\eqref{eqn:nbg-total-derivative}:
          $$\pd{\cal{L}}{x} = \pd{F}{x} = \sum_{k=0}^N h \pd{f_k}{x}^T
-         + \sum_{k=0}^N h \pd{R_k}{x}^T \rho_k.$$ Notice that
+         + \sum_{k=0}^N h \pd{R_k}{x}^T \lambda_k.$$ Notice that
          $\pd{S_k}{x} = \pd{T_k}{x} = 0$.  
   
 
@@ -447,10 +499,10 @@ Time Dependent Discrete Adjoint Formulations for Structural Dynamics
          
          \begin{equation}
            \begin{split}
-             \left[ \frac{1}{h^2} \pd{R_k}{\ddot{q}_k} + \gamma \frac{1}{h} \pd{R_k}{\dot{q}_k} + \beta \pd{R_k}{{q}_k} \right]^T \rho_k = &- \left\{ \frac{1}{h^2}  \pd{f_k}{\ddot{q}_k} + \gamma \frac{1}{h} \pd{f_k}{\dot{q}_k} + \beta \pd{f_k}{{q}_k} \right\}^T \\
-             & -  \frac{1}{h}\left\{  \gamma \frac{1}{h}  \sigma_k + \beta   \tau_k \right\}^T\\
+             \left[ \frac{1}{h^2} \pd{R_k}{\ddot{q}_k} + \gamma \frac{1}{h} \pd{R_k}{\dot{q}_k} + \beta \pd{R_k}{{q}_k} \right]^T \lambda_k = &- \left\{ \frac{1}{h^2}  \pd{f_k}{\ddot{q}_k} + \gamma \frac{1}{h} \pd{f_k}{\dot{q}_k} + \beta \pd{f_k}{{q}_k} \right\}^T \\
+             & -  \frac{1}{h}\left\{  \gamma \frac{1}{h}  \psi_k + \beta   \phi_k \right\}^T\\
              & -  \left\{ (1-\gamma) \frac{1}{h} \pd{f_{k+1}}{\dot{q}_{k+1}} + \frac{1-2\beta}{2} \pd{f_{k+1}}{{q}_{k+1}} \right\}^T \\
-                          & -  \left[ (1-\gamma) \frac{1}{h} \pd{R_{k+1}}{\dot{q}_{k+1}} + \frac{1-2\beta}{2} \pd{R_{k+1}}{{q}_{k+1}} \right]^T\rho_{k+1} \\
-             & -  \frac{1}{h} \left\{ (1-\gamma) \frac{1}{h} \sigma_{k+1} + \frac{1-2\beta}{2} \tau_{k+1} \right\}^T\\
+                          & -  \left[ (1-\gamma) \frac{1}{h} \pd{R_{k+1}}{\dot{q}_{k+1}} + \frac{1-2\beta}{2} \pd{R_{k+1}}{{q}_{k+1}} \right]^T\lambda_{k+1} \\
+             & -  \frac{1}{h} \left\{ (1-\gamma) \frac{1}{h} \psi_{k+1} + \frac{1-2\beta}{2} \phi_{k+1} \right\}^T\\
            \end{split}
          \end{equation}

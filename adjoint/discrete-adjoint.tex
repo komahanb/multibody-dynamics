@@ -152,8 +152,9 @@ S_k(\underline{\dot{q}_k}, \dot{q}_{k-1}, \ddot{q}_{k-1},
      \subsection{First Order ABM}
 
      \subsubsection{Forward Mode}
+
      \paragraph{Step $k=1$:}
-     The initial conditions are $q_1$, $\dot{q}$.
+     The initial conditions are $q_1$, $\dot{q}_1$.
      
      \paragraph{Step $k=2$:}
      The state variables are determined at this step using the
@@ -210,7 +211,7 @@ S_k(\underline{\dot{q}_k}, \dot{q}_{k-1}, \ddot{q}_{k-1},
        \centering
        \begin{tabular}{l | l  |l}
          $\lambda_{4}^T$ & $h$ & $R_4(\ddot{q}_4, \dot{q}_3 + h a_{11} \ddot{q}_{4},
-         q_3 + h a_{11} \dot{q}_{4} )$\\
+         q_3 + h a_{11} \dot{q}_{4} )$ \\
          & $h$ & $f_4(\ddot{q}_4, \dot{q}_3 + h a_{11} \ddot{q}_{4},  q_3 + h a_{11} \dot{q}_{4} )$\\
          $\psi_4^T$ & & $\mathbf{S_4}\left(\dot{q}_3 + h a_{11} \ddot{q}_{4}- \dot{q}_{4} \right)$ \\
          $\phi_4^T$ & & $\mathbf{T_4}\left(q_3 + h a_{11} \dot{q}_{4} - q_{4}\right) $ \\
@@ -395,6 +396,167 @@ S_k(\underline{\dot{q}_k}, \dot{q}_{k-1}, \ddot{q}_{k-1},
          & - h \sum_{i=0}^{m-1} ha_iha_i \psi_{k+i}
        \end{split}
      \end{equation}
+
+     \subsection{Second Order ABM}
+
+     \subsubsection{Forward Mode}
+     
+     \paragraph{Step $k=1$:}
+     The initial conditions are $q_1$, $\dot{q}_1$.
+     
+     \paragraph{Step $k=2$:}
+     The state variables are determined at this step using the
+     following relations.
+     \begin{equation}\nonumber
+       \begin{split}
+         \dot{q}_{2} &= \dot{q}_1 + h a_{11} \ddot{q}_{2}  \\
+         q_{2}       &= q_1 + h a_{21} \dot{q}_{2} + ha_{22} \dot{q}_{1}
+       \end{split}
+     \end{equation}
+
+     \begin{table}[H]
+       \centering
+       \begin{tabular}{l | l  |l}
+         $\lambda_{2}^T$ & $h$ & $R_2(\ddot{q}_2, \dot{q}_1 + h a_{11} \ddot{q}_{2},  q_1 + h a_{21} \dot{q}_{2} + h a_{22} \dot{q}_1)$\\
+         & $h$ & $f_2(\ddot{q}_2, \dot{q}_1 + h a_{11} \ddot{q}_{2},  q_1 + h a_{21} \dot{q}_{2} + h a_{22} \dot{q}_1 )$\\
+         $\psi_2^T$ & & $S_2\left(\dot{q}_1 + h a_{11} \ddot{q}_{2} - \dot{q}_{2} \right)$ \\
+         $\phi_2^T$ & & $T_2\left(q_1 + h a_{21} \dot{q}_{2} + h a_{22} \dot{q}_1 - q_{2}\right) $ \\
+       \end{tabular}
+     \end{table}
+
+     \paragraph{Step $k=3$:}
+     The state variables are determined at this step using the
+     following relations.
+     \begin{equation}\nonumber
+       \begin{split}
+         \dot{q}_{3} &= \dot{q}_2 + h a_{21} \ddot{q}_{3} + h a_{22} \ddot{q}_{2} \\
+         q_{3}       &=      q_2  + h a_{21} \dot{q}_{3}  + h a_{22} \dot{q}_{2}
+       \end{split}
+     \end{equation}
+
+     \begin{table}[H]
+       \centering
+       \begin{tabular}{l | l  |l}
+         $\lambda_{3}^T$  & $h$ & $R_3(\ddot{q}_3, \dot{q}_2 + h a_{21} \ddot{q}_{3} + h a_{22} \ddot{q}_{2}, q_2 + h a_{21} \dot{q}_{3} + h a_{22} \dot{q}_2)$ \\
+                         & $h$ & $f_3(\ddot{q}_3, \dot{q}_2 + h a_{21} \ddot{q}_{3} + h a_{22} \ddot{q}_{2}, q_2 + h a_{21} \dot{q}_{3} + h a_{22} \dot{q}_2)$ \\
+         $\psi_3^T$      &     & $S_3\left(\dot{q}_2 + h a_{21} \ddot{q}_{3} + h a_{22} \ddot{q}_{2} - \dot{q}_{3} \right)$ \\
+         $\phi_3^T$      &     & $T_3\left(q_2 + h a_{21} \dot{q}_{3} + h a_{22} \dot{q}_2 - q_{3} \right) $ \\
+       \end{tabular}
+     \end{table}
+
+
+
+    \paragraph{Step $k=4$:}
+     The state variables are determined at this step using the
+     following relations.
+     \begin{equation}\nonumber
+       \begin{split}
+         \dot{q}_{4} &= \dot{q}_3 + h a_{21} \ddot{q}_{4} + h a_{22} \ddot{q}_{3} \\
+         q_{4}       &=      q_3  + h a_{21} \dot{q}_{4}  + h a_{22} \dot{q}_{3}
+       \end{split}
+     \end{equation}
+
+     \begin{table}[H]
+       \centering
+       \begin{tabular}{l | l  |l}
+         $\lambda_{4}^T$  & $h$ & $R_4(\ddot{q}_4, \dot{q}_3 + h a_{21} \ddot{q}_{4} + h a_{22} \ddot{q}_{3} ,q_3 + h a_{21} \dot{q}_{4} + h a_{22} \dot{q}_3)$ \\
+                         & $h$ & $f_4(\ddot{q}_4, \dot{q}_3 + h a_{21} \ddot{q}_{4} + h a_{22} \ddot{q}_{3} ,q_3 + h a_{21} \dot{q}_{4} + h a_{22} \dot{q}_3)$ \\
+         $\psi_4^T$      &     & $S_4\left(\dot{q}_3 + h a_{21} \ddot{q}_{4} + h a_{22} \ddot{q}_{3} - \dot{q}_{4} \right)$ \\
+         $\phi_4^T$      &     & $T_4\left(q_3 + h a_{21} \dot{q}_{4} + h a_{22} \dot{q}_3 - q_{4} \right) $ \\
+       \end{tabular}
+     \end{table}
+
+     \subsubsection{Reverse Mode}
+
+     We solve for the adjoint variables starting from the last time
+     step.
+
+     \paragraph{Step $k=4$:}
+
+     \begin{itemize}
+       
+     \item Setting $\pd{L}{q_4}=0$, we get:
+       $$  \pd{T_4}{q_4}^T \phi_4 = 0$$
+
+       \begin{center}
+         \boxed{
+           $$
+           \phi_4 = 0
+           $$
+         }
+       \end{center}
+
+     \item Setting $\pd{L}{\dot{q}_4}=0$, we get:
+       $$  \pd{S_4}{\dot{q}_4}^T \psi_4  + \pd{T_4}{\dot{q}_4}^T \phi_4 = 0$$
+       \begin{center}
+         \boxed{
+           $$
+           \psi_4 = 0
+           $$
+         }
+       \end{center}
+       
+     \item Setting $\pd{L}{\ddot{q}_4}=0$, we get:
+       $$ h \pd{R_4}{\ddot{q}_4}^T \lambda_4 + h \pd{f_4}{\ddot{q_4}}^T + \pd{S_4}{\ddot{q}_4}^T \psi_4 = 0$$ %  + \pd{T_4}{\ddot{q}_4}^T \phi_4 
+
+       \begin{center}
+         \boxed{
+           h \left[ \pd{R_4}{\ddot{q_4}} + ha_{22} \pd{R_4}{\dot{q_4}} + h^2 a_{22}^2 \pd{R_4}{q_4} \right]^T\lambda_4 +
+           h \left\{ \pd{f_4}{\ddot{q_4}} + ha_{22} \pd{f_4}{\dot{q_4}} + h^2 a_{22}^2 \pd{f_4}{q_4} \right\}^T +
+           ha_{22} \psi_4  = 0 % + h^2 a_{22}^2\phi_4 = 0
+         }
+       \end{center}
+       
+     \end{itemize}
+     
+     % k = 3 reverse second order ABM
+     \paragraph{Step $k=3$:}
+
+     \begin{itemize}
+       
+     \item Setting $\pd{L}{q_3}=0$, we get:
+       
+       $$  \pd{T_3}{q_3}^T \phi_3 + \pd{T_4}{q_3}^T \phi_4 + h \left[ \pd{R_4}{q_3}\right]^T \lambda_4 +  h \left\{ \pd{f_4}{q_3}\right\}^T = 0$$
+       
+       \begin{center}
+         \boxed{
+           $$
+           \phi_3 = \phi_4 + h \left[ \pd{R_4}{q_4} \right]^T \lambda_4 + h \left\{ \pd{f_4}{q_4} \right\}^T
+           $$
+         }
+       \end{center}
+
+     \item Setting $\pd{L}{\dot{q}_3}=0$, we get:
+       $$  \pd{S_3}{\dot{q}_3}^T \psi_3  + \pd{T_3}{\dot{q}_3}^T \phi_3 
+       + \pd{S_4}{\dot{q}_3}^T \psi_4+ \pd{T_4}{\dot{q}_3}^T \phi_4
+       + h \left[ \pd{R_4}{\dot{q}_3} \right]^T \lambda_4 + h \left\{ \pd{f_4}{\dot{q}_3} \right\}^T
+       = 0 $$
+       \begin{center}
+         \boxed{
+           $$
+           \psi_3 = ha_{21} \phi_3 + \psi_4 + ha_{22}\phi_4
+           + h \left[ \pd{R_4}{\dot{q}_4} + ha_{22} \pd{R_4}{{q}_4} \right]^T \lambda_4
+           + h \left\{ \pd{f_4}{\dot{q}_4} + ha_{22} \pd{f_4}{{q}_4} \right\}^T
+           $$
+         }
+       \end{center}
+       
+     \item  Setting $\pd{L}{\ddot{q}_3}=0$, we get:
+       $$ h \pd{R_3}{\ddot{q}_3}^T \lambda_3 + h \pd{f_3}{\ddot{q_3}}^T + \pd{S_3}{\ddot{q}_3}^T \psi_3  + \pd{T_3}{\ddot{q}_3}^T \phi_3
+      + \pd{S_4}{\ddot{q}_3}^T \psi_4  + \pd{T_4}{\ddot{q}_3}^T \phi_4  + h \pd{R_4}{\ddot{q}_3}^T \lambda_4 + h \pd{f_4}{\ddot{q_3}}^T 
+       = 0$$
+       
+       \begin{equation}
+         \begin{split}
+           h \left[ \pd{R_3}{\ddot{q_3}}  + ha_{22} \pd{R_3}{\dot{q_3}} + h^2 a_{22}^2 \pd{R_3}{q_3} \right]^T\lambda_3 = & - h \left\{ \pd{f_3}{\ddot{q_3}} + ha_{22} \pd{f_3}{\dot{q_3}}+ h^2 a_{22}^2 \pd{f_3}{q_3} \right\}^T  \\ 
+           & - h a_{21} \psi_3 \\
+           & - h \left[ ha_{22} \pd{R_4}{\dot{q_4}} + h^2 a_{22}^2 \pd{R_4}{q_4} \right]^T\lambda_4 \\
+           & - h \left\{ ha_{22} \pd{f_4}{\dot{q_4}} + h^2 a_{22}^2 \pd{f_4}{q_4} \right\}^T \\
+           & - h a_{22} \psi_{4} - (h a_{21} h a_{22} + h a_{22} h a_{21}) \phi_{4}
+         \end{split}
+       \end{equation}
+
+     \end{itemize}
 
      \section{Diagonally--Implicit--Runge--Kutta}
 
