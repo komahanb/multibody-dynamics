@@ -121,6 +121,7 @@ module integrator_class
      procedure :: evalFuncGrad
      procedure :: evalFDFuncGrad
      procedure :: addFuncResAdjPdt
+     procedure :: addResAdjPdt
      
   end type integrator
 
@@ -972,7 +973,7 @@ contains
 
   end function znorm2
 
-  subroutine addFuncResAdjPdt(this, alpha, beta, gamma, time, q, qdot, qddot, adjoint, ans)
+  subroutine addFuncResAdjPdt(this, ans, alpha, beta, gamma, time, q, qdot, qddot, adjoint)
 
     class(integrator), intent(in)             :: this
     type(scalar), intent(in)                  :: alpha, beta, gamma
@@ -998,4 +999,30 @@ contains
 
   end subroutine addFuncResAdjPdt
 
+  subroutine addResAdjPdt(this, ans, alpha, beta, gamma, time, q, qdot, qddot, adjoint)
+
+    class(integrator), intent(in)             :: this
+    type(scalar), intent(in)                  :: alpha, beta, gamma
+    type(real(8)) :: time
+    type(scalar), intent(in), dimension(:)    :: q, qdot, qddot, adjoint
+    type(scalar), intent(inout), dimension(:) :: ans
+    type(scalar), dimension(:,:), allocatable :: jac
+
+    allocate( jac(this % nSVars, this % nSVars) )
+
+!!$    call this % system % func % addFuncSVSens(ans, &
+!!$         & alpha, beta, gamma, &
+!!$         & time, this % system % X, q, qdot, qddot)
+
+    ! Add the residual adjoint product from the previous step
+    call this % system % assembleJacobian(jac, &
+         & alpha, beta, gamma, &
+         & time, q, qdot, qddot)
+
+    ans = ans + matmul(transpose(jac(:,:)), adjoint)
+
+    if(allocated(jac)) deallocate(jac)
+
+  end subroutine addResAdjPdt
+  
 end module integrator_class
