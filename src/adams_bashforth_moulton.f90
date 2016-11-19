@@ -34,6 +34,7 @@ module abm_integrator
      ! Destructor
      procedure, public  :: finalize
      procedure :: writeSolution => writeSolution
+     
      ! Routines for integration
      procedure, private :: approximateStates
      procedure, private :: getLinearCoeff
@@ -322,9 +323,10 @@ contains
        beta  = 0.0d0
        alpha = this % h
 
-       call this % addFuncResAdjPdt(alpha, beta, gamma, this % time(k+1), &
+       call this % addFuncResAdjPdt(this % phi(k,:), &
+            & alpha, beta, gamma, this % time(k+1), &
             & this % u(k+1,:), this % udot(k+1,:), this % uddot(k+1,:), &
-            & this % mu(k+1,:), this % phi(k,:))
+            & this % mu(k+1,:))
 
     end if
 
@@ -332,25 +334,23 @@ contains
        
        ! Find PSI
        this % psi(k,:) = this % psi(k+1,:)
-
-       this % psi(k,:) = this % psi(k,:) + this % h * this % A(m,1) * this % phi(k,:)
        
+       this % psi(k,:) = this % psi(k,:) &
+            & + this % h * this % A(1, 1) * this % phi(k+1,:) ! check coeff
+
        gamma = 0.0d0
        beta  = this % h
-       alpha = this % h * this % h * this % A(this % getOrder(k+1), 2)
+       alpha = this % h * this % h * this % A(1, 1)
        
-       call this % addFuncResAdjPdt(alpha, beta, gamma, this % time(k+1), &
+       call this % addFuncResAdjPdt(this % psi(k,:), alpha, beta, gamma, this % time(k+1), &
             & this % u(k+1,:), this % udot(k+1,:), this % uddot(k+1,:), &
-            & this % mu(k+1,:), this % psi(k,:))
-
-       this % psi(k,:) = this % psi(k,:) &
-            & + this % h * this % A(this % getOrder(k+1),2) * this % phi(k+1,:) ! check coeff
+            & this % mu(k+1,:))
 
     end if
     
     gamma = 1.0d0
-    beta  = this % h * this % A(m,1)
-    alpha = this % h * this % A(m,1) * this % h * this % A(m,1)
+    beta  = this % h * this % A(1,1)
+    alpha = this % h * this % A(1,1) * this % h * this % A(1,1)
 
     ! Add the state variable sensitivity from the previous step
     call this % system % func % addFuncSVSens(rhs, &
@@ -361,28 +361,29 @@ contains
          & this % udot(k,:), &
          & this % uddot(k,:))
 
-    rhs = rhs + this % A(m,1) * this % psi(k,:)
+    rhs = rhs + this % A(1,1) * this % psi(k,:)
+    rhs = rhs + this % A(1,1) * this % h * this % A(1,1) * this % phi(k,:)
     
     if ( k + 1 .le. this % num_steps ) then
-      
-       gamma = 0.0d0
-       if ( k .eq. 2) then
-          beta  = this % h * this % A(2,2)
-          alpha = this % h * this % A(2,2) * this % h * this % A(2,1) + &
-               & this % h * this % A(2,2) * this % h * this % A(1,1)
-          rhs = rhs + beta/ this % h * this % psi(k+1,:)
-          rhs = rhs + alpha/ this % h * this % phi(k+1,:) ! this term corrects the error from third step onwards
-       else
-          beta  = this % h * this % A(2,2)
-          alpha = this % h * this % A(2,2) * this % h * this % A(2,1) + &
-               & this % h * this % A(2,1) * this % h * this % A(2,2)
-          rhs = rhs + beta/ this % h * this % psi(k+1,:)
-          rhs = rhs + alpha/ this % h * this % phi(k+1,:) ! this term corrects the error from third step onwards
-       end if
-
-       call this % addFuncResAdjPdt(alpha, beta, gamma, this % time(k+1), &
-            & this % u(k+1,:), this % udot(k+1,:), this % uddot(k+1,:), &
-            & this % mu(k+1,:), rhs)
+!!$      
+!!$       gamma = 0.0d0
+!!$       if ( k .eq. 2) then
+!!$          beta  = this % h * this % A(2,2)
+!!$          alpha = this % h * this % A(2,2) * this % h * this % A(2,1) + &
+!!$               & this % h * this % A(2,2) * this % h * this % A(1,1)
+!!$          rhs = rhs + beta/ this % h * this % psi(k+1,:)
+!!$          rhs = rhs + alpha/ this % h * this % phi(k+1,:) ! this term corrects the error from third step onwards
+!!$       else
+!!$          beta  = this % h * this % A(2,2)
+!!$          alpha = this % h * this % A(2,2) * this % h * this % A(2,1) + &
+!!$               & this % h * this % A(2,1) * this % h * this % A(2,2)
+!!$          rhs = rhs + beta/ this % h * this % psi(k+1,:)
+!!$          rhs = rhs + alpha/ this % h * this % phi(k+1,:) ! this term corrects the error from third step onwards
+!!$       end if
+!!$
+!!$       call this % addFuncResAdjPdt(alpha, beta, gamma, this % time(k+1), &
+!!$            & this % u(k+1,:), this % udot(k+1,:), this % uddot(k+1,:), &
+!!$            & this % mu(k+1,:), rhs)
        
     end if
     
