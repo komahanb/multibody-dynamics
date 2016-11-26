@@ -373,7 +373,7 @@ contains
     rhs = rhs + alpha/this % h * this % phi(k,:)
     
     if (  k + 1 .le. this % num_steps ) then
-
+       print *, "order", m
        if (this % max_abm_order .eq. 1) then
 
           gamma = 0.0d0
@@ -384,18 +384,17 @@ contains
 
           if ( m .eq. 1)  then !this % max_abm_order == 1 set all to zero
              ! use first order
-
+             m = m+1
              gamma = 0.0d0
-             beta  = this % h * this % A(2,1)
-             alpha = this % h * this % A(2,1) * this % h * this % A(2,2)
+             beta  = this % h * this % A(m,m)
+             alpha = this % h * this % A(m,m-1) * this % h * this % A(m,m)
              !          stop"sd fsf"
           else
              ! use second order
 
-             print *, "order", m
              gamma = 0.0d0
-             beta  = this % h * this % A(2,2)
-             alpha = this % h * this % A(2,1) * this % h * this % A(2,2)
+             beta  = this % h * this % A(m,m)
+             alpha = this % h * this % A(m,m-1) * this % h * this % A(m,m)
 
           end if
 
