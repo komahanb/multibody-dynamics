@@ -65,6 +65,7 @@ contains
     real(dp) , OPTIONAL, intent(in) :: tinit, tfinal
     real(dp) , OPTIONAL, intent(in) :: h
     logical  , OPTIONAL, intent(in) :: second_order
+    integer :: j
 
     print *, "======================================"
     print *, ">>   Adams Bashforth Moulton       << "
@@ -99,6 +100,13 @@ contains
        stop
     end if
     
+    ! Sanity check on ABM coeffs
+    do j = 1, this % max_abm_order
+       if ( realpart(sum(this % A(j,1:j)) - 1.0d0) .gt. 0.00001 ) then
+          stop "Error in ABM Coeff"
+       end if
+    end do
+
     !-----------------------------------------------------------------!
     ! Setup adjoint RHS
     !-----------------------------------------------------------------!
@@ -330,18 +338,18 @@ contains
 
     end if
 
-    if ( k+1 .le. this % num_steps ) then
-       
-       ! Find PSI
+    ! Add psi from previoius step
+    if ( k+1 .le. this % num_steps ) then       
        this % psi(k,:) = this % psi(k+1,:)
        
+       ! Add contributions from PHI
        this % psi(k,:) = this % psi(k,:) &
-            & + this % h * this % A(1, 1) * this % phi(k+1,:) ! check coeff
+            & + this % h * this % phi(k+1,:) ! check coeff
 
        gamma = 0.0d0
        beta  = this % h
-       alpha = this % h * this % h * this % A(1, 1)
-       
+       alpha = this % h * this % h
+
        call this % addFuncResAdjPdt(this % psi(k,:), alpha, beta, gamma, this % time(k+1), &
             & this % u(k+1,:), this % udot(k+1,:), this % uddot(k+1,:), &
             & this % mu(k+1,:))
@@ -349,8 +357,8 @@ contains
     end if
     
     gamma = 1.0d0
-    beta  = this % h * this % A(1,1)
-    alpha = this % h * this % A(1,1) * this % h * this % A(1,1)
+    beta  = this % h * this % A(m,1)
+    alpha = this % h * this % A(m,1) * this % h * this % A(m,1)
 
     ! Add the state variable sensitivity from the previous step
     call this % system % func % addFuncSVSens(rhs, &
@@ -361,32 +369,47 @@ contains
          & this % udot(k,:), &
          & this % uddot(k,:))
 
-    rhs = rhs + this % A(1,1) * this % psi(k,:)
-    rhs = rhs + this % A(1,1) * this % h * this % A(1,1) * this % phi(k,:)
+    rhs = rhs + beta/this % h * this % psi(k,:)
+    rhs = rhs + alpha/this % h * this % phi(k,:)
     
-    if ( k + 1 .le. this % num_steps ) then
-!!$      
-!!$       gamma = 0.0d0
-!!$       if ( k .eq. 2) then
-!!$          beta  = this % h * this % A(2,2)
-!!$          alpha = this % h * this % A(2,2) * this % h * this % A(2,1) + &
-!!$               & this % h * this % A(2,2) * this % h * this % A(1,1)
-!!$          rhs = rhs + beta/ this % h * this % psi(k+1,:)
-!!$          rhs = rhs + alpha/ this % h * this % phi(k+1,:) ! this term corrects the error from third step onwards
-!!$       else
-!!$          beta  = this % h * this % A(2,2)
-!!$          alpha = this % h * this % A(2,2) * this % h * this % A(2,1) + &
-!!$               & this % h * this % A(2,1) * this % h * this % A(2,2)
-!!$          rhs = rhs + beta/ this % h * this % psi(k+1,:)
-!!$          rhs = rhs + alpha/ this % h * this % phi(k+1,:) ! this term corrects the error from third step onwards
-!!$       end if
-!!$
-!!$       call this % addFuncResAdjPdt(alpha, beta, gamma, this % time(k+1), &
-!!$            & this % u(k+1,:), this % udot(k+1,:), this % uddot(k+1,:), &
-!!$            & this % mu(k+1,:), rhs)
-       
+    if (  k + 1 .le. this % num_steps ) then
+
+       if (this % max_abm_order .eq. 1) then
+
+          gamma = 0.0d0
+          beta  = 0.0d0
+          alpha = 0.0d0
+
+       else if (this % max_abm_order .eq. 2) then
+
+          if ( m .eq. 1)  then !this % max_abm_order == 1 set all to zero
+             ! use first order
+
+             gamma = 0.0d0
+             beta  = this % h * this % A(2,1)
+             alpha = this % h * this % A(2,1) * this % h * this % A(2,2)
+             !          stop"sd fsf"
+          else
+             ! use second order
+
+             print *, "order", m
+             gamma = 0.0d0
+             beta  = this % h * this % A(2,2)
+             alpha = this % h * this % A(2,1) * this % h * this % A(2,2)
+
+          end if
+
+       end if
+
+       rhs = rhs + beta/this % h  * this % psi(k+1,:)
+       rhs = rhs + alpha/this % h  * this % phi(k+1,:)
+
+       call this % addFuncResAdjPdt(rhs, alpha, beta, gamma, this % time(k+1), &
+            & this % u(k+1,:), this % udot(k+1,:), this % uddot(k+1,:), &
+            & this % mu(k+1,:))
+
     end if
-    
+
     ! Negate the RHS
     rhs = - rhs
 
