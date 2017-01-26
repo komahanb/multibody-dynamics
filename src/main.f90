@@ -16,6 +16,7 @@ program main
 !!$  use rigid_body_class              , only : rigid_body
 !!$  use multibody_dynamics_class      , only : multibody_dynamics
   use spring_mass_damper_class      , only : smd1, smd2
+  use vanderpol_class      , only : vanderpol
 !!$  use vanderpol_class               , only : vanderpol
   use aero_elastic_oscillator_class , only : aero_elastic_oscillator
 
@@ -34,7 +35,7 @@ program main
   ! Declare Physics for testing
   type(smd1)                   , target :: smd1obj    ! Spring-mass-damper test ODE (1 var)
   type(smd2)                   , target :: smd2obj    ! Spring-mass-damper test ODE (2 var)
-!!$  type(vanderpol)              , target :: vpl        ! Vanderpol equation (2 var)
+  type(vanderpol)              , target :: vpl        ! Vanderpol equation (2 var)
 !!$  type(multibody_dynamics)     , target :: freefall   ! Rigid body dynamics system (12 vars)
   type(aero_elastic_oscillator), target :: oscillator ! Aeroelastic oscillator (2 vars)
 
@@ -65,13 +66,13 @@ program main
   !===================================================================!
   
   ! Initialize the system
-  call smd1obj % initialize(num_state_vars = 1, num_design_vars = 3)
-  abmobj = ABM(system = smd1obj, tfinal = 10.0d0, h=1.0d-1, max_abm_order = 3)
+  call vpl % initialize(num_state_vars = 2, num_design_vars = 1)
+  abmobj = ABM(system = vpl, tfinal = 25.0d0, h=1.0d-2, max_abm_order = 3, second_order=.false.)
   call abmobj % setPrintLevel(0)
   call abmobj % integrate()
   call abmobj % writeSolution("abm.dat")
   call abmobj % finalize()
-  call smd1obj % finalize()
+  call vpl % finalize()
 
   !===================================================================!
   !                          TEST BDF                                 !
