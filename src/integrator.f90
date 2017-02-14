@@ -52,8 +52,8 @@ module integrator_class
      ! Nonlinear solution at each stage
      !----------------------------------------------------------------!
 
-     integer  :: max_newton = 25
-     real(dp) :: atol = 1.0d-14, rtol = 1.0d-13
+     integer  :: max_newton = 5
+     real(dp) :: atol = 1.0d-14, rtol = 1.0d-10
 
      !----------------------------------------------------------------!
      ! Track global time and states
@@ -533,11 +533,15 @@ contains
        ! Call LAPACK to solve the stage values system
        dq = -res
 
+       print *, "jac=", jac
+       print *, "rhs=", dq
+
 #if defined USE_COMPLEX
        call ZGESV(size, 1, jac, size, IPIV, dq, size, INFO)
 #else
        call DGESV(size, 1, jac, size, IPIV, dq, size, INFO)
 #endif
+       print *, "update=",dq
        if (INFO .ne. 0) then
           print*, "LAPACK ERROR:", info
           stop
@@ -548,6 +552,9 @@ contains
        qdot  = qdot  + beta  * dq
        q     = q     + alpha * dq
 
+
+       print *, n, q
+       
     end do newton
 
     if (this % print_level .eq. 1) then 
