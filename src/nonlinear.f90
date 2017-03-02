@@ -11,7 +11,7 @@ module nonlinear_algebra
   use iso_fortran_env , only : wp => REAL64
   use linear_algebra  , only : solve
   use physics_class   , only : physics
-  !use utils           , only : norm2
+  use utils           , only : norm
 
   ! disable implicit datatypes
   implicit none
@@ -38,16 +38,6 @@ module nonlinear_algebra
      !module procedure solve_first_order
      !module procedure newton_solve_condensed
   end interface nonlinear_solve
-
-  !-------------------------------------------------------------------!
-  ! Overload intrinsic norm function to operate on real and complex
-  ! numbers
-  !-------------------------------------------------------------------!
-
-  interface norm
-     module procedure znorm2
-     module procedure dnorm2
-  end interface norm
 
 contains
 
@@ -322,34 +312,5 @@ contains
     deallocate(R,Rtmp)
 
   end subroutine approximateJacobian
-
-  !===================================================================!
-  ! Norm of a complex number array
-  !===================================================================!
-
-  real(dp) pure function znorm2(z)
-
-    complex(dp), dimension(:), intent(in) :: z
-    integer :: j, n
-
-    znorm2 = 0
-    n = size(z)
-    do j = 1, n
-       znorm2 = znorm2 + sqrt(dble(z(j))**2 + aimag(z(j))**2)
-    end do
-
-  end function znorm2
-
-  !===================================================================!
-  ! Norm of a complex real number array
-  !===================================================================!
-  
-  real(dp) pure function dnorm2(z) result(val)
-    
-    real(dp), dimension(:), intent(in) :: z
-
-    val = norm2(z)
-
-  end function dnorm2
 
 end module nonlinear_algebra

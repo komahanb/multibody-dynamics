@@ -51,7 +51,7 @@ LIBS = -lm -llapack
 #---------------------------------------------------------------------#
 # Define all the source files to compile here
 #---------------------------------------------------------------------#
-SRC  :=	 src/lapack.f90 src/linear_algebra.f90 \
+SRC  :=	 src/utils.f90 src/lapack.f90 src/linear_algebra.f90 \
 	 src/function.f90 src/physics.f90 src/nonlinear.f90 src/integrator.f90 \
          src/adams_bashforth_moulton.f90 \
          src/newmark_beta_gamma.f90 \

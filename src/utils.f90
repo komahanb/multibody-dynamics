@@ -48,13 +48,6 @@ module utils
   interface norm
      module procedure znorm2
      module procedure dnorm2
-  end interface norm
-
-  !-------------------------------------------------------------------!
-  ! Overload realpart intrinsic to work on real numbers too
-  !-------------------------------------------------------------------!
-
-  interface realpart
      module procedure norm_vec
   end interface norm
 
@@ -88,14 +81,6 @@ module utils
      module procedure sub_matrices, sub_vectors, negate_vector, &
           & negate_matrix
   end interface operator (-)
-
-  !-------------------------------------------------------------------!
-  ! Overload to get the absolute value of the VECTOR data type
-  !-------------------------------------------------------------------!
-
-  interface norm
-     module procedure norm_vec
-  end interface norm
 
   !-------------------------------------------------------------------!
   ! Gets plain array from VECTOR data type
@@ -546,8 +531,8 @@ contains
     complex(dp), dimension(:), intent(in) :: z
     integer :: j, n
 
-    n = size(z)
     znorm2 = 0
+    n = size(z)
     do j = 1, n
        znorm2 = znorm2 + sqrt(dble(z(j))**2 + aimag(z(j))**2)
     end do
@@ -558,11 +543,11 @@ contains
   ! Norm of a complex real number array
   !===================================================================!
   
-  real(dp) pure function dnorm2(z)
+  real(dp) pure function dnorm2(z) result(val)
     
     real(dp), dimension(:), intent(in) :: z
 
-    dnorm2 = norm2(z)
+    val = norm2(z)
 
   end function dnorm2
 
