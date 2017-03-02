@@ -16,7 +16,7 @@ program main
 !!$  use rigid_body_class              , only : rigid_body
 !!$  use multibody_dynamics_class      , only : multibody_dynamics
   use spring_mass_damper_class      , only : smd1, smd2
-  use dae_class      , only : dae
+  ! use dae_class      , only : dae
   use vanderpol_class      , only : vanderpol
 !!$  use vanderpol_class               , only : vanderpol
   use aero_elastic_oscillator_class , only : aero_elastic_oscillator
@@ -49,44 +49,40 @@ program main
   type(scalar)                            :: fval, ftmp
   real(dp)                                :: dh = 1.0d-8
 
-  type(dae), target :: daeobj
-
-  !===================================================================!
-  !                       TEST NBG                                    !
-  !===================================================================!
+  !type(dae), target :: daeobj
 
   !===================================================================!
   !                          TEST BDF                                 !
   !===================================================================!
 
   ! Initialize the system
-  call daeobj % initialize(num_state_vars = 2, num_design_vars = 0)
-  bdfobj = BDF(system = daeobj, tfinal = 1.0d0, h=1.0d-1, max_bdf_order = 2)
+  call vpl % initialize("Vanderpol", num_state_vars = 2, num_design_vars = 1)
+  bdfobj = BDF(system = vpl, tfinal = 1.0d0, h=1.0d-1, max_bdf_order = 2)
   call bdfobj % setPrintLevel(2)
   call bdfobj % integrate()
   call bdfobj % writeSolution("bdf.dat")
   call bdfobj % finalize()
-  call daeobj % finalize()
-
-
-stop "BDF"
+  call vpl % finalize()
+  
+  !===================================================================!
+  !                       TEST NBG                                    !
+  !===================================================================!
+  
   ! Initialize the system
-  call daeobj % initialize(num_state_vars = 2, num_design_vars = 0)
-  nbgobj = NBG(system = daeobj, tfinal = 1.0d0, h=1.0d-1)
+  call vpl % initialize("Vanderpol", num_state_vars = 2, num_design_vars = 1)
+  nbgobj = NBG(system = vpl, tfinal = 1.0d0, h=1.0d-1)
   call nbgobj % setPrintLevel(2)
   call nbgobj % integrate()
   call nbgobj % writeSolution("nbg.dat")
   call nbgobj % finalize()
-  call daeobj % finalize()
-
-  stop"Execution complete"
+  call vpl % finalize()
 
   !===================================================================!
   !                       TEST ABM                                    !
   !===================================================================!
   
   ! Initialize the system
-  call vpl % initialize(num_state_vars = 2, num_design_vars = 1)
+  call vpl % initialize("Vanderpol", num_state_vars = 2, num_design_vars = 1)
   abmobj = ABM(system = vpl, tfinal = 25.0d0, h=1.0d-2, max_abm_order = 3, second_order=.false.)
   call abmobj % setPrintLevel(0)
   call abmobj % integrate()
@@ -99,15 +95,13 @@ stop "BDF"
   !===================================================================!
 
   ! Initialize the system
-  call smd1obj % initialize(num_state_vars = 1, num_design_vars = 3)
+  call smd1obj % initialize("SMD1", num_state_vars = 1, num_design_vars = 3)
   dirkobj = DIRK(system = smd1obj, tfinal = 10.0d-0, h=1.0d-1, num_stages=2, second_order=.true.) 
   call dirkobj % setPrintLevel(0)
   call dirkobj % integrate()
   call dirkobj % writeSolution("dirk.dat")
   call dirkobj % finalize()
   call smd1obj % finalize()
-
-  stop "End of testing SMD"
 
   !===================================================================!
   !  Aeroelastic Oscillator
@@ -122,7 +116,7 @@ stop "BDF"
   x(2) = 20.0d0 ! nonlinear stiffness coeff
   
   ! Initialize the system
-  call oscillator % initialize(num_state_vars = 2, num_design_vars = 3)
+  call oscillator % initialize("AE-Oscillator", num_state_vars = 2, num_design_vars = 2)
   
   bdfobj = BDF(system = oscillator, tfinal = 1.0d0, h=1.0d-3, max_bdf_order = 3) 
 
@@ -149,7 +143,7 @@ stop "BDF"
   dfdxtmp = 0.0d0
   
   ! Initialize the system
-  call oscillator % initialize(num_state_vars = 2, num_design_vars = 1)
+  call oscillator % initialize("AE-Oscillator", num_state_vars = 2, num_design_vars = 2)
   
   dirkobj = DIRK(system = oscillator, tfinal = 1.d0, h=1.0d-3, num_stages=3) 
   

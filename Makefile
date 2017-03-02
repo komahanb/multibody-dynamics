@@ -14,10 +14,12 @@ CC_FLAGS =  #-g #-Wall
 CX_FLAGS =  #-g #-Wall
 FC_FLAGS =  -g -cpp -fbounds-check #-fbounds-check -ffree-form -Wall -cpp -dM -Wno-unused
 
-TARGET = $(BIN_DIR)/test
+TARGET1 = $(BIN_DIR)/test_marching
+TARGET2 = $(BIN_DIR)/test_adjoint
 
-default: $(OBJ)
-	$(FC) $(FC_FLAGS) $(INCLUDES) -o $(TARGET) $(OBJ) $(LIB_FLAGS) $(LIBS)
+default: $(OBJ1) $(OBJ2)
+	$(FC) $(FC_FLAGS) $(INCLUDES) -o $(TARGET1) $(OBJ1) $(LIB_FLAGS) $(LIBS)
+	$(FC) $(FC_FLAGS) $(INCLUDES) -o $(TARGET2) $(OBJ2) $(LIB_FLAGS) $(LIBS)
 
 complex: $(OBJ)
 	$(FC) $(FC_FLAGS) -DUSE_COMPLEX $(INCLUDES) -o $(TARGET) $(OBJ) $(LIB_FLAGS) $(LIBS)
@@ -58,8 +60,11 @@ SRC  :=	 src/utils.f90 src/lapack.f90 src/linear_algebra.f90 \
          src/runge_kutta.f90 src/backward_difference.f90 \
          src/smd.f90 src/smd_functions.f90 \
          src/aero_elastic_oscillator.f90 src/oscillator_functions.f90 \
-	 src/vanderpol.f90 \
-         src/test_adjoint.f90
+	 src/vanderpol.f90
+
+TEST1 := test/test_marching.f90
+TEST2 := test/test_adjoint.f90
+
 #	 src/dae.f90 \
 #         src/main.f90
 #	 src/utils.f90 src/rotation.f90 src/dynamics.f90 \
@@ -68,7 +73,8 @@ SRC  :=	 src/utils.f90 src/lapack.f90 src/linear_algebra.f90 \
 # define the C,C++, Fortran object files 
 #------------------------------------------------------------------------
 
-OBJ = $(patsubst src/%.f90 src/interface/%.f90 src/integrator/%.f90 src/dynamics/%.f90 src/test/%.f90,obj/%.o,$(SRC))
+OBJ1 = $(patsubst src/%.f90 test/%.f90,obj/%.o,$(SRC) $(TEST1))
+OBJ2 = $(patsubst src/%.f90 test/%.f90,obj/%.o,$(SRC) $(TEST2))
 
 #------------------------------
 # Executable
