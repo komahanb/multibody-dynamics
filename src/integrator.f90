@@ -91,6 +91,7 @@ module integrator_class
      !----------------------------------------------------------------!
 
      procedure :: writeSolution
+     procedure :: writeAdjointSolution
      procedure :: setPhysicalSystem
      procedure :: newtonSolve   
      procedure :: setPrintLevel
@@ -408,13 +409,55 @@ contains
        write(90, *)  this % time(k), &
             & (dble(this % u     (k,j) ), j=1,this%nsvars ), &
             & (dble(this % udot  (k,j) ), j=1,this%nsvars ), &
-            & (dble(this % uddot (k,j) ), j=1,this%nsvars ), & 
-            & (dble(this % psi   (k,j) ), j=1,this%nsvars )
+            & (dble(this % uddot (k,j) ), j=1,this%nsvars )
     end do
 
     close(90)
 
   end subroutine writeSolution
+
+  !===================================================================!
+  ! Write adjoint solution to file
+  !===================================================================!
+
+  subroutine writeAdjointSolution(this, filename, time, psi, phi, mu)
+
+    class(integrator)                      :: this
+    character(len=*), OPTIONAL, intent(in) :: filename
+    character(len=7), parameter            :: directory = "output/"
+    character(len=32)                      :: path = ""
+    integer                                :: k, j, ierr
+    real(dp), dimension(:) :: time
+    type(scalar), dimension(:,:) :: psi
+    type(scalar), dimension(:,:) :: phi
+    type(scalar), dimension(:,:) :: mu
+
+
+    path = trim(path)
+
+    if (present(filename)) then
+       path = directory//filename
+    else
+       path = directory//"adjoint_solution.dat"
+    end if
+
+    open(unit=90, file=trim(path), iostat= ierr)
+
+    if (ierr .ne. 0) then
+       write(*,'("  >> Opening file ", 39A, " failed")') path
+       return
+    end if
+
+    do k = 1, this % num_steps
+       write(90, *)  time(k), &
+            & (dble(psi(k,j)), j=1,this%nsvars ), &
+            & (dble(phi(k,j)), j=1,this%nsvars ), &
+            & (dble(mu(k,j)) , j=1,this%nsvars )
+    end do
+
+    close(90)
+
+  end subroutine writeAdjointSolution
 
   !===================================================================!
   ! Solve the nonlinear system at each step by driving the
@@ -435,16 +478,14 @@ contains
 
   subroutine newtonSolve( this, alpha, beta, gamma, t, q, qdot, qddot )
 
+    use linear_algebra, only: solve
+
     class(integrator)                         :: this
 
     ! Arguments
     type(scalar), intent(in)                  :: alpha, beta, gamma
     real(dp), intent(in)                      :: t
     type(scalar), intent(inout), dimension(:) :: q, qdot, qddot
-
-    ! Lapack variables
-    integer, allocatable, dimension(:)        :: ipiv
-    integer                                   :: info, size
 
     ! Norms for tracking progress
     real(dp)                                  :: abs_res_norm = 0.0d0
@@ -455,7 +496,7 @@ contains
     type(scalar), allocatable, dimension(:)   :: res, dq
     type(scalar), allocatable, dimension(:,:) :: jac, fd_jac
 
-    integer                                   :: n, k
+    integer                                   :: n, k, size
     logical                                   :: conv = .false.
 
     type(scalar)                              :: jac_err
@@ -463,7 +504,6 @@ contains
     ! find the size of the linear system based on the calling object
     size = this % nsvars; k = this % current_step
 
-    if ( .not. allocated(ipiv)   ) allocate( ipiv(size)        )
     if ( .not. allocated(res)    ) allocate( res(size)         )
     if ( .not. allocated(dq)     ) allocate( dq(size)          )
     if ( .not. allocated(jac)    ) allocate( jac(size,size)    )
@@ -530,18 +570,8 @@ contains
           exit newton
        end if
 
-       ! Call LAPACK to solve the stage values system
-       dq = -res
-
-#if defined USE_COMPLEX
-       call ZGESV(size, 1, jac, size, IPIV, dq, size, INFO)
-#else
-       call DGESV(size, 1, jac, size, IPIV, dq, size, INFO)
-#endif
-       if (INFO .ne. 0) then
-          print*, "LAPACK ERROR:", info
-          stop
-       end if
+       ! Call LAPACK to solve the linear system
+       dq = solve(jac, -res)
 
        ! Update the solution
        qddot = qddot + gamma * dq
@@ -561,7 +591,6 @@ contains
        stop "Newton Solve Failed"
     end if
 
-    if (allocated(ipiv)) deallocate(ipiv)
     if (allocated(res)) deallocate(res)
     if (allocated(dq)) deallocate(dq)
     if (allocated(jac)) deallocate(jac)
@@ -733,6 +762,8 @@ contains
 
   subroutine adjointSolve(this, psi, alpha, beta, gamma, t, q, qdot, qddot)
 
+    use linear_algebra, only: solve
+
     class(integrator) :: this
 
     ! Arguments
@@ -741,18 +772,14 @@ contains
     type(scalar), intent(inout), dimension(:) :: q, qdot, qddot
     type(scalar), intent(inout), dimension(:) :: psi
 
-    ! Lapack variables
-    integer, allocatable, dimension(:)        :: ipiv
-    integer                                   :: info, size
-
     ! Other Local variables
     type(scalar), allocatable, dimension(:)   :: rhs
     type(scalar), allocatable, dimension(:,:) :: jac
+    type(integer)                             :: size
 
     ! find the size of the linear system based on the calling object
     size = this % nsvars
 
-    if (.not.allocated(ipiv)) allocate(ipiv(size))
     if (.not.allocated(rhs)) allocate(rhs(size))
     if (.not.allocated(jac)) allocate(jac(size,size))
 
@@ -769,21 +796,9 @@ contains
     ! Transpose the system
     jac = transpose(jac)
 
-    ! Call lapack to solve the stage values system
-#if defined USE_COMPLEX
-    call ZGESV(size, 1, jac, size, IPIV, rhs, size, INFO)    
-#else
-    call DGESV(size, 1, jac, size, IPIV, rhs, size, INFO)
-#endif
-    if (INFO .ne. 0) then
-       print*, "LAPACK ERROR:", info
-       stop
-    end if
+    ! Call LAPACK to solve the linear system
+    psi = solve(jac, rhs)
 
-    ! Store into the output array
-    psi = rhs
-
-    if (allocated(ipiv)) deallocate(ipiv)
     if (allocated(rhs)) deallocate(rhs)
     if (allocated(jac)) deallocate(jac)
 
