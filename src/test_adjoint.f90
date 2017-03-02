@@ -36,7 +36,13 @@ program main
   ! Design variable array
   type(scalar), dimension(:), allocatable :: x, dfdx, dfdxtmp
   type(scalar)                            :: fval, ftmp
+
+  ! Use different step sizes for real and complex mode arithmetic
+#if defined USE_COMPLEX
   real(dp)                                :: dh = 1.0d-16
+#else
+  real(dp)                                :: dh = 1.0d-11
+#endif
   
   allocate(X(3), dfdx(3), dfdxtmp(3))
 
@@ -62,13 +68,11 @@ program main
   call nbgobj % finalize()
   call smd1obj % finalize()
 
-  print *, "fval         =", fval
-  print *, "Adjoint dfdx =", dfdx
-  print *, "FD      dfdx =", dfdxtmp
+  print *, "fval         =", real_part(fval)
+  print *, "Adjoint dfdx =", real_part(dfdx)
+  print *, "FD      dfdx =", real_part(dfdxtmp)
   print *, "Error        =", abs(dfdxtmp-dfdx)
   print *, "Rel. Error   =", abs(real_part(dfdxtmp)-real_part(dfdx))/real_part(dfdxtmp)
-
-  stop
 
   !===================================================================!
   !                       TEST ABM                                    !
@@ -91,13 +95,11 @@ program main
   call abmobj % finalize()
   call smd1obj % finalize()
 
-  print*, "fval         =", fval
-  print*, "Adjoint dfdx =", dfdx
-  print*, "FD      dfdx =", dfdxtmp
-  print *, "Error       =", abs(dfdxtmp-dfdx)
-  print*, "Rel. Error   =", abs(real_part(dfdxtmp)-real_part(dfdx))/real_part(dfdxtmp)
-
-  stop
+  print *, "fval         =", real_part(fval)
+  print *, "Adjoint dfdx =", real_part(dfdx)
+  print *, "FD      dfdx =", real_part(dfdxtmp)
+  print *, "Error        =", abs(dfdxtmp-dfdx)
+  print *, "Rel. Error   =", abs(real_part(dfdxtmp)-real_part(dfdx))/real_part(dfdxtmp)
   
   !===================================================================!
   !                          TEST BDF                                 !
@@ -113,18 +115,18 @@ program main
   
   ! Initialize the system
   call smd1obj % initialize("SMD", num_state_vars = 1, num_design_vars = 3)
-  bdfobj = BDF(system = smd1obj, tfinal = 2.0d-2, h=1.0d-3, max_bdf_order = 3)
+  bdfobj = BDF(system = smd1obj, tfinal = 2.0d0, h=1.0d-3, max_bdf_order = 3)
   call bdfobj % evalFuncGrad(num_func=1, func = KE,  num_dv = 3, x = x, fvals = fval, dfdx= dfdx)
   call bdfobj % evalFDFuncGrad(num_func=1, func = KE,  num_dv = 3, x = x, fvals = fval, dfdx= dfdxtmp, dh=dh)
   call bdfobj % finalize()
   call smd1obj % finalize()
 
-  print*, "fval         =", fval
-  print*, "Adjoint dfdx =", dfdx
-  print*, "FD      dfdx =", dfdxtmp
-  print *, "Error       =", abs(dfdxtmp-dfdx)
-  print*, "Rel. Error   =", abs(real_part(dfdxtmp)-real_part(dfdx))/real_part(dfdxtmp)
-  
+  print *, "fval         =", real_part(fval)
+  print *, "Adjoint dfdx =", real_part(dfdx)
+  print *, "FD      dfdx =", real_part(dfdxtmp)
+  print *, "Error        =", abs(dfdxtmp-dfdx)
+  print *, "Rel. Error   =", abs(real_part(dfdxtmp)-real_part(dfdx))/real_part(dfdxtmp)
+
   !===================================================================!
   !                          TEST DIRK                                !
   !===================================================================!
@@ -153,12 +155,11 @@ program main
   call dirkobj % evalFDFuncGrad(num_func=1, func = KE, num_dv = 3, x = x, &
        & fvals = fval, dfdx= dfdxtmp, dh=dh)
 
-  print*, "fval         =", fval
-  print*, "Adjoint dfdx =", real_part(dfdx)
-  print*, "FD      dfdx =", real_part(dfdxtmp)
-
-  print*, "Error        =", abs(real_part(dfdxtmp)-real_part(dfdx))
-  print*, "Rel. Error   =", abs(real_part(dfdxtmp)-real_part(dfdx))/real_part(dfdxtmp)
+  print *, "fval         =", real_part(fval)
+  print *, "Adjoint dfdx =", real_part(dfdx)
+  print *, "FD      dfdx =", real_part(dfdxtmp)
+  print *, "Error        =", abs(dfdxtmp-dfdx)
+  print *, "Rel. Error   =", abs(real_part(dfdxtmp)-real_part(dfdx))/real_part(dfdxtmp)
 
 !!$  call dirkobj % evalFuncGrad(num_func=1, func = KE, num_dv = 3, x = x, &
 !!$       & fvals = fval, dfdx= dfdx)

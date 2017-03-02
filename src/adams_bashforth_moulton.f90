@@ -258,12 +258,7 @@ contains
        call this % adjointSolve(this % mu(k,:), alpha, beta, gamma, &
             & this % time(k), this % u(k,:), this % udot(k,:), this % uddot(k,:))
        
-    end do time
-
-    do k = 2, this % num_steps
-       print *, real(this % mu(k,:)), real(this % psi(k,:)), real(this % phi(k,:))
-    end do 
-           
+    end do time          
     
   end subroutine marchBackwards
   
@@ -374,7 +369,7 @@ contains
     rhs = rhs + alpha/this % h * this % phi(k,:)
     
     if (  k + 1 .le. this % num_steps ) then
-       print *, "order", m
+
        if (this % max_abm_order .eq. 1) then
 
           gamma = 0.0d0
