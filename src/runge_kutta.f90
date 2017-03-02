@@ -254,6 +254,8 @@ contains
   
   subroutine Integrate(this)
 
+    use nonlinear_algebra, only: nonlinear_solve
+
     class(RK) :: this
     type(scalar)  :: alpha, beta, gamma
     integer :: k, i
@@ -299,7 +301,8 @@ contains
           call this % getLinearCoeff(alpha, beta, gamma)
 
           ! solve the non linear stage equations using Newton's method
-          call this % newtonSolve(alpha, beta, gamma, &
+          call nonlinear_solve(this % system, &
+               & alpha, beta, gamma, &
                & this % time(k), this % q(k,i,:), this % qdot(k,i,:), this % qddot(k,i,:))
 
        end do

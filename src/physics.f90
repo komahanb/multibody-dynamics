@@ -21,6 +21,8 @@ module physics_class
 
   type, abstract :: physics
 
+     character(len=20) :: name 
+
      integer                             :: num_design_vars = 0 
      integer                             :: num_state_vars  = 0 
      type(scalar), dimension(:), allocatable :: x
@@ -150,12 +152,14 @@ contains
   ! Initialize the system
   !===================================================================!
 
-  subroutine initialize(this, num_state_vars, num_design_vars)
+  subroutine initialize(this, name, num_state_vars, num_design_vars)
 
     class(physics)      :: this
+    character(len=*), intent(in) :: name
     integer, intent(in) :: num_state_vars
     integer, intent(in), OPTIONAL :: num_design_vars
     
+    this % name = name
     this % num_state_vars  = num_state_vars
     
     if (present(num_design_vars)) then

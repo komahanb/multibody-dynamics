@@ -53,8 +53,8 @@ program main
   x(3) = 5.0d0    ! stiffness coeff
 
   ! Initialize the system
-  call smd1obj % initialize(num_state_vars = 1, num_design_vars = 3)
-  nbgobj = NBG(system = smd1obj, tfinal = 2000.0d0, h=1.0d-3)
+  call smd1obj % initialize("SMD", num_state_vars = 1, num_design_vars = 3)
+  nbgobj = NBG(system = smd1obj, tfinal = 2.0d0, h=1.0d-3)
   call nbgobj % evalFuncGrad(num_func=1, func = KE,  num_dv = 3, x = x, fvals = fval, dfdx= dfdx)  
   call nbgobj % writeSolution("nbg1.dat")
   call nbgobj % evalFDFuncGrad(num_func=1, func = KE,  num_dv = 3, x = x, fvals = fval, dfdx= dfdxtmp, dh=dh)
@@ -82,7 +82,7 @@ program main
   x(3) = 5.0d0   ! stiffness coeff
 
   ! Initialize the system
-  call smd1obj % initialize(num_state_vars = 1, num_design_vars = 3)
+  call smd1obj % initialize("SMD", num_state_vars = 1, num_design_vars = 3)
   abmobj = ABM(system = smd1obj, tfinal = 2000.0d-3, h=1.0d-3, max_abm_order = 1)
   call abmobj % evalFuncGrad(num_func=1, func = KE,  num_dv = 3, x = x, fvals = fval, dfdx= dfdx)
   call abmobj % writeSolution("abm2.dat")
@@ -111,8 +111,8 @@ program main
   x(3) = 5.0d0   ! stiffness coeff
   
   ! Initialize the system
-  call smd1obj % initialize(num_state_vars = 1, num_design_vars = 3)
-  bdfobj = BDF(system = smd1obj, tfinal = 2.0d0, h=1.0d-3, max_bdf_order = 3)
+  call smd1obj % initialize("SMD", num_state_vars = 1, num_design_vars = 3)
+  bdfobj = BDF(system = smd1obj, tfinal = 2.0d-2, h=1.0d-3, max_bdf_order = 3)
   call bdfobj % evalFuncGrad(num_func=1, func = KE,  num_dv = 3, x = x, fvals = fval, dfdx= dfdx)
   call bdfobj % evalFDFuncGrad(num_func=1, func = KE,  num_dv = 3, x = x, fvals = fval, dfdx= dfdxtmp, dh=dh)
   call bdfobj % finalize()
@@ -137,7 +137,7 @@ program main
   x(3) = 5.0d0   ! stiffness coeff
 
   ! Initialize the system
-  call smd1obj % initialize(num_state_vars = 1, num_design_vars = 3)
+  call smd1obj % initialize("SMD", num_state_vars = 1, num_design_vars = 3)
   dirkobj = DIRK(system = smd1obj, tfinal = 2.0d0, h=1.0d-3, num_stages=3, second_order=.true.) 
   !  call dirkobj % testAdjointr( num_func = 1, func = KE, num_dv = 3, x = x,dfdx= dfdx)
   call dirkobj % testAdjoint6 ( num_func = 1, func = KE, num_dv = 3, &

@@ -41,6 +41,14 @@ module utils
      ! procedure :: set
   end type matrix
 
+  !-------------------------------------------------------------------!
+  ! Overload intrinsic norm function to operate on real and complex
+  ! numbers
+  !-------------------------------------------------------------------!
+  interface norm
+     module procedure znorm2
+     module procedure dnorm2
+  end interface norm
 
   !-------------------------------------------------------------------!
   ! Overload realpart intrinsic to work on real numbers too
@@ -49,7 +57,6 @@ module utils
   interface realpart
      module procedure norm_vec
   end interface norm
-
 
   !-------------------------------------------------------------------!
   ! Overload * for dot product and other matrix-vector operations
@@ -529,5 +536,34 @@ contains
     rad2deg  =  rad*DEG_PER_RAD
 
   end function rad2deg
+
+  !===================================================================!
+  ! Norm of a complex number array
+  !===================================================================!
+
+  real(dp) pure function znorm2(z)
+
+    complex(dp), dimension(:), intent(in) :: z
+    integer :: j, n
+
+    n = size(z)
+    znorm2 = 0
+    do j = 1, n
+       znorm2 = znorm2 + sqrt(dble(z(j))**2 + aimag(z(j))**2)
+    end do
+
+  end function znorm2
+
+  !===================================================================!
+  ! Norm of a complex real number array
+  !===================================================================!
+  
+  real(dp) pure function dnorm2(z)
+    
+    real(dp), dimension(:), intent(in) :: z
+
+    dnorm2 = norm2(z)
+
+  end function dnorm2
 
 end module utils
