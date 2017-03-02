@@ -52,8 +52,8 @@ module integrator_class
      ! Nonlinear solution at each stage
      !----------------------------------------------------------------!
 
-     integer  :: max_newton = 25
-     real(dp) :: atol = 1.0d-14, rtol = 1.0d-13
+     integer  :: max_newton = 5
+     real(dp) :: atol = 1.0d-14, rtol = 1.0d-10
 
      !----------------------------------------------------------------!
      ! Track global time and states

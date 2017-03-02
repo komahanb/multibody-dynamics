@@ -41,6 +41,16 @@ module utils
      ! procedure :: set
   end type matrix
 
+
+  !-------------------------------------------------------------------!
+  ! Overload realpart intrinsic to work on real numbers too
+  !-------------------------------------------------------------------!
+
+  interface realpart
+     module procedure norm_vec
+  end interface norm
+
+
   !-------------------------------------------------------------------!
   ! Overload * for dot product and other matrix-vector operations
   !-------------------------------------------------------------------!

@@ -100,12 +100,12 @@ contains
        stop
     end if
     
-    ! Sanity check on ABM coeffs
-    do j = 1, this % max_abm_order
-       if ( realpart(sum(this % A(j,1:j)) - 1.0d0) .gt. 0.00001 ) then
-          stop "Error in ABM Coeff"
-       end if
-    end do
+!!$    ! Sanity check on ABM coeffs
+!!$    do j = 1, this % max_abm_order
+!!$       if ( realpart(sum(this % A(j,1:j)) - 1.0d0) .gt. 0.00001 ) then
+!!$          stop "Error in ABM Coeff"
+!!$       end if
+!!$    end do
 
     !-----------------------------------------------------------------!
     ! Setup adjoint RHS

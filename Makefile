@@ -60,6 +60,8 @@ SRC  :=	 src/lapack.f90 src/linear_algebra.f90 \
          src/aero_elastic_oscillator.f90 src/oscillator_functions.f90 \
 	 src/vanderpol.f90 \
          src/test_adjoint.f90
+#	 src/dae.f90 \
+#         src/main.f90
 #	 src/utils.f90 src/rotation.f90 src/dynamics.f90 \
 
 #-----------------------------------------------------------------------
