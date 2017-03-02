@@ -10,6 +10,7 @@ module abm_integrator
 
   use integrator_class, only : integrator
   use physics_class,    only : physics
+  use utils,            only : real_part
 
   implicit none
 
@@ -59,7 +60,7 @@ contains
   !===================================================================!
   
   type(abm) function initialize( system, tinit, tfinal, h, second_order, max_abm_order )  result (this)
-   
+      
     class(physics), target          :: system
     integer  , OPTIONAL, intent(in) :: max_abm_order
     real(dp) , OPTIONAL, intent(in) :: tinit, tfinal
@@ -100,12 +101,12 @@ contains
        stop
     end if
     
-!!$    ! Sanity check on ABM coeffs
-!!$    do j = 1, this % max_abm_order
-!!$       if ( realpart(sum(this % A(j,1:j)) - 1.0d0) .gt. 0.00001 ) then
-!!$          stop "Error in ABM Coeff"
-!!$       end if
-!!$    end do
+    ! Sanity check on ABM coeffs
+    do j = 1, this % max_abm_order
+       if ( real_part(sum(this % A(j,1:j)) - 1.0d0) .gt. 0.00001 ) then
+          stop "Error in ABM Coeff"
+       end if
+    end do
 
     !-----------------------------------------------------------------!
     ! Setup adjoint RHS

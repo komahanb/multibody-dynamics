@@ -52,6 +52,15 @@ module utils
   end interface norm
 
   !-------------------------------------------------------------------!
+  ! Returns the realpart of an array. This overloads the intrinsic
+  ! function 'realpart'
+  !-------------------------------------------------------------------!
+  interface real_part
+     module procedure zrealpart
+     module procedure drealpart       
+  end interface real_part
+
+  !-------------------------------------------------------------------!
   ! Overload * for dot product and other matrix-vector operations
   !-------------------------------------------------------------------!
   ! square(xx), dot(xx, xx), xx*xx       --> all does DOT product
@@ -550,5 +559,32 @@ contains
     val = norm2(z)
 
   end function dnorm2
+
+
+  !===================================================================!
+  ! Norm of a complex number array
+  !===================================================================!
+
+  real(dp) pure elemental function zrealpart(z) result(val) 
+    
+    complex(dp), intent(in) :: z
+    
+    ! Use the intrinsic function to get the realpart
+    val = realpart(z)
+    
+  end function zrealpart
+
+  !===================================================================!
+  ! Norm of a complex real number array
+  !===================================================================!
+  
+  real(dp) pure elemental function drealpart(z) result(val)
+    
+    real(dp), intent(in) :: z
+
+    ! Return the real number as it is
+    val = z
+    
+  end function drealpart
 
 end module utils

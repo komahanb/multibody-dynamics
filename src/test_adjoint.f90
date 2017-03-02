@@ -6,6 +6,7 @@
 
 program main
 
+  use utils                         , only : real_part
   ! Import Integrators
   use runge_kutta_integrator        , only : DIRK
   use bdf_integrator                , only : BDF
@@ -65,7 +66,7 @@ program main
   print *, "Adjoint dfdx =", dfdx
   print *, "FD      dfdx =", dfdxtmp
   print *, "Error        =", abs(dfdxtmp-dfdx)
-  print *, "Rel. Error   =", abs(realpart(dfdxtmp)-realpart(dfdx))/realpart(dfdxtmp)
+  print *, "Rel. Error   =", abs(real_part(dfdxtmp)-real_part(dfdx))/real_part(dfdxtmp)
 
   stop
 
@@ -94,7 +95,7 @@ program main
   print*, "Adjoint dfdx =", dfdx
   print*, "FD      dfdx =", dfdxtmp
   print *, "Error       =", abs(dfdxtmp-dfdx)
-  print*, "Rel. Error   =", abs(realpart(dfdxtmp)-realpart(dfdx))/realpart(dfdxtmp)
+  print*, "Rel. Error   =", abs(real_part(dfdxtmp)-real_part(dfdx))/real_part(dfdxtmp)
 
   stop
   
@@ -122,7 +123,7 @@ program main
   print*, "Adjoint dfdx =", dfdx
   print*, "FD      dfdx =", dfdxtmp
   print *, "Error       =", abs(dfdxtmp-dfdx)
-  print*, "Rel. Error   =", abs(realpart(dfdxtmp)-realpart(dfdx))/realpart(dfdxtmp)
+  print*, "Rel. Error   =", abs(real_part(dfdxtmp)-real_part(dfdx))/real_part(dfdxtmp)
   
   !===================================================================!
   !                          TEST DIRK                                !
@@ -153,11 +154,11 @@ program main
        & fvals = fval, dfdx= dfdxtmp, dh=dh)
 
   print*, "fval         =", fval
-  print*, "Adjoint dfdx =", realpart(dfdx)
-  print*, "FD      dfdx =", realpart(dfdxtmp)
+  print*, "Adjoint dfdx =", real_part(dfdx)
+  print*, "FD      dfdx =", real_part(dfdxtmp)
 
-  print*, "Error        =", abs(realpart(dfdxtmp)-realpart(dfdx))
-  print*, "Rel. Error   =", abs(realpart(dfdxtmp)-realpart(dfdx))/realpart(dfdxtmp)
+  print*, "Error        =", abs(real_part(dfdxtmp)-real_part(dfdx))
+  print*, "Rel. Error   =", abs(real_part(dfdxtmp)-real_part(dfdx))/real_part(dfdxtmp)
 
 !!$  call dirkobj % evalFuncGrad(num_func=1, func = KE, num_dv = 3, x = x, &
 !!$       & fvals = fval, dfdx= dfdx)
