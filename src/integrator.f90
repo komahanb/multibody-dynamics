@@ -8,13 +8,11 @@
 ! (3) writing solution to files,
 ! (4) adjoint system solution
 !
-! Author: Komahan Boopathy (komahan@gatech.edu)
 !=====================================================================!
 
 module integrator_class
 
-  use physics_class  , only : physics
-  use function_class , only : abstract_function
+  use physics_class, only : physics
 
   implicit none
 
@@ -33,7 +31,6 @@ module integrator_class
 
      class(physics), pointer :: system => null()
      integer                 :: nsvars = 0 ! number of states/equations
-     integer                 :: ndvars = 0 ! number of design variables
 
      !----------------------------------------------------------------!
      ! Variables for managing time marching
@@ -54,16 +51,6 @@ module integrator_class
      type(scalar), dimension(:,:), allocatable :: UDDOT
 
      !----------------------------------------------------------------!
-     ! Adjoint variables
-     !----------------------------------------------------------------!
-
-     integer                                   :: num_rhs_bins
-     type(scalar), dimension(:,:), allocatable :: rhs
-     type(scalar), dimension(:,:), allocatable :: psi
-     type(scalar), dimension(:,:), allocatable :: phi
-     type(scalar), dimension(:,:), allocatable :: mu
-
-     !----------------------------------------------------------------!
      ! Miscellaneous variables
      !----------------------------------------------------------------!
 
@@ -76,43 +63,24 @@ module integrator_class
    contains
 
      !----------------------------------------------------------------!
-     ! Procedures                                                     !
-     !----------------------------------------------------------------!
-
-     procedure :: writeSolution
-     procedure :: writeAdjointSolution
-     procedure :: setPhysicalSystem 
-     procedure :: setPrintLevel
-
-     !----------------------------------------------------------------!
-     ! Important setters
-     !----------------------------------------------------------------!
-
-     procedure :: setApproximateJacobian
-
-     !----------------------------------------------------------------!
      ! Deferred procedures for subtypes to implement                  !
      !----------------------------------------------------------------!
 
      procedure(InterfaceDefault)        , private, deferred :: approximateStates
      procedure(InterfaceGetLinearCoeff) , private, deferred :: getLinearCoeff
 
-     procedure(InterfaceAssembleRHS)    , private, deferred :: assembleRHS
-     procedure(InterfaceMarch)          , public, deferred  :: marchBackwards
-     procedure(InterfaceTotalDerivative), deferred          :: computeTotalDerivative
+     !----------------------------------------------------------------!
+     ! Procedures                                                     !
+     !----------------------------------------------------------------!
 
+     procedure :: writeSolution
+     procedure :: setPhysicalSystem 
+     procedure :: setPrintLevel
+     procedure :: setApproximateJacobian
      procedure :: construct, destruct
      procedure :: integrate
-     procedure :: adjointSolve
-     procedure :: evalFunc
-
-     procedure :: evalFuncGrad
-     procedure :: evalFDFuncGrad
-     procedure :: addFuncResAdjPdt
-     procedure :: addResAdjPdt
      
   end type integrator
-
 
   interface
 
@@ -141,60 +109,62 @@ module integrator_class
 
      end subroutine InterfaceGetLinearCoeff
 
-
-     !===================================================================!
-     ! Interface routine to assemble the RHS of the adjoint systen
-     !===================================================================!
-
-     subroutine InterfaceAssembleRHS(this, rhs)
-
-       import integrator
-
-       class(integrator)                     :: this
-       type(scalar), dimension(:), intent(inout) :: rhs
-
-     end subroutine InterfaceAssembleRHS
-
-     !===================================================================!
-     ! Interface routine to assemble the RHS of the adjoint systen
-     !===================================================================!
-
-     subroutine InterfaceTotalDerivative(this, dfdx)
-
-       import integrator
-
-       class(integrator)                     :: this
-       type(scalar), dimension(:), intent(inout) :: dfdx
-
-     end subroutine InterfaceTotalDerivative
-
-     !===================================================================!
-     ! Interface routine to assemble the RHS of the adjoint systen
-     !===================================================================!
-
-     subroutine InterfaceMarch(this)
-
-       import integrator
-
-       class(integrator)                     :: this
-
-     end subroutine InterfaceMarch
-
-     !===================================================================!
-     ! Interface for evaluating the function of interest
-     !===================================================================!
-
-     subroutine InterfaceEvalFunc(this, x, fval)
-
-       import integrator
-
-       class(integrator)                  :: this
-       type(scalar), dimension(:), intent(in) :: x
-       type(scalar), intent(inout)            :: fval
-
-     end subroutine InterfaceEvalFunc
-
   end interface
+
+!!$
+!!$     !===================================================================!
+!!$     ! Interface routine to assemble the RHS of the adjoint systen
+!!$     !===================================================================!
+!!$
+!!$     subroutine InterfaceAssembleRHS(this, rhs)
+!!$
+!!$       import integrator
+!!$
+!!$       class(integrator)                     :: this
+!!$       type(scalar), dimension(:), intent(inout) :: rhs
+!!$
+!!$     end subroutine InterfaceAssembleRHS
+!!$
+!!$     !===================================================================!
+!!$     ! Interface routine to assemble the RHS of the adjoint systen
+!!$     !===================================================================!
+!!$
+!!$     subroutine InterfaceTotalDerivative(this, dfdx)
+!!$
+!!$       import integrator
+!!$
+!!$       class(integrator)                     :: this
+!!$       type(scalar), dimension(:), intent(inout) :: dfdx
+!!$
+!!$     end subroutine InterfaceTotalDerivative
+!!$
+!!$     !===================================================================!
+!!$     ! Interface routine to assemble the RHS of the adjoint systen
+!!$     !===================================================================!
+!!$
+!!$     subroutine InterfaceMarch(this)
+!!$
+!!$       import integrator
+!!$
+!!$       class(integrator)                     :: this
+!!$
+!!$     end subroutine InterfaceMarch
+!!$
+!!$     !===================================================================!
+!!$     ! Interface for evaluating the function of interest
+!!$     !===================================================================!
+!!$
+!!$     subroutine InterfaceEvalFunc(this, x, fval)
+!!$
+!!$       import integrator
+!!$
+!!$       class(integrator)                  :: this
+!!$       type(scalar), dimension(:), intent(in) :: x
+!!$       type(scalar), intent(inout)            :: fval
+!!$
+!!$     end subroutine InterfaceEvalFunc
+!!$
+!!$  end interface
 
 contains
 
@@ -286,19 +256,19 @@ contains
 
     allocate(this % UDDOT(this % num_steps, this % nsvars))
     this % UDDOT = 0.0d0
-
-    !-----------------------------------------------------------------!
-    ! Allocate space for the adjoint and RHS of adjoint equations
-    !-----------------------------------------------------------------!
-
-    allocate(this % psi(this % num_steps, this % nsvars))
-    this % psi = 0.0d0
-
-    allocate(this % phi(this % num_steps, this % nsvars))
-    this % phi = 0.0d0
-
-    allocate(this % mu(this % num_steps, this % nsvars))
-    this % mu = 0.0d0
+!!$
+!!$    !-----------------------------------------------------------------!
+!!$    ! Allocate space for the adjoint and RHS of adjoint equations
+!!$    !-----------------------------------------------------------------!
+!!$
+!!$    allocate(this % psi(this % num_steps, this % nsvars))
+!!$    this % psi = 0.0d0
+!!$
+!!$    allocate(this % phi(this % num_steps, this % nsvars))
+!!$    this % phi = 0.0d0
+!!$
+!!$    allocate(this % mu(this % num_steps, this % nsvars))
+!!$    this % mu = 0.0d0
 
   end subroutine construct
 
@@ -316,9 +286,9 @@ contains
     if(allocated(this % U)) deallocate(this % U)
     if(allocated(this % time)) deallocate(this % time)
 
-    ! Adjoint variables and RHS
-    if(allocated(this % psi)) deallocate(this % psi)
-    if(allocated(this % phi)) deallocate(this % phi)
+!!$    ! Adjoint variables and RHS
+!!$    if(allocated(this % psi)) deallocate(this % psi)
+!!$    if(allocated(this % phi)) deallocate(this % phi)
 
   end subroutine destruct
 
@@ -409,44 +379,44 @@ contains
   ! Write adjoint solution to file
   !===================================================================!
 
-  subroutine writeAdjointSolution(this, filename, time, psi, phi, mu)
-
-    class(integrator)                      :: this
-    character(len=*), OPTIONAL, intent(in) :: filename
-    character(len=7), parameter            :: directory = "output/"
-    character(len=32)                      :: path = ""
-    integer                                :: k, j, ierr
-    real(dp), dimension(:) :: time
-    type(scalar), dimension(:,:) :: psi
-    type(scalar), dimension(:,:) :: phi
-    type(scalar), dimension(:,:) :: mu
-
-
-    path = trim(path)
-
-    if (present(filename)) then
-       path = directory//filename
-    else
-       path = directory//"adjoint_solution.dat"
-    end if
-
-    open(unit=90, file=trim(path), iostat= ierr)
-
-    if (ierr .ne. 0) then
-       write(*,'("  >> Opening file ", 39A, " failed")') path
-       return
-    end if
-
-    do k = 1, this % num_steps
-       write(90, *)  time(k), &
-            & (dble(psi(k,j)), j=1,this%nsvars ), &
-            & (dble(phi(k,j)), j=1,this%nsvars ), &
-            & (dble(mu(k,j)) , j=1,this%nsvars )
-    end do
-
-    close(90)
-
-  end subroutine writeAdjointSolution
+!!$  subroutine writeAdjointSolution(this, filename, time, psi, phi, mu)
+!!$
+!!$    class(integrator)                      :: this
+!!$    character(len=*), OPTIONAL, intent(in) :: filename
+!!$    character(len=7), parameter            :: directory = "output/"
+!!$    character(len=32)                      :: path = ""
+!!$    integer                                :: k, j, ierr
+!!$    real(dp), dimension(:) :: time
+!!$    type(scalar), dimension(:,:) :: psi
+!!$    type(scalar), dimension(:,:) :: phi
+!!$    type(scalar), dimension(:,:) :: mu
+!!$
+!!$
+!!$    path = trim(path)
+!!$
+!!$    if (present(filename)) then
+!!$       path = directory//filename
+!!$    else
+!!$       path = directory//"adjoint_solution.dat"
+!!$    end if
+!!$
+!!$    open(unit=90, file=trim(path), iostat= ierr)
+!!$
+!!$    if (ierr .ne. 0) then
+!!$       write(*,'("  >> Opening file ", 39A, " failed")') path
+!!$       return
+!!$    end if
+!!$
+!!$    do k = 1, this % num_steps
+!!$       write(90, *)  time(k), &
+!!$            & (dble(psi(k,j)), j=1,this%nsvars ), &
+!!$            & (dble(phi(k,j)), j=1,this%nsvars ), &
+!!$            & (dble(mu(k,j)) , j=1,this%nsvars )
+!!$    end do
+!!$
+!!$    close(90)
+!!$
+!!$  end subroutine writeAdjointSolution
 
   !===================================================================!
   ! Time integration logic
@@ -499,11 +469,6 @@ contains
             & alpha, beta, gamma, &
             & this % time(k), this % u(k,:), this % udot(k,:), this % uddot(k,:))
        
-!!$       associate( system => this % system, &
-!!$            & U => [ this % u(k,:), this % udot(k,:), this % uddot(k,:)] )
-!!$         call newton_solve(system, coeff, U, this % approximate_jacobian, this % print_level)
-!!$       end associate
-
     end do time
 
   end subroutine Integrate
@@ -512,270 +477,257 @@ contains
   ! Common routine to solve the adjoint linear system at each time
   ! step and/or stage
   !=====================================================================!
+!!$
+!!$  subroutine adjointSolve(this, psi, alpha, beta, gamma, t, q, qdot, qddot)
+!!$
+!!$    use linear_algebra, only: solve
+!!$
+!!$    class(integrator) :: this
+!!$
+!!$    ! Arguments
+!!$    type(scalar), intent(in)                  :: alpha, beta, gamma
+!!$    real(dp), intent(in)                      :: t
+!!$    type(scalar), intent(inout), dimension(:) :: q, qdot, qddot
+!!$    type(scalar), intent(inout), dimension(:) :: psi
+!!$
+!!$    ! Other Local variables
+!!$    type(scalar), allocatable, dimension(:)   :: rhs
+!!$    type(scalar), allocatable, dimension(:,:) :: jac
+!!$    type(integer)                             :: size
+!!$
+!!$    ! find the size of the linear system based on the calling object
+!!$    size = this % nsvars
+!!$
+!!$    if (.not.allocated(rhs)) allocate(rhs(size))
+!!$    if (.not.allocated(jac)) allocate(jac(size,size))
+!!$
+!!$    ! Zero entries
+!!$    rhs = 0.0d0
+!!$    psi = 0.0d0
+!!$
+!!$    ! Assemble the residual of the function
+!!$    call this % assembleRHS(rhs)
+!!$
+!!$    ! Assemble the jacobian matrix
+!!$    call this % system % assembleJacobian(jac, alpha, beta, gamma, t, q, qdot, qddot)
+!!$
+!!$    ! Transpose the system
+!!$    jac = transpose(jac)
+!!$
+!!$    ! Call LAPACK to solve the linear system
+!!$    psi = solve(jac, rhs)
+!!$
+!!$    if (allocated(rhs)) deallocate(rhs)
+!!$    if (allocated(jac)) deallocate(jac)
+!!$
+!!$  end subroutine adjointSolve
 
-  subroutine adjointSolve(this, psi, alpha, beta, gamma, t, q, qdot, qddot)
-
-    use linear_algebra, only: solve
-
-    class(integrator) :: this
-
-    ! Arguments
-    type(scalar), intent(in)                  :: alpha, beta, gamma
-    real(dp), intent(in)                      :: t
-    type(scalar), intent(inout), dimension(:) :: q, qdot, qddot
-    type(scalar), intent(inout), dimension(:) :: psi
-
-    ! Other Local variables
-    type(scalar), allocatable, dimension(:)   :: rhs
-    type(scalar), allocatable, dimension(:,:) :: jac
-    type(integer)                             :: size
-
-    ! find the size of the linear system based on the calling object
-    size = this % nsvars
-
-    if (.not.allocated(rhs)) allocate(rhs(size))
-    if (.not.allocated(jac)) allocate(jac(size,size))
-
-    ! Zero entries
-    rhs = 0.0d0
-    psi = 0.0d0
-
-    ! Assemble the residual of the function
-    call this % assembleRHS(rhs)
-
-    ! Assemble the jacobian matrix
-    call this % system % assembleJacobian(jac, alpha, beta, gamma, t, q, qdot, qddot)
-
-    ! Transpose the system
-    jac = transpose(jac)
-
-    ! Call LAPACK to solve the linear system
-    psi = solve(jac, rhs)
-
-    if (allocated(rhs)) deallocate(rhs)
-    if (allocated(jac)) deallocate(jac)
-
-  end subroutine adjointSolve
-
-  !===================================================================!
-  ! Public wrapper for all the adjoint gradient related sequence of
-  ! calls
-  !===================================================================!
-
-  subroutine evalFuncGrad( this, num_func, func, &
-       & num_dv, x, fvals, dfdx )
-
-    class(integrator)                                   :: this
-    class(abstract_function)       , target             :: func
-    type(scalar), dimension(:), intent(in)              :: x
-    integer, intent(in)                                 :: num_func, num_dv
-    type(scalar), dimension(:), intent(inout), OPTIONAL :: dfdx
-    type(scalar), intent(inout), OPTIONAL               :: fvals
-
-    !-----------------------------------------------------------------!
-    ! Set the objective function into the system
-    !-----------------------------------------------------------------!
-
-    call this % system % setFunction(func)
-
-    !-----------------------------------------------------------------!
-    ! Set the number of variables, design variables into the system
-    !-----------------------------------------------------------------!
-
-    if (num_dv .ne. this % system % num_design_vars) stop "NDV mismatch"
-
-    call this % system % setDesignVars(num_dv, x)
-    this % nDVars = num_dv
-
-    !-----------------------------------------------------------------!
-    ! Integrate forward in time to solve for the state variables
-    !-----------------------------------------------------------------!
-
-    call this % integrate()
-
-    !-----------------------------------------------------------------!
-    ! Compute the objective/ constraint function value
-    !-----------------------------------------------------------------!
-
-    if (present(fvals)) then 
-
-       call this % evalFunc(x, fvals)
-
-    end if
-
-    if (present(dfdx)) then 
-
-       !-----------------------------------------------------------------!
-       ! Integrate backwards to solve for lagrange multipliers for the
-       ! set design variable
-       !-----------------------------------------------------------------!
-
-       call this % marchBackwards()
-
-       !-----------------------------------------------------------------!
-       ! Compute the total derivative of the function with respect to the
-       ! design variables
-       !-----------------------------------------------------------------!
-
-       call this % computeTotalDerivative(dfdx)
-
-    end if
-
-  end subroutine evalFuncGrad
-
-  !===================================================================!
-  ! Compute the gradient of the function with respect to design
-  ! variables
-  !===================================================================!
-
-  subroutine evalFDFuncGrad( this, num_func, func, &
-       & num_dv, x, fvals, dfdx, dh )
-
-    class(integrator)                         :: this
-    class(abstract_function)       , target   :: func
-    integer, intent(in)                       :: num_func, num_dv
-    type(scalar), dimension(:), intent(inout) :: x
-    type(scalar), dimension(:), intent(inout) :: dfdx
-    type(scalar), intent(inout)               :: fvals
-    real(dp), intent(in)                      :: dh
-    type(scalar)                              :: fvals_tmp, xtmp
-    integer                                   :: m
-
-    !-----------------------------------------------------------------!
-    ! Set the objective function into the system
-    !-----------------------------------------------------------------!
-
-    call this % system % setFunction(func)
-
-    !-----------------------------------------------------------------!
-    ! Set the number of variables, design variables into the system
-    !-----------------------------------------------------------------!
-
-    if (num_dv .ne. this % system % num_design_vars) stop "NDV mismatch"
-
-    call this % system % setDesignVars(num_dv, x)
-    this % nDVars = num_dv
-
-    !-----------------------------------------------------------------!
-    ! Integrate forward in time to solve for the state variables
-    !-----------------------------------------------------------------!
-
-    call this % integrate()
-
-    !-----------------------------------------------------------------!
-    ! Compute the objective/ constraint function value
-    !-----------------------------------------------------------------!
-
-    call this % evalFunc(x, fvals)
-
-    do m = 1, this % ndvars
-
-       ! Store the original x value
-       xtmp = x(m)
-
-       ! Perturb the variable              
-#if defined USE_COMPLEX
-       x(m) = cmplx(dble(x(m)), 1.0d-16)
-#else
-       x(m) = x(m) + dh
-#endif
-       call this % system % setDesignVars(num_dv, x)
-       call this % integrate()
-       call this % evalFunc(x, fvals_tmp)
-
-       ! Restore x
-       x(m) = xtmp
-
-       ! Find the FD derivative
-#if defined USE_COMPLEX
-       dfdx(m) = aimag(fvals_tmp)/1.0d-16
-#else
-       dfdx(m) = (fvals_tmp-fvals)/dh
-#endif
-    end do
-
-  end subroutine evalFDFuncGrad
-
-
-  !===================================================================!
-  ! Evaluating the function of interest
-  !===================================================================!
-
-  subroutine evalFunc(this, x, fval)
-
-    class(integrator)                         :: this
-    type(scalar), dimension(:), intent(in)    :: x
-    type(scalar), intent(inout)               :: fval
-    type(scalar), dimension(this % num_steps) :: ftmp
-    integer                                   :: k
-
-    do concurrent(k = 2 : this % num_steps)
-       call this % system % func % getFunctionValue(ftmp(k), this % time(k), &
-            & x, this % U(k,:), this % UDOT(k,:), this % UDDOT(k,:))
-    end do
-    fval = this % h * sum(ftmp)
-
-!!$    do concurrent(k = 2 : this % num_steps)
-!!$       do concurrent(j = 1 : this % num_stages)
-!!$          call this % system % func % getFunctionValue(ftmp, this % T(j), &
-!!$               & x, this % Q(k,j,:), this % QDOT(k,j,:), this % QDDOT(k,j,:))
-!!$          fval = fval +  this % h * this % B(j) * ftmp
-!!$       end do
+!!$  !===================================================================!
+!!$  ! Public wrapper for all the adjoint gradient related sequence of
+!!$  ! calls
+!!$  !===================================================================!
+!!$
+!!$  subroutine evalFuncGrad( this, num_func, func, &
+!!$       & num_dv, x, fvals, dfdx )
+!!$
+!!$    class(integrator)                                   :: this
+!!$    class(abstract_function)       , target             :: func
+!!$    type(scalar), dimension(:), intent(in)              :: x
+!!$    integer, intent(in)                                 :: num_func, num_dv
+!!$    type(scalar), dimension(:), intent(inout), OPTIONAL :: dfdx
+!!$    type(scalar), intent(inout), OPTIONAL               :: fvals
+!!$
+!!$    !-----------------------------------------------------------------!
+!!$    ! Set the objective function into the system
+!!$    !-----------------------------------------------------------------!
+!!$
+!!$    call this % system % setFunction(func)
+!!$
+!!$    !-----------------------------------------------------------------!
+!!$    ! Set the number of variables, design variables into the system
+!!$    !-----------------------------------------------------------------!
+!!$
+!!$    if (num_dv .ne. this % system % num_design_vars) stop "NDV mismatch"
+!!$
+!!$    call this % system % setDesignVars(num_dv, x)
+!!$    this % nDVars = num_dv
+!!$
+!!$    !-----------------------------------------------------------------!
+!!$    ! Integrate forward in time to solve for the state variables
+!!$    !-----------------------------------------------------------------!
+!!$
+!!$    call this % integrate()
+!!$
+!!$    !-----------------------------------------------------------------!
+!!$    ! Compute the objective/ constraint function value
+!!$    !-----------------------------------------------------------------!
+!!$
+!!$    if (present(fvals)) then 
+!!$
+!!$       call this % evalFunc(x, fvals)
+!!$
+!!$    end if
+!!$
+!!$    if (present(dfdx)) then 
+!!$
+!!$       !-----------------------------------------------------------------!
+!!$       ! Integrate backwards to solve for lagrange multipliers for the
+!!$       ! set design variable
+!!$       !-----------------------------------------------------------------!
+!!$
+!!$       call this % marchBackwards()
+!!$
+!!$       !-----------------------------------------------------------------!
+!!$       ! Compute the total derivative of the function with respect to the
+!!$       ! design variables
+!!$       !-----------------------------------------------------------------!
+!!$
+!!$       call this % computeTotalDerivative(dfdx)
+!!$
+!!$    end if
+!!$
+!!$  end subroutine evalFuncGrad
+!!$
+!!$  !===================================================================!
+!!$  ! Compute the gradient of the function with respect to design
+!!$  ! variables
+!!$  !===================================================================!
+!!$
+!!$  subroutine evalFDFuncGrad( this, num_func, func, &
+!!$       & num_dv, x, fvals, dfdx, dh )
+!!$
+!!$    class(integrator)                         :: this
+!!$    class(abstract_function)       , target   :: func
+!!$    integer, intent(in)                       :: num_func, num_dv
+!!$    type(scalar), dimension(:), intent(inout) :: x
+!!$    type(scalar), dimension(:), intent(inout) :: dfdx
+!!$    type(scalar), intent(inout)               :: fvals
+!!$    real(dp), intent(in)                      :: dh
+!!$    type(scalar)                              :: fvals_tmp, xtmp
+!!$    integer                                   :: m
+!!$
+!!$    !-----------------------------------------------------------------!
+!!$    ! Set the objective function into the system
+!!$    !-----------------------------------------------------------------!
+!!$
+!!$    call this % system % setFunction(func)
+!!$
+!!$    !-----------------------------------------------------------------!
+!!$    ! Set the number of variables, design variables into the system
+!!$    !-----------------------------------------------------------------!
+!!$
+!!$    if (num_dv .ne. this % system % num_design_vars) stop "NDV mismatch"
+!!$
+!!$    call this % system % setDesignVars(num_dv, x)
+!!$    this % nDVars = num_dv
+!!$
+!!$    !-----------------------------------------------------------------!
+!!$    ! Integrate forward in time to solve for the state variables
+!!$    !-----------------------------------------------------------------!
+!!$
+!!$    call this % integrate()
+!!$
+!!$    !-----------------------------------------------------------------!
+!!$    ! Compute the objective/ constraint function value
+!!$    !-----------------------------------------------------------------!
+!!$
+!!$    call this % evalFunc(x, fvals)
+!!$
+!!$    do m = 1, this % ndvars
+!!$
+!!$       ! Store the original x value
+!!$       xtmp = x(m)
+!!$
+!!$       ! Perturb the variable              
+!!$#if defined USE_COMPLEX
+!!$       x(m) = cmplx(dble(x(m)), 1.0d-16)
+!!$#else
+!!$       x(m) = x(m) + dh
+!!$#endif
+!!$       call this % system % setDesignVars(num_dv, x)
+!!$       call this % integrate()
+!!$       call this % evalFunc(x, fvals_tmp)
+!!$
+!!$       ! Restore x
+!!$       x(m) = xtmp
+!!$
+!!$       ! Find the FD derivative
+!!$#if defined USE_COMPLEX
+!!$       dfdx(m) = aimag(fvals_tmp)/1.0d-16
+!!$#else
+!!$       dfdx(m) = (fvals_tmp-fvals)/dh
+!!$#endif
 !!$    end do
-!!$    
-
-  end subroutine evalFunc
-
-  subroutine addFuncResAdjPdt(this, ans, alpha, beta, gamma, time, q, qdot, qddot, adjoint)
-
-    class(integrator), intent(in)             :: this
-    type(scalar), intent(in)                  :: alpha, beta, gamma
-    type(real(8)) :: time
-    type(scalar), intent(in), dimension(:)    :: q, qdot, qddot, adjoint
-    type(scalar), intent(inout), dimension(:) :: ans
-    type(scalar), dimension(:,:), allocatable :: jac
-
-    allocate( jac(this % nSVars, this % nSVars) )
-
-    call this % system % func % addFuncSVSens(ans, &
-         & alpha, beta, gamma, &
-         & time, this % system % X, q, qdot, qddot)
-
-    ! Add the residual adjoint product from the previous step
-    call this % system % assembleJacobian(jac, &
-         & alpha, beta, gamma, &
-         & time, q, qdot, qddot)
-
-    ans = ans + matmul(transpose(jac(:,:)), adjoint)
-
-    if(allocated(jac)) deallocate(jac)
-
-  end subroutine addFuncResAdjPdt
-
-  subroutine addResAdjPdt(this, ans, alpha, beta, gamma, time, q, qdot, qddot, adjoint)
-
-    class(integrator), intent(in)             :: this
-    type(scalar), intent(in)                  :: alpha, beta, gamma
-    type(real(8)) :: time
-    type(scalar), intent(in), dimension(:)    :: q, qdot, qddot, adjoint
-    type(scalar), intent(inout), dimension(:) :: ans
-    type(scalar), dimension(:,:), allocatable :: jac
-
-    allocate( jac(this % nSVars, this % nSVars) )
-
+!!$
+!!$  end subroutine evalFDFuncGrad
+!!$
+!!$
+!!$  !===================================================================!
+!!$  ! Evaluating the function of interest
+!!$  !===================================================================!
+!!$
+!!$  subroutine evalFunc(this, x, fval)
+!!$
+!!$    class(integrator)                         :: this
+!!$    type(scalar), dimension(:), intent(in)    :: x
+!!$    type(scalar), intent(inout)               :: fval
+!!$    type(scalar), dimension(this % num_steps) :: ftmp
+!!$    integer                                   :: k
+!!$
+!!$    do concurrent(k = 2 : this % num_steps)
+!!$       call this % system % func % getFunctionValue(ftmp(k), this % time(k), &
+!!$            & x, this % U(k,:), this % UDOT(k,:), this % UDDOT(k,:))
+!!$    end do
+!!$    fval = this % h * sum(ftmp)
+!!$
+!!$  end subroutine evalFunc
+!!$
+!!$  subroutine addFuncResAdjPdt(this, ans, alpha, beta, gamma, time, q, qdot, qddot, adjoint)
+!!$
+!!$    class(integrator), intent(in)             :: this
+!!$    type(scalar), intent(in)                  :: alpha, beta, gamma
+!!$    type(real(8)) :: time
+!!$    type(scalar), intent(in), dimension(:)    :: q, qdot, qddot, adjoint
+!!$    type(scalar), intent(inout), dimension(:) :: ans
+!!$    type(scalar), dimension(:,:), allocatable :: jac
+!!$
+!!$    allocate( jac(this % nSVars, this % nSVars) )
+!!$
 !!$    call this % system % func % addFuncSVSens(ans, &
 !!$         & alpha, beta, gamma, &
 !!$         & time, this % system % X, q, qdot, qddot)
-
-    ! Add the residual adjoint product from the previous step
-    call this % system % assembleJacobian(jac, &
-         & alpha, beta, gamma, &
-         & time, q, qdot, qddot)
-
-    ans = ans + matmul(transpose(jac(:,:)), adjoint)
-
-    if(allocated(jac)) deallocate(jac)
-
-  end subroutine addResAdjPdt
+!!$
+!!$    ! Add the residual adjoint product from the previous step
+!!$    call this % system % assembleJacobian(jac, &
+!!$         & alpha, beta, gamma, &
+!!$         & time, q, qdot, qddot)
+!!$
+!!$    ans = ans + matmul(transpose(jac(:,:)), adjoint)
+!!$
+!!$    if(allocated(jac)) deallocate(jac)
+!!$
+!!$  end subroutine addFuncResAdjPdt
+!!$
+!!$  subroutine addResAdjPdt(this, ans, alpha, beta, gamma, time, q, qdot, qddot, adjoint)
+!!$
+!!$    class(integrator), intent(in)             :: this
+!!$    type(scalar), intent(in)                  :: alpha, beta, gamma
+!!$    type(real(8)) :: time
+!!$    type(scalar), intent(in), dimension(:)    :: q, qdot, qddot, adjoint
+!!$    type(scalar), intent(inout), dimension(:) :: ans
+!!$    type(scalar), dimension(:,:), allocatable :: jac
+!!$
+!!$    allocate( jac(this % nSVars, this % nSVars) )
+!!$
+!!$    ! Add the residual adjoint product from the previous step
+!!$    call this % system % assembleJacobian(jac, &
+!!$         & alpha, beta, gamma, &
+!!$         & time, q, qdot, qddot)
+!!$
+!!$    ans = ans + matmul(transpose(jac(:,:)), adjoint)
+!!$
+!!$    if(allocated(jac)) deallocate(jac)
+!!$
+!!$  end subroutine addResAdjPdt
   
 end module integrator_class

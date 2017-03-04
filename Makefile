@@ -21,8 +21,9 @@ default: $(OBJ1) $(OBJ2)
 	$(FC) $(FC_FLAGS) $(INCLUDES) -o $(TARGET1) $(OBJ1) $(LIB_FLAGS) $(LIBS)
 	$(FC) $(FC_FLAGS) $(INCLUDES) -o $(TARGET2) $(OBJ2) $(LIB_FLAGS) $(LIBS)
 
-complex: $(OBJ)
-	$(FC) $(FC_FLAGS) -DUSE_COMPLEX $(INCLUDES) -o $(TARGET) $(OBJ) $(LIB_FLAGS) $(LIBS)
+complex: $(OBJ1) $(OBJ2)
+	$(FC) $(FC_FLAGS) -DUSE_COMPLEX $(INCLUDES) -o $(TARGET1) $(OBJ1) $(LIB_FLAGS) $(LIBS)
+	$(FC) $(FC_FLAGS) -DUSE_COMPLEX $(INCLUDES) -o $(TARGET2) $(OBJ2) $(LIB_FLAGS) $(LIBS)
 
 #------------------------------
 # Define the suffixes in use
