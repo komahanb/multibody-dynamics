@@ -4,167 +4,110 @@
 
 #include "scalar.fpp"
 
-program main
-
-  ! Import Integrators
-  use runge_kutta_integrator        , only : DIRK
-  use bdf_integrator                , only : BDF
-  use abm_integrator                , only : ABM
-  use nbg_integrator                , only : NBG
-
-  ! Import Physics
-!!$  use rigid_body_class              , only : rigid_body
-!!$  use multibody_dynamics_class      , only : multibody_dynamics
+program test_time_integration
+  
+  ! Import all test physics
   use spring_mass_damper_class      , only : smd1, smd2
-  ! use dae_class      , only : dae
-  use vanderpol_class      , only : vanderpol
-!!$  use vanderpol_class               , only : vanderpol
+  use vanderpol_class               , only : vanderpol
   use aero_elastic_oscillator_class , only : aero_elastic_oscillator
-
-  ! Import functions for derivative calculation
-  use smd_functions_class           , only : kinetic_energy
-  use oscillator_functions_class  , only : pitch
 
   implicit none
 
-  ! Declare Integrators
-  type(DIRK)                            :: dirkobj    ! DIRK Integrator object
-  type(BDF)                             :: bdfobj     ! BDF Integrator object
-  type(ABM)                             :: abmobj     ! ABM Integrator object
-  type(NBG)                             :: nbgobj     ! NBM Integrator object
-
   ! Declare Physics for testing
-  type(smd1)                   , target :: smd1obj    ! Spring-mass-damper test ODE (1 var)
-  type(smd2)                   , target :: smd2obj    ! Spring-mass-damper test ODE (2 var)
-  type(vanderpol)              , target :: vpl        ! Vanderpol equation (2 var)
-!!$  type(multibody_dynamics)     , target :: freefall   ! Rigid body dynamics system (12 vars)
-  type(aero_elastic_oscillator), target :: oscillator ! Aeroelastic oscillator (2 vars)
+  type(smd1)      , target :: smd1obj                 ! Spring-mass-damper test ODE (1 var)
+  type(smd2)      , target :: smd2obj                 ! Spring-mass-damper test ODE (2 var)
+  type(vanderpol) , target :: vpl                     ! Vanderpol equation (2 var)
+  type(aero_elastic_oscillator), target :: aeosc      ! Aeroelastic oscillator (2 vars)
 
-  ! Declare functions that are used
-  type(kinetic_energy)         , target :: KE
-  type(pitch)         , target :: pitch1
-
-  ! Design variable array
-  type(scalar), dimension(:), allocatable :: x, dfdx, dfdxtmp
-  type(scalar)                            :: fval, ftmp
-  real(dp)                                :: dh = 1.0d-8
-
-  !type(dae), target :: daeobj
-
-  !===================================================================!
-  !                          TEST BDF                                 !
-  !===================================================================!
-
-  ! Initialize the system
-  call vpl % initialize("Vanderpol", num_state_vars = 2, num_design_vars = 1)
-  bdfobj = BDF(system = vpl, tfinal = 1.0d0, h=1.0d-1, max_bdf_order = 2)
-  call bdfobj % setPrintLevel(2)
-  call bdfobj % integrate()
-  call bdfobj % writeSolution("bdf.dat")
-  call bdfobj % finalize()
-  call vpl % finalize()
+  ! Test the integrators in vanderpol oscillator system  
+  test_vanderpol: block   
+    call vpl % initialize("Vanderpol", num_state_vars = 2, num_design_vars = 1)
+    call test_integrators(vpl, "vanderpol", .false.)
+    call vpl % finalize()    
+  end block test_vanderpol
   
-  !===================================================================!
-  !                       TEST NBG                                    !
-  !===================================================================!
+  ! Test the integrators on 2 dof spring mass damper system
+  test_smd2: block
+    call smd2obj % initialize("SMD2", num_state_vars = 2)
+    call test_integrators(smd2obj, "smd2", .true.)
+    call smd2obj % finalize()
+  end block test_smd2
+
+  ! Test the integrators on aeroelastic oscillator problem with
+  ! pitching and plunging degree of freedom
+  test_aeosc: block
+    call aeosc % initialize("AeroElasticOscillator", num_state_vars = 2)
+    call test_integrators(aeosc, "aeosc", .true.)
+    call aeosc % finalize()
+  end block test_aeosc
+
+contains
+
+  subroutine test_integrators( test_system, name, second_order)
+
+    ! Import all time integrators
+    use runge_kutta_integrator        , only : DIRK
+    use bdf_integrator                , only : BDF
+    use abm_integrator                , only : ABM
+    use nbg_integrator                , only : NBG
+
+    ! Import physics base class
+    use physics_class                 , only : physics
+
+    class(physics)  , intent(in) :: test_system    
+    character(len=*), intent(in) :: name
+    logical                      :: second_order
+    ! Declare integrators
+    type(DIRK) :: dirkobj   ! DIRK Integrator object
+    type(BDF)  :: bdfobj    ! BDF Integrator object
+    type(ABM)  :: abmobj    ! ABM Integrator object
+    type(NBG)  :: nbgobj    ! NBM Integrator object
+    
+    !=================================================================!
+    !                        TEST BDF                                 !
+    !=================================================================!
+
+    bdfobj = BDF(system = test_system, tfinal = 20.0d0, h=1.0d-2, &
+         & max_bdf_order = 3, second_order=second_order)
+    call bdfobj % setPrintLevel(2)
+    call bdfobj % integrate()
+    call bdfobj % writeSolution(name//"_bdf.dat")
+    call bdfobj % finalize()
+
+    !=================================================================!
+    !                     TEST NBG                                    !
+    !=================================================================!
+
+    nbgobj = NBG(system = test_system, tfinal = 20.0d0, h=1.0d-2, &
+         & second_order=second_order)
+    call nbgobj % setPrintLevel(2)
+    call nbgobj % integrate()
+    call nbgobj % writeSolution(name//"_nbg.dat")
+    call nbgobj % finalize()
+
+    !=================================================================!
+    !                     TEST ABM                                    !
+    !==================================================================!
+
+    abmobj = ABM(system = test_system, tfinal = 20.0d0, h=1.0d-2, &
+         & max_abm_order = 3, second_order=second_order)
+    call abmobj % setPrintLevel(2)
+    call abmobj % integrate()
+    call abmobj % writeSolution(name//"_abm.dat")
+    call abmobj % finalize()
+
+    !=================================================================!
+    !                        TEST DIRK                                !
+    !=================================================================!
+
+    dirkobj = DIRK(system = test_system, tfinal = 20.0d0, h=1.0d-2, &
+         & num_stages=2, second_order=second_order) 
+    call dirkobj % setPrintLevel(2)
+    call dirkobj % integrate()
+    call dirkobj % writeSolution(name//"_dirk.dat")
+    call dirkobj % finalize()
+
+  end subroutine test_integrators
   
-  ! Initialize the system
-  call vpl % initialize("Vanderpol", num_state_vars = 2, num_design_vars = 1)
-  nbgobj = NBG(system = vpl, tfinal = 1.0d0, h=1.0d-1)
-  call nbgobj % setPrintLevel(2)
-  call nbgobj % integrate()
-  call nbgobj % writeSolution("nbg.dat")
-  call nbgobj % finalize()
-  call vpl % finalize()
+end program test_time_integration
 
-  !===================================================================!
-  !                       TEST ABM                                    !
-  !===================================================================!
-  
-  ! Initialize the system
-  call vpl % initialize("Vanderpol", num_state_vars = 2, num_design_vars = 1)
-  abmobj = ABM(system = vpl, tfinal = 25.0d0, h=1.0d-2, max_abm_order = 3, second_order=.false.)
-  call abmobj % setPrintLevel(0)
-  call abmobj % integrate()
-  call abmobj % writeSolution("abm.dat")
-  call abmobj % finalize()
-  call vpl % finalize()
- 
-  !===================================================================!
-  !                          TEST DIRK                                !
-  !===================================================================!
-
-  ! Initialize the system
-  call smd1obj % initialize("SMD1", num_state_vars = 1, num_design_vars = 3)
-  dirkobj = DIRK(system = smd1obj, tfinal = 10.0d-0, h=1.0d-1, num_stages=2, second_order=.true.) 
-  call dirkobj % setPrintLevel(0)
-  call dirkobj % integrate()
-  call dirkobj % writeSolution("dirk.dat")
-  call dirkobj % finalize()
-  call smd1obj % finalize()
-
-  !===================================================================!
-  !  Aeroelastic Oscillator
-  !===================================================================!
-  
-  allocate(X(2), dfdx(2), dfdxtmp(2))
-
-  dfdx    = 0.0d0
-  dfdxtmp = 0.0d0
-
-  x(1) = 9.0d0  ! dynamic pressure
-  x(2) = 20.0d0 ! nonlinear stiffness coeff
-  
-  ! Initialize the system
-  call oscillator % initialize("AE-Oscillator", num_state_vars = 2, num_design_vars = 2)
-  
-  bdfobj = BDF(system = oscillator, tfinal = 1.0d0, h=1.0d-3, max_bdf_order = 3) 
-
-  call bdfobj % evalFuncGrad(num_func=1, func = pitch1,  num_dv = 2, x = x, &
-       & fvals = fval, dfdx= dfdx)
-  
-!  call bdfobj % integrate()
-  call bdfobj % writeSolution()
-  
-  call bdfobj % evalFDFuncGrad(num_func=1, func = pitch1,  num_dv = 2, x = x, &
-       & fvals = fval, dfdx= dfdxtmp, dh=1.0d-6)
-
-  call bdfobj % finalize()
-
-  print*, "fval         =", fval
-  print*, "Adjoint dfdx =", dfdx
-  print*, "FD      dfdx =", dfdxtmp
-  print*, "Error        =", abs(dfdxtmp-dfdx)
-
-  ! Finalize the system
-  call oscillator % finalize()
-
-  dfdx = 0.0d0
-  dfdxtmp = 0.0d0
-  
-  ! Initialize the system
-  call oscillator % initialize("AE-Oscillator", num_state_vars = 2, num_design_vars = 2)
-  
-  dirkobj = DIRK(system = oscillator, tfinal = 1.d0, h=1.0d-3, num_stages=3) 
-  
-  call dirkobj % evalFuncGrad(num_func = 1, func = pitch1, num_dv = 2, x = x, &
-       & fvals = fval, dfdx= dfdx)
-  
-  call dirkobj % writeSolution("dirksol.dat")
-
-  call dirkobj % evalFDFuncGrad(num_func=1, func = pitch1, num_dv = 2, x = x, &
-       & fvals = fval, dfdx= dfdxtmp, dh=dh)
-
-  call dirkobj % finalize()  
-
-  print *, "fval         =", fval
-  print *, "Adjoint dfdx =", dfdx
-  print *, "FD      dfdx =", dfdxtmp
-  print *, "Error        =", abs(dfdxtmp-dfdx)
-
-  ! Finalize the system
-  call oscillator % finalize()
-
-  deallocate(X, dfdx, dfdxtmp)
-
-end program
