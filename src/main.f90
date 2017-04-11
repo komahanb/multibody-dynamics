@@ -16,6 +16,7 @@ program main
 !!$  use rigid_body_class              , only : rigid_body
 !!$  use multibody_dynamics_class      , only : multibody_dynamics
   use spring_mass_damper_class      , only : smd1, smd2
+  use dae_class      , only : dae
   use vanderpol_class      , only : vanderpol
 !!$  use vanderpol_class               , only : vanderpol
   use aero_elastic_oscillator_class , only : aero_elastic_oscillator
@@ -47,19 +48,38 @@ program main
   type(scalar), dimension(:), allocatable :: x, dfdx, dfdxtmp
   type(scalar)                            :: fval, ftmp
   real(dp)                                :: dh = 1.0d-8
-  
+
+  type(dae), target :: daeobj
+
   !===================================================================!
   !                       TEST NBG                                    !
   !===================================================================!
 
+  !===================================================================!
+  !                          TEST BDF                                 !
+  !===================================================================!
+
   ! Initialize the system
-  call smd1obj % initialize(num_state_vars = 1, num_design_vars = 3)
-  nbgobj = NBG(system = smd1obj, tfinal = 10.0d0, h=1.0d-1)
-  call nbgobj % setPrintLevel(0)
+  call daeobj % initialize(num_state_vars = 2, num_design_vars = 0)
+  bdfobj = BDF(system = daeobj, tfinal = 1.0d0, h=1.0d-1, max_bdf_order = 2)
+  call bdfobj % setPrintLevel(2)
+  call bdfobj % integrate()
+  call bdfobj % writeSolution("bdf.dat")
+  call bdfobj % finalize()
+  call daeobj % finalize()
+
+
+stop "BDF"
+  ! Initialize the system
+  call daeobj % initialize(num_state_vars = 2, num_design_vars = 0)
+  nbgobj = NBG(system = daeobj, tfinal = 1.0d0, h=1.0d-1)
+  call nbgobj % setPrintLevel(2)
   call nbgobj % integrate()
   call nbgobj % writeSolution("nbg.dat")
   call nbgobj % finalize()
-  call smd1obj % finalize()
+  call daeobj % finalize()
+
+  stop"Execution complete"
 
   !===================================================================!
   !                       TEST ABM                                    !
@@ -73,20 +93,7 @@ program main
   call abmobj % writeSolution("abm.dat")
   call abmobj % finalize()
   call vpl % finalize()
-
-  !===================================================================!
-  !                          TEST BDF                                 !
-  !===================================================================!
-
-  ! Initialize the system
-  call smd1obj % initialize(num_state_vars = 1, num_design_vars = 3)
-  bdfobj = BDF(system = smd1obj, tfinal = 10.0d0, h=1.0d-1, max_bdf_order = 3)
-  call bdfobj % setPrintLevel(0)
-  call bdfobj % integrate()
-  call bdfobj % writeSolution("bdf.dat")
-  call bdfobj % finalize()
-  call smd1obj % finalize()
-  
+ 
   !===================================================================!
   !                          TEST DIRK                                !
   !===================================================================!

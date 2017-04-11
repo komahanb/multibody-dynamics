@@ -254,6 +254,8 @@ contains
   
   subroutine Integrate(this)
 
+    use nonlinear_algebra, only: nonlinear_solve
+
     class(RK) :: this
     type(scalar)  :: alpha, beta, gamma
     integer :: k, i
@@ -299,7 +301,8 @@ contains
           call this % getLinearCoeff(alpha, beta, gamma)
 
           ! solve the non linear stage equations using Newton's method
-          call this % newtonSolve(alpha, beta, gamma, &
+          call nonlinear_solve(this % system, &
+               & alpha, beta, gamma, &
                & this % time(k), this % q(k,i,:), this % qdot(k,i,:), this % qddot(k,i,:))
 
        end do
@@ -1583,21 +1586,21 @@ contains
     call this % system % setDesignVars(num_dv, x)
     call this % integrate()
     call this % evalFunc(x, fvalstmp)
-    dfdxtmp(1) = aimag(fvalstmp)/1.0d-16
+!    dfdxtmp(1) = aimag(fvalstmp)/1.0d-16
     x(1) = cmplx(dble(x(1)), 0.0d0)
 
     x(2) = cmplx(dble(x(2)), 1.0d-16)
     call this % system % setDesignVars(num_dv, x)
     call this % integrate()
     call this % evalFunc(x, fvalstmp)
-    dfdxtmp(2) = aimag(fvalstmp)/1.0d-16
+!    dfdxtmp(2) = aimag(fvalstmp)/1.0d-16
     x(2) = cmplx(dble(x(2)), 0.0d0)
 
     x(3) = cmplx(dble(x(3)), 1.0d-16)
     call this % system % setDesignVars(num_dv, x)
     call this % integrate()
     call this % evalFunc(x, fvalstmp)
-    dfdxtmp(3) = aimag(fvalstmp)/1.0d-16
+!    dfdxtmp(3) = aimag(fvalstmp)/1.0d-16
     x(3) = cmplx(dble(x(3)), 0.0d0)
     call this % system % setDesignVars(num_dv, x)
 
@@ -1752,22 +1755,22 @@ contains
     call this % system % setDesignVars(num_dv, x)
     call this % integrate()
     call this % evalFunc(x, fvalstmp)
-    dfdxtmp(1) = aimag(fvalstmp)/1.0d-16
+!    dfdxtmp(1) = aimag(fvalstmp)/1.0d-16
     x(1) = cmplx(dble(x(1)), 0.0d0)
 
     x(2) = cmplx(dble(x(2)), 1.0d-16)
     call this % system % setDesignVars(num_dv, x)
     call this % integrate()
     call this % evalFunc(x, fvalstmp)
-    dfdxtmp(2) = aimag(fvalstmp)/1.0d-16
+!    dfdxtmp(2) = aimag(fvalstmp)/1.0d-16
     x(2) = cmplx(dble(x(2)), 0.0d0)
 
     x(3) = cmplx(dble(x(3)), 1.0d-16)
     call this % system % setDesignVars(num_dv, x)
     call this % integrate()
     call this % evalFunc(x, fvalstmp)
-    dfdxtmp(3) = aimag(fvalstmp)/1.0d-16
-    x(3) = cmplx(dble(x(3)), 0.0d0)
+!    dfdxtmp(3) = aimag(fvalstmp)/1.0d-16
+!    x(3) = cmplx(dble(x(3)), 0.0d0)
     call this % system % setDesignVars(num_dv, x)
 
   end subroutine testAdjoint4
@@ -2025,21 +2028,21 @@ contains
     call this % system % setDesignVars(num_dv, x)
     call this % integrate()
     call this % evalFunc(x, fvalstmp)
-    dfdxtmp(1) = aimag(fvalstmp)/1.0d-25
+!    dfdxtmp(1) = aimag(fvalstmp)/1.0d-25
     x(1) = cmplx(dble(x(1)), 0.0d0)
 
     x(2) = cmplx(dble(x(2)), 1.0d-25)
     call this % system % setDesignVars(num_dv, x)
     call this % integrate()
     call this % evalFunc(x, fvalstmp)
-    dfdxtmp(2) = aimag(fvalstmp)/1.0d-25
+!    dfdxtmp(2) = aimag(fvalstmp)/1.0d-25
     x(2) = cmplx(dble(x(2)), 0.0d0)
 
     x(3) = cmplx(dble(x(3)), 1.0d-25)
     call this % system % setDesignVars(num_dv, x)
     call this % integrate()
     call this % evalFunc(x, fvalstmp)
-    dfdxtmp(3) = aimag(fvalstmp)/1.0d-25
+!    dfdxtmp(3) = aimag(fvalstmp)/1.0d-25
     x(3) = cmplx(dble(x(3)), 0.0d0)
     call this % system % setDesignVars(num_dv, x)
 

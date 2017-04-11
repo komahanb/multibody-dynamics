@@ -21,10 +21,6 @@ module integrator_class
   private
   public ::  integrator
 
-  interface norm2
-     module procedure znorm2
-  end interface norm2
-
   !===================================================================! 
   ! Abstract Integrator type
   !===================================================================! 
@@ -47,13 +43,6 @@ module integrator_class
      real(dp) :: tinit     = 0.0d0 ! initial time
      real(dp) :: tfinal    = 1.0d0 ! final time
      real(dp) :: h         = 0.1d0 ! default step size
-
-     !----------------------------------------------------------------!
-     ! Nonlinear solution at each stage
-     !----------------------------------------------------------------!
-
-     integer  :: max_newton = 25
-     real(dp) :: atol = 1.0d-14, rtol = 1.0d-13
 
      !----------------------------------------------------------------!
      ! Track global time and states
@@ -91,10 +80,9 @@ module integrator_class
      !----------------------------------------------------------------!
 
      procedure :: writeSolution
-     procedure :: setPhysicalSystem
-     procedure :: newtonSolve   
+     procedure :: writeAdjointSolution
+     procedure :: setPhysicalSystem 
      procedure :: setPrintLevel
-     procedure :: approximateJacobian
 
      !----------------------------------------------------------------!
      ! Important setters
@@ -276,7 +264,9 @@ contains
     !-----------------------------------------------------------------!
 
     this % num_steps = int((this % tfinal - this % tinit)/this % h) + 1 
-    print '("  >> Number of steps        : ",i6)', this % num_steps
+    print '("  >> Number of steps        : ",i10)', this % num_steps
+
+    print '("  >> Physical System        : ",A10)', this % system % name
 
     !-----------------------------------------------------------------!
     ! Allocate space for the global states and time
@@ -408,8 +398,7 @@ contains
        write(90, *)  this % time(k), &
             & (dble(this % u     (k,j) ), j=1,this%nsvars ), &
             & (dble(this % udot  (k,j) ), j=1,this%nsvars ), &
-            & (dble(this % uddot (k,j) ), j=1,this%nsvars ), & 
-            & (dble(this % psi   (k,j) ), j=1,this%nsvars )
+            & (dble(this % uddot (k,j) ), j=1,this%nsvars )
     end do
 
     close(90)
@@ -417,279 +406,60 @@ contains
   end subroutine writeSolution
 
   !===================================================================!
-  ! Solve the nonlinear system at each step by driving the
-  ! residual to zero
-  !
-  ! Input: 
-  ! The guessed (initial) state variable values q, qdot, qddot are
-  ! supplied
-  !
-  ! Output:
-  ! q, qdot, qddot updated iteratively until the corresponding
-  ! residual R = 0
-  !
-  ! alpha: multiplier for derivative of Residual wrt to q
-  ! beta : multiplier for derivative of Residual wrt to qdot
-  ! gamma: multiplier for derivative of Residual wrt to qddot
+  ! Write adjoint solution to file
   !===================================================================!
 
-  subroutine newtonSolve( this, alpha, beta, gamma, t, q, qdot, qddot )
+  subroutine writeAdjointSolution(this, filename, time, psi, phi, mu)
 
-    class(integrator)                         :: this
+    class(integrator)                      :: this
+    character(len=*), OPTIONAL, intent(in) :: filename
+    character(len=7), parameter            :: directory = "output/"
+    character(len=32)                      :: path = ""
+    integer                                :: k, j, ierr
+    real(dp), dimension(:) :: time
+    type(scalar), dimension(:,:) :: psi
+    type(scalar), dimension(:,:) :: phi
+    type(scalar), dimension(:,:) :: mu
 
-    ! Arguments
-    type(scalar), intent(in)                  :: alpha, beta, gamma
-    real(dp), intent(in)                      :: t
-    type(scalar), intent(inout), dimension(:) :: q, qdot, qddot
 
-    ! Lapack variables
-    integer, allocatable, dimension(:)        :: ipiv
-    integer                                   :: info, size
+    path = trim(path)
 
-    ! Norms for tracking progress
-    real(dp)                                  :: abs_res_norm = 0.0d0
-    real(dp)                                  :: rel_res_norm = 0.0d0
-    real(dp)                                  :: init_norm    = 0.0d0
-
-    ! Other Local variables
-    type(scalar), allocatable, dimension(:)   :: res, dq
-    type(scalar), allocatable, dimension(:,:) :: jac, fd_jac
-
-    integer                                   :: n, k
-    logical                                   :: conv = .false.
-
-    type(scalar)                              :: jac_err
-
-    ! find the size of the linear system based on the calling object
-    size = this % nsvars; k = this % current_step
-
-    if ( .not. allocated(ipiv)   ) allocate( ipiv(size)        )
-    if ( .not. allocated(res)    ) allocate( res(size)         )
-    if ( .not. allocated(dq)     ) allocate( dq(size)          )
-    if ( .not. allocated(jac)    ) allocate( jac(size,size)    )
-    if ( .not. allocated(fd_jac) ) allocate( fd_jac(size,size) )
-
-    if ( this % print_level .ge. 1 .and. k .eq. 2) then
-       write(*,'(/2A5, 2A12/)') "Step", "Iter", "|R|", "|R|/|R1|"
+    if (present(filename)) then
+       path = directory//filename
+    else
+       path = directory//"adjoint_solution.dat"
     end if
 
-    newton: do n = 1, this % max_newton
+    open(unit=90, file=trim(path), iostat= ierr)
 
-       ! Get the residual of the function
-       call this % system % assembleResidual(res, t, q, qdot, qddot)
-
-       ! Get the jacobian matrix
-       if ( this % approximate_jacobian ) then
-
-          ! Compute an approximate Jacobian using finite differences
-          call this % approximateJacobian(jac, alpha, beta, gamma, t, q, qdot, qddot)
-
-       else
-
-          ! Use the user supplied Jacobian implementation
-          call this % system % assembleJacobian(jac, alpha, beta, gamma, t, q, qdot, qddot)
-
-          ! Check the Jacobian implementation once at the beginning of integration
-          if ( k .eq. 2 .and. n .eq. 1 ) then
-
-             ! Compute an approximate Jacobian using finite differences
-             call this % approximateJacobian(fd_jac, alpha, beta, gamma, t, q, qdot, qddot)
-
-             ! Compare the exact and approximate Jacobians and
-             ! complain about the error in Jacobian if there is any
-             jac_err = maxval(abs(fd_jac - jac))
-             if ( abs(jac_err) .gt. 1.0d-3 ) then
-                print *, "q     =", q
-                print *, "qdot  =", qdot
-                print *, "qddot =", qddot
-                print *, "a,b,c =", alpha, beta, gamma
-                print *, "J     =", jac
-                print *, "Jhat  =", fd_jac
-                print *, "WARNING: Possible error in jacobian", jac_err
-             end if
-
-          end if
-
-       end if
-
-       ! Find norm of the residual
-       abs_res_norm = norm2(res)
-       if ( n .eq. 1) init_norm = abs_res_norm
-       rel_res_norm = abs_res_norm/init_norm
-
-       if ( this % print_level .eq. 2) then
-          write(*, "(2I5,2ES12.2)") k, n, abs_res_norm, rel_res_norm
-       end if
-
-       ! Check stopping
-       if ((abs_res_norm .le. this % atol) .or. (rel_res_norm .le. this % rtol)) then
-          conv = .true.
-          exit newton
-       else if ((abs_res_norm .ne. abs_res_norm) .or. (rel_res_norm .ne. rel_res_norm) ) then
-          conv = .false.
-          exit newton
-       end if
-
-       ! Call LAPACK to solve the stage values system
-       dq = -res
-
-#if defined USE_COMPLEX
-       call ZGESV(size, 1, jac, size, IPIV, dq, size, INFO)
-#else
-       call DGESV(size, 1, jac, size, IPIV, dq, size, INFO)
-#endif
-       if (INFO .ne. 0) then
-          print*, "LAPACK ERROR:", info
-          stop
-       end if
-
-       ! Update the solution
-       qddot = qddot + gamma * dq
-       qdot  = qdot  + beta  * dq
-       q     = q     + alpha * dq
-
-    end do newton
-
-    if (this % print_level .eq. 1) then 
-       write(*, "(2I5,2ES12.2)") k, n, abs_res_norm, rel_res_norm
+    if (ierr .ne. 0) then
+       write(*,'("  >> Opening file ", 39A, " failed")') path
+       return
     end if
 
-    ! Print warning message if not converged
-    if (.not. conv) then
-       write(*,'(/2A5, 2A12)') "STEP", "ITER", "|R|", "|R|/|R1|"
-       write(*, "(2I5,2ES12.2)") k, n, abs_res_norm, rel_res_norm
-       stop "Newton Solve Failed"
-    end if
-
-    if (allocated(ipiv)) deallocate(ipiv)
-    if (allocated(res)) deallocate(res)
-    if (allocated(dq)) deallocate(dq)
-    if (allocated(jac)) deallocate(jac)
-    if (allocated(fd_jac)) deallocate(fd_jac)
-
-  end subroutine newtonSolve
-
-  !===================================================================! 
-  ! Routine that approximates the Jacobian based on finite differences
-  ! [d{R}/d{q}] = alpha*[dR/dq] + beta*[dR/dqdot] + gamma*[dR/dqddot]
-  !===================================================================!
-
-  subroutine approximateJacobian( this, jac, alpha, beta, gamma, t, q, qdot, qddot )
-
-    class(integrator)                            :: this
-
-    ! Matrices
-    type(scalar) , intent(inout), dimension(:,:) :: jac
-
-    ! Arrays
-    real(dp)     , intent(in)                    :: t
-    type(scalar) , intent(in), dimension(:)      :: q, qdot, qddot     ! states
-
-    type(scalar) , allocatable, dimension(:)     :: pstate             ! perturbed states
-    type(scalar) , allocatable, dimension(:)     :: R, Rtmp            ! original residual and perturbed residual
-
-    ! Scalars
-    type(scalar)                                 :: dh = 1.0d-6        ! finite-diff step size
-    type(scalar) , intent(in)                    :: alpha, beta, gamma ! linearization coefficients
-    integer                                      :: m                  ! loop variables
-
-    !  Zero the supplied jacobian matrix for safety (as we are
-    !  computing everything newly here)
-    jac = 0.0d0
-
-    ! Allocate required arrays
-    allocate(pstate(this % nsvars)); pstate = 0.0d0;
-    allocate(R(this % nsvars));      R = 0.0d0;
-    allocate(Rtmp(this % nsvars));   Rtmp = 0.0d0;
-
-    ! Make a residual call with original variables
-    call this % system % assembleResidual(R, t, q, qdot, qddot)
-
-    !-----------------------------------------------------------!
-    ! Derivative of R WRT Q: dR/dQ
-    !-----------------------------------------------------------!
-
-    pstate = q
-
-    loop_vars: do m = 1, this % nsvars
-
-       ! Perturb the k-th variable
-       pstate(m) = pstate(m) + dh
-
-       ! Make a residual call with the perturbed variable
-       call this % system % assembleResidual(Rtmp, t, pstate, qdot, qddot)
-
-       ! Unperturb (restore) the k-th variable
-       pstate(m) =  q(m)
-
-       ! Approximate the jacobian with respect to the k-th variable
-       jac(:,m) = jac(:,m) + alpha*(Rtmp-R)/dh
-
-    end do loop_vars
-
-    !-----------------------------------------------------------!
-    ! Derivative of R WRT QDOT: dR/dQDOT
-    !-----------------------------------------------------------!
-
-    pstate = qdot
-
-    do m = 1, this % nsvars
-
-       ! Perturb the k-th variable
-       pstate(m) = pstate(m) + dh
-
-       ! Make a residual call with the perturbed variable
-       call this % system % assembleResidual(Rtmp, t, q, pstate, qddot)
-
-       ! Unperturb (restore) the k-th variable
-       pstate(m) =  qdot(m)
-
-       ! Approximate the jacobian with respect to the k-th variable
-       Jac(:,m) = Jac(:,m) + beta*(Rtmp-R)/dh
-
+    do k = 1, this % num_steps
+       write(90, *)  time(k), &
+            & (dble(psi(k,j)), j=1,this%nsvars ), &
+            & (dble(phi(k,j)), j=1,this%nsvars ), &
+            & (dble(mu(k,j)) , j=1,this%nsvars )
     end do
 
-    ! Second order equations have an extra block to add
-    if (this % second_order) then
+    close(90)
 
-       !-----------------------------------------------------------!
-       ! Derivative of R WRT QDDOT: dR/dQDDOT
-       !-----------------------------------------------------------!     
-
-       pstate = qddot
-
-       do m = 1, this % nsvars
-
-          ! Perturb the k-th variable
-          pstate(m) = pstate(m) + dh
-
-          ! Make a residual call with the perturbed variable
-          call this % system % assembleResidual(Rtmp, t, q, qdot, pstate)
-
-          ! Unperturb (restore) the k-th variable
-          pstate(m) =  qddot(m)
-
-          ! Approximate the jacobian with respect to the k-th variable
-          Jac(:,m) = Jac(:,m) + gamma*(Rtmp-R)/dh
-
-       end do
-
-    end if ! first or second order
-
-    deallocate(pstate)
-    deallocate(R,Rtmp)
-
-  end subroutine approximateJacobian
+  end subroutine writeAdjointSolution
 
   !===================================================================!
   ! Time integration logic
   !===================================================================!
 
   subroutine Integrate( this )
+    
+    use nonlinear_algebra, only: nonlinear_solve
 
     class(integrator) :: this
     type(scalar)      :: alpha, beta, gamma
     integer           :: k
+    type(scalar)      :: coeff(3)
 
     ! Set states to zeror
     this % U     = 0.0d0
@@ -717,10 +487,22 @@ contains
        ! Determine the coefficients for linearing the Residual
        call this % getLinearCoeff(alpha, beta, gamma)
 
+
+       ! coeff = [alpha, beta, gamma]
+
        ! Solve the nonlinear system at each step by driving the
        ! residual to zero
-       call this % newtonSolve(alpha, beta, gamma, &
+
+       ! Solve the nonlinear system at each step by driving the
+       ! residual to zero
+       call nonlinear_solve(this % system, &
+            & alpha, beta, gamma, &
             & this % time(k), this % u(k,:), this % udot(k,:), this % uddot(k,:))
+       
+!!$       associate( system => this % system, &
+!!$            & U => [ this % u(k,:), this % udot(k,:), this % uddot(k,:)] )
+!!$         call newton_solve(system, coeff, U, this % approximate_jacobian, this % print_level)
+!!$       end associate
 
     end do time
 
@@ -733,6 +515,8 @@ contains
 
   subroutine adjointSolve(this, psi, alpha, beta, gamma, t, q, qdot, qddot)
 
+    use linear_algebra, only: solve
+
     class(integrator) :: this
 
     ! Arguments
@@ -741,18 +525,14 @@ contains
     type(scalar), intent(inout), dimension(:) :: q, qdot, qddot
     type(scalar), intent(inout), dimension(:) :: psi
 
-    ! Lapack variables
-    integer, allocatable, dimension(:)        :: ipiv
-    integer                                   :: info, size
-
     ! Other Local variables
     type(scalar), allocatable, dimension(:)   :: rhs
     type(scalar), allocatable, dimension(:,:) :: jac
+    type(integer)                             :: size
 
     ! find the size of the linear system based on the calling object
     size = this % nsvars
 
-    if (.not.allocated(ipiv)) allocate(ipiv(size))
     if (.not.allocated(rhs)) allocate(rhs(size))
     if (.not.allocated(jac)) allocate(jac(size,size))
 
@@ -769,21 +549,9 @@ contains
     ! Transpose the system
     jac = transpose(jac)
 
-    ! Call lapack to solve the stage values system
-#if defined USE_COMPLEX
-    call ZGESV(size, 1, jac, size, IPIV, rhs, size, INFO)    
-#else
-    call DGESV(size, 1, jac, size, IPIV, rhs, size, INFO)
-#endif
-    if (INFO .ne. 0) then
-       print*, "LAPACK ERROR:", info
-       stop
-    end if
+    ! Call LAPACK to solve the linear system
+    psi = solve(jac, rhs)
 
-    ! Store into the output array
-    psi = rhs
-
-    if (allocated(ipiv)) deallocate(ipiv)
     if (allocated(rhs)) deallocate(rhs)
     if (allocated(jac)) deallocate(jac)
 
@@ -957,21 +725,6 @@ contains
 !!$    
 
   end subroutine evalFunc
-
-  !===================================================================!
-  ! Norm of a complex number array
-  !===================================================================!
-
-  real(dp) pure function znorm2(z)
-
-    complex(dp), dimension(:), intent(in) :: z
-    integer :: j
-
-    do j = 1, size(z)
-       znorm2 = znorm2 + sqrt(dble(z(j))**2 + aimag(z(j))**2)
-    end do
-
-  end function znorm2
 
   subroutine addFuncResAdjPdt(this, ans, alpha, beta, gamma, time, q, qdot, qddot, adjoint)
 

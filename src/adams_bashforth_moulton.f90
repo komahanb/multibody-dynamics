@@ -10,6 +10,7 @@ module abm_integrator
 
   use integrator_class, only : integrator
   use physics_class,    only : physics
+  use utils,            only : real_part
 
   implicit none
 
@@ -59,7 +60,7 @@ contains
   !===================================================================!
   
   type(abm) function initialize( system, tinit, tfinal, h, second_order, max_abm_order )  result (this)
-   
+      
     class(physics), target          :: system
     integer  , OPTIONAL, intent(in) :: max_abm_order
     real(dp) , OPTIONAL, intent(in) :: tinit, tfinal
@@ -102,7 +103,7 @@ contains
     
     ! Sanity check on ABM coeffs
     do j = 1, this % max_abm_order
-       if ( realpart(sum(this % A(j,1:j)) - 1.0d0) .gt. 0.00001 ) then
+       if ( real_part(sum(this % A(j,1:j)) - 1.0d0) .gt. 0.00001 ) then
           stop "Error in ABM Coeff"
        end if
     end do
@@ -257,12 +258,7 @@ contains
        call this % adjointSolve(this % mu(k,:), alpha, beta, gamma, &
             & this % time(k), this % u(k,:), this % udot(k,:), this % uddot(k,:))
        
-    end do time
-
-    do k = 2, this % num_steps
-       print *, real(this % mu(k,:)), real(this % psi(k,:)), real(this % phi(k,:))
-    end do 
-           
+    end do time          
     
   end subroutine marchBackwards
   
@@ -373,7 +369,7 @@ contains
     rhs = rhs + alpha/this % h * this % phi(k,:)
     
     if (  k + 1 .le. this % num_steps ) then
-       print *, "order", m
+
        if (this % max_abm_order .eq. 1) then
 
           gamma = 0.0d0

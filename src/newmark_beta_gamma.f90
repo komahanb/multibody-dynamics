@@ -205,7 +205,10 @@ contains
 
     class(NBG)                :: this
     integer                   :: k
+    integer, parameter :: unit = 88
     type(scalar)              :: alpha, beta, gamma
+    
+    open(unit=88, file=trim("nbg_adjoint.dat"))
 
     time: do k = this % num_steps, 2, -1
 
@@ -214,6 +217,7 @@ contains
        !--------------------------------------------------------------!
        ! Determine the linearization coefficients for the Jacobian
        !--------------------------------------------------------------!
+
        call this % getLinearCoeff(alpha, beta, gamma)
 
        !--------------------------------------------------------------!
@@ -222,7 +226,18 @@ contains
 
        call this % adjointSolve(this % psi(k,:), alpha, beta, gamma, &
             & this % time(k), this % u(k,:), this % udot(k,:), this % uddot(k,:))
+       
+       write_output: block
 
+         type(integer) :: j
+
+         ! Write the solution as output
+         write(unit, *)  this % time(k), &
+              & (dble(this % psi(k,j)), j=1,this%nsvars ), &
+              & (dble(this % rho(j)), j=1,this%nsvars ), &
+              & (dble(this % sigma(j)), j=1,this%nsvars )
+
+       end block write_output
        !print*, "k, psi=", k, this % psi(k,:)       
 
     end do time

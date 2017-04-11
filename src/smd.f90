@@ -20,7 +20,7 @@ module spring_mass_damper_class
   !-------------------------------------------------------------------!
   
   type, extends(physics) :: smd1
-
+     
      ! Define constants and other parameters needed for residual and
      ! jacobian assembly here
 
