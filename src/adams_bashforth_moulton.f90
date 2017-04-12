@@ -30,6 +30,10 @@ module abm_integrator
      integer :: max_abm_order = 3
      type(scalar), allocatable, dimension(:,:) :: A
 
+     type(scalar), dimension(:,:), allocatable :: rhsbin
+     type(scalar), dimension(:,:), allocatable :: psibin
+     type(scalar), dimension(:,:), allocatable :: phibin
+
    contains
      
      ! Destructor
@@ -114,8 +118,17 @@ contains
     
     this % num_rhs_bins = this % max_abm_order
 
-    allocate(this % rhs(this % num_rhs_bins, this % nsvars))
+    allocate(this % rhs(this % nsvars))
     this % rhs = 0.0d0
+
+    allocate(this % rhsbin(this % num_rhs_bins, this % nsvars))
+    this % rhsbin = 0.0d0
+
+    allocate(this % phibin(this % num_rhs_bins, this % nsvars))
+    this % phibin = 0.0d0
+
+    allocate(this % psibin(this % num_rhs_bins, this % nsvars))
+    this % psibin = 0.0d0
 
   end function initialize
 
@@ -130,7 +143,11 @@ contains
     ! Deallocate ABM coefficient
     if(allocated(this % A)) deallocate(this % A)
     
-    if ( allocated(this % rhs) ) deallocate(this % rhs)
+    ! Adjoint variables and RHS
+    if(allocated(this % rhs)) deallocate(this % rhs)
+    if(allocated(this % rhsbin)) deallocate(this % rhsbin)
+    if(allocated(this % psibin)) deallocate(this % psibin)
+    if(allocated(this % phibin)) deallocate(this % phibin)
 
   end subroutine finalize
 
@@ -261,6 +278,13 @@ contains
     end do time          
     
   end subroutine marchBackwards
+
+!!$  subroutine test_adjoint()
+!!$
+!!$    class(ABM)    :: this
+!!$    type(integer) :: k, p, i, j    
+!!$
+!!$  end subroutine test_adjoint
   
   !===================================================================!
   ! Approximate the state variables at each step using ABM formulae

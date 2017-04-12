@@ -14,7 +14,7 @@ CC_FLAGS =  #-g #-Wall
 CX_FLAGS =  #-g #-Wall
 FC_FLAGS =  -g -cpp -fbounds-check #-fbounds-check -ffree-form -Wall -cpp -dM -Wno-unused
 
-TARGET = $(BIN_DIR)/test
+TARGET = $(BIN_DIR)/test_adjoint
 
 default: $(OBJ)
 	$(FC) $(FC_FLAGS) $(INCLUDES) -o $(TARGET) $(OBJ) $(LIB_FLAGS) $(LIBS)

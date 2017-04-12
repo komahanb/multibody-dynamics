@@ -197,7 +197,7 @@ contains
     
     this % num_rhs_bins = this % num_stages
 
-    allocate(this % rhs(this % num_rhs_bins, this % nsvars))
+    allocate(this % rhs(this % nsvars))
     this % rhs = 0.0d0
     
   end function initialize

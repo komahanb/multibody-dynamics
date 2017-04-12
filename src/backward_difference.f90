@@ -330,7 +330,7 @@ contains
     
     this % num_rhs_bins = 2*this % max_bdf_order + 1
 
-    allocate(this % rhs(this % num_rhs_bins, this % nsvars))
+    allocate(this % rhs(this % nsvars))
     this % rhs = 0.0d0
     
   end function initialize

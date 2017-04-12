@@ -103,7 +103,7 @@ contains
     
     this % num_rhs_bins = 2
 
-    allocate(this % rhs(this % num_rhs_bins, this % nsvars))
+    allocate(this % rhs(this % nsvars))
     this % rhs = 0.0d0
 
 

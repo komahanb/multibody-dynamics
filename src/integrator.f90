@@ -58,9 +58,10 @@ module integrator_class
      !----------------------------------------------------------------!
 
      integer                                   :: num_rhs_bins
-     type(scalar), dimension(:,:), allocatable :: rhs
-     type(scalar), dimension(:,:), allocatable :: psi
+     type(scalar), dimension(:), allocatable   :: rhs
+
      type(scalar), dimension(:,:), allocatable :: phi
+     type(scalar), dimension(:,:), allocatable :: psi
      type(scalar), dimension(:,:), allocatable :: mu
 
      !----------------------------------------------------------------!
@@ -319,6 +320,7 @@ contains
     ! Adjoint variables and RHS
     if(allocated(this % psi)) deallocate(this % psi)
     if(allocated(this % phi)) deallocate(this % phi)
+    if(allocated(this % mu)) deallocate(this % mu)
 
   end subroutine destruct
 
