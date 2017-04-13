@@ -47,34 +47,6 @@ program main
   allocate(X(3), dfdx(3), dfdxtmp(3))
 
   !===================================================================!
-  !                       TEST NBG                                    !
-  !===================================================================!
-
-  fval = 0.0d0
-  X       = 0.0d0
-  dfdx    = 0.0d0
-  dfdxtmp = 0.0d0
-
-  x(1) = 2.50d0    ! mass
-  x(2) = 0.020d0    ! damping coeff
-  x(3) = 5.0d0    ! stiffness coeff
-
-  ! Initialize the system
-  call smd1obj % initialize("SMD", num_state_vars = 1, num_design_vars = 3)
-  nbgobj = NBG(system = smd1obj, tfinal = 2.0d0, h=1.0d-3)
-  call nbgobj % evalFuncGrad(num_func=1, func = KE,  num_dv = 3, x = x, fvals = fval, dfdx= dfdx)  
-  call nbgobj % writeSolution("nbg1.dat")
-  call nbgobj % evalFDFuncGrad(num_func=1, func = KE,  num_dv = 3, x = x, fvals = fval, dfdx= dfdxtmp, dh=dh)
-  call nbgobj % finalize()
-  call smd1obj % finalize()
-
-  print *, "fval         =", real_part(fval)
-  print *, "Adjoint dfdx =", real_part(dfdx)
-  print *, "FD      dfdx =", real_part(dfdxtmp)
-  print *, "Error        =", abs(dfdxtmp-dfdx)
-  print *, "Rel. Error   =", abs(real_part(dfdxtmp)-real_part(dfdx))/real_part(dfdxtmp)
-
-  !===================================================================!
   !                       TEST ABM                                    !
   !===================================================================!
   
@@ -88,9 +60,9 @@ program main
 
   ! Initialize the system
   call smd1obj % initialize("SMD", num_state_vars = 1, num_design_vars = 3)
-  abmobj = ABM(system = smd1obj, tfinal = 2000.0d-3, h=1.0d-3, max_abm_order = 1)
+  abmobj = ABM(system = smd1obj, tfinal = 2.0d0, h=1.0d-3, max_abm_order = 3)
   call abmobj % evalFuncGrad(num_func=1, func = KE,  num_dv = 3, x = x, fvals = fval, dfdx= dfdx)
-  call abmobj % writeSolution("abm2.dat")
+  call abmobj % writeSolution("abm.dat")
   call abmobj % evalFDFuncGrad(num_func=1, func = KE,  num_dv = 3, x = x, fvals = fval, dfdx= dfdxtmp, dh=dh)
   call abmobj % finalize()
   call smd1obj % finalize()
@@ -100,7 +72,35 @@ program main
   print *, "FD      dfdx =", real_part(dfdxtmp)
   print *, "Error        =", abs(dfdxtmp-dfdx)
   print *, "Rel. Error   =", abs(real_part(dfdxtmp)-real_part(dfdx))/real_part(dfdxtmp)
-  
+
+  !===================================================================!
+  !                       TEST NBG                                    !
+  !===================================================================!
+
+  fval = 0.0d0
+  X       = 0.0d0
+  dfdx    = 0.0d0
+  dfdxtmp = 0.0d0
+
+  x(1) = 2.50d0    ! mass
+  x(2) = 0.20d0    ! damping coeff
+  x(3) = 5.0d0    ! stiffness coeff
+
+  ! Initialize the system
+  call smd1obj % initialize("SMD", num_state_vars = 1, num_design_vars = 3)
+  nbgobj = NBG(system = smd1obj, tfinal = 2.0d0, h=1.0d-3)
+  call nbgobj % evalFuncGrad(num_func=1, func = KE,  num_dv = 3, x = x, fvals = fval, dfdx= dfdx)  
+  call nbgobj % writeSolution("nbg.dat")
+  call nbgobj % evalFDFuncGrad(num_func=1, func = KE,  num_dv = 3, x = x, fvals = fval, dfdx= dfdxtmp, dh=dh)
+  call nbgobj % finalize()
+  call smd1obj % finalize()
+
+  print *, "fval         =", real_part(fval)
+  print *, "Adjoint dfdx =", real_part(dfdx)
+  print *, "FD      dfdx =", real_part(dfdxtmp)
+  print *, "Error        =", abs(dfdxtmp-dfdx)
+  print *, "Rel. Error   =", abs(real_part(dfdxtmp)-real_part(dfdx))/real_part(dfdxtmp)
+
   !===================================================================!
   !                          TEST BDF                                 !
   !===================================================================!
@@ -174,4 +174,4 @@ program main
 
   deallocate(X, dfdx, dfdxtmp)
   
-end program
+end program main

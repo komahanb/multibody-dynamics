@@ -47,6 +47,10 @@ module abm_integrator
 
      ! Routines for adjoint gradient
      procedure, public  :: marchBackwards
+
+     procedure, private :: evaluate_adjoint
+     procedure, private :: distribute_contributions
+    
      procedure, private :: assembleRHS
      procedure          :: computeTotalDerivative
 
@@ -57,7 +61,6 @@ module abm_integrator
   end interface ABM
 
 contains
-
 
   !===================================================================!
   ! Initialize the ABM datatype and allocate required variables
@@ -114,20 +117,20 @@ contains
 
     !-----------------------------------------------------------------!
     ! Setup adjoint RHS
-    !-----------------------------------------------------------------!
-    
+    !-----------------------------------------------------------------!   
+
     this % num_rhs_bins = this % max_abm_order
 
     allocate(this % rhs(this % nsvars))
     this % rhs = 0.0d0
 
-    allocate(this % rhsbin(this % num_rhs_bins, this % nsvars))
+    allocate(this % rhsbin(this % num_steps, this % nsvars))
     this % rhsbin = 0.0d0
 
-    allocate(this % phibin(this % num_rhs_bins, this % nsvars))
+    allocate(this % phibin(this % num_steps, this % nsvars))
     this % phibin = 0.0d0
 
-    allocate(this % psibin(this % num_rhs_bins, this % nsvars))
+    allocate(this % psibin(this % num_steps, this % nsvars))
     this % psibin = 0.0d0
 
   end function initialize
@@ -254,42 +257,147 @@ contains
   
   subroutine marchBackwards( this )
 
-    class(ABM)                :: this
-    integer                   :: k
-    type(scalar)              :: alpha, beta, gamma
-    
+    class(ABM)    :: this
+    type(integer) :: k
+
     time: do k = this % num_steps, 2, -1
-       
-       this % current_step = k 
-       
-       !--------------------------------------------------------------!
-       ! Determine the linearization coefficients for the Jacobian
-       !--------------------------------------------------------------!
-              
-       call this % getLinearCoeff(alpha, beta, gamma)
+
+       this % current_step = k
 
        !--------------------------------------------------------------!
        ! Solve the adjoint equation at each step
        !--------------------------------------------------------------!
-
-       call this % adjointSolve(this % mu(k,:), alpha, beta, gamma, &
-            & this % time(k), this % u(k,:), this % udot(k,:), this % uddot(k,:))
        
-    end do time          
-    
-  end subroutine marchBackwards
+       call this % evaluate_adjoint(this % mu, this % psi, this % phi)
+       
+       !--------------------------------------------------------------!
+       ! Drop the contributions from this step to corresponding bins
+       !--------------------------------------------------------------!
 
-!!$  subroutine test_adjoint()
-!!$
-!!$    class(ABM)    :: this
-!!$    type(integer) :: k, p, i, j    
-!!$
-!!$  end subroutine test_adjoint
+       call this % distribute_contributions(this % rhsbin, this % psibin, this % phibin)
+
+    end do time
+
+  end subroutine marchBackwards
   
   !===================================================================!
-  ! Approximate the state variables at each step using ABM formulae
+  ! Evaluates the adjoint variable values at the current step
   !===================================================================!
   
+  subroutine evaluate_adjoint(this, mu, psi, phi)
+
+    class(ABM)                   :: this
+    type(integer)                :: k
+    type(scalar)                 :: alpha, beta, gamma
+    type(scalar), dimension(:,:) :: mu, psi, phi
+
+    ! Retrive the current step number
+    k = this % current_step
+
+    ! Evaluate PHI (no linear solution necessary)
+    phi(k,:) = this % phibin(k,:)
+
+    ! Evaluate PSI (no linear solution necessary)
+    psi(k,:) = this % psibin(k,:)
+
+    ! Evaluate MU
+    call this % getLinearCoeff(alpha, beta, gamma)
+
+    call this % adjointSolve(this % mu(k,:), &
+         & alpha, beta, gamma, &
+         & this % time(k), &
+         & this % u(k,:), this % udot(k,:), this % uddot(k,:))
+
+  end subroutine evaluate_adjoint
+
+  !===================================================================!
+  ! Add contributions from kth step to k- steps
+  !===================================================================!
+
+  subroutine distribute_contributions(this, rhsbin, psibin, phibin)
+
+    class(ABM)                   :: this
+    type(integer)                :: k, p, i
+    type(scalar)                 :: alpha, beta, gamma
+    type(scalar), dimension(:,:) :: rhsbin, phibin, psibin
+
+    ! Retrive the current step number
+    k = this % current_step
+    p = this % getOrder(k)
+
+    !-----------------------------------------------------------------!
+    ! Add contributions from k to k- PHIBIN
+    !-----------------------------------------------------------------!
+    
+    phibin(k-1,:) = phibin(k-1,:) + this % phi(k,:)
+
+    gamma = 0.0d0
+    beta  = 0.0d0
+    alpha = this % h
+
+    call this % addFuncResAdjPdt(phibin(k-1,:), &
+         & alpha, beta, gamma, this % time(k), &
+         & this % u(k,:), this % udot(k,:), this % uddot(k,:), &
+         & this % mu(k,:))
+
+    !-----------------------------------------------------------------!
+    ! Add contributions from k to k- PSIBIN    
+    !-----------------------------------------------------------------!
+
+    psibin(k-1,:) = psibin(k-1,:) + this % psi(k,:)
+    
+    gamma = 0.0d0
+    beta  = this % h 
+    alpha = this % h * this % h * this % A(p,1)
+    
+    call this % addFuncResAdjPdt(psibin(k-1,:), &
+         & alpha, beta, gamma, this % time(k), &
+         & this % u(k,:), this % udot(k,:), this % uddot(k,:), &
+         & this % mu(k,:))
+
+    psibin(k-1,:) = psibin(k-1,:) + alpha/this%h*this%phi(k,:)
+
+    do i = 2, p
+
+       gamma = 0.0d0
+       beta  = 0.0d0
+       alpha = this % h * this % h * this % A(p,i)
+       
+       call this % addFuncResAdjPdt(psibin(k-i+1,:), &
+            & alpha, beta, gamma, this % time(k), &
+            & this % u(k,:), this % udot(k,:), this % uddot(k,:), &
+            & this % mu(k,:))
+
+       psibin(k-i+1,:) = psibin(k-i+1,:) + alpha/this%h*this % phi(k,:)
+
+    end do
+
+    !-----------------------------------------------------------------!
+    ! Add contributions from k to k- RHSBIN    
+    !-----------------------------------------------------------------!
+    
+    do i = 2, p
+
+       gamma = 0.0d0
+       beta  = this % h * this % A(p,i)
+       alpha = this % h * this % A(p,1) * this % h * this % A(p,i)
+
+       call this % addFuncResAdjPdt(rhsbin(k-i+1,:), &
+            & alpha, beta, gamma, this % time(k), &
+            & this % u(k,:), this % udot(k,:), this % uddot(k,:), &
+            & this % mu(k,:))
+
+       rhsbin(k-i+1,:) = rhsbin(k-i+1,:) + beta/this % h*this % psi(k,:)
+       rhsbin(k-i+1,:) = rhsbin(k-i+1,:) + alpha/this % h*this % phi(k,:)
+
+    end do
+
+  end subroutine distribute_contributions
+
+ !===================================================================!
+ ! Approximate the state variables at each step using ABM formulae
+ !===================================================================!
+ 
   subroutine approximateStates( this )
 
     class(ABM)   :: this
@@ -319,7 +427,6 @@ contains
        this % u(k,:) = this % u(k,:) + scale * this % udot(k-i,:)
     end do
 
-    
   end subroutine approximateStates
 
   !===================================================================!
@@ -327,58 +434,23 @@ contains
   ! equation into the supplied rhs vector.
   !===================================================================!
   
-  subroutine assembleRHS( this, rhs )
+  subroutine assembleRHS(this, rhs)
 
     class(ABM)                                :: this
     type(scalar), dimension(:), intent(inout) :: rhs
     type(scalar)                              :: scale
     integer                                   :: k, m
     type(scalar)                              :: alpha, beta, gamma
-    
-    ! Zero the RHS first
-    rhs = 0.0d0
 
     ! Retrieve the current time index
     k = this % current_step
     m = this % getOrder(k)
-    
-    if ( k+1 .le. this % num_steps ) then
-       
-       ! Find PHI
-       this % phi(k,:) = this % phi(k+1,:)
 
-       gamma = 0.0d0
-       beta  = 0.0d0
-       alpha = this % h
+    ! Replace from rhsbin for this step (contains k+ terms)
+    rhs = this % rhsbin(k,:)
 
-       call this % addFuncResAdjPdt(this % phi(k,:), &
-            & alpha, beta, gamma, this % time(k+1), &
-            & this % u(k+1,:), this % udot(k+1,:), this % uddot(k+1,:), &
-            & this % mu(k+1,:))
-
-    end if
-
-    ! Add psi from previoius step
-    if ( k+1 .le. this % num_steps ) then       
-       this % psi(k,:) = this % psi(k+1,:)
-       
-       ! Add contributions from PHI
-       this % psi(k,:) = this % psi(k,:) &
-            & + this % h * this % phi(k+1,:) ! check coeff
-
-       gamma = 0.0d0
-       beta  = this % h
-       alpha = this % h * this % h
-
-       call this % addFuncResAdjPdt(this % psi(k,:), alpha, beta, gamma, this % time(k+1), &
-            & this % u(k+1,:), this % udot(k+1,:), this % uddot(k+1,:), &
-            & this % mu(k+1,:))
-
-    end if
-    
-    gamma = 1.0d0
-    beta  = this % h * this % A(m,1)
-    alpha = this % h * this % A(m,1) * this % h * this % A(m,1)
+    ! Calculate and add terms from k-th step
+    call this % getLinearCoeff(alpha, beta, gamma)
 
     ! Add the state variable sensitivity from the previous step
     call this % system % func % addFuncSVSens(rhs, &
@@ -391,49 +463,11 @@ contains
 
     rhs = rhs + beta/this % h * this % psi(k,:)
     rhs = rhs + alpha/this % h * this % phi(k,:)
-    
-    if (  k + 1 .le. this % num_steps ) then
-
-       if (this % max_abm_order .eq. 1) then
-
-          gamma = 0.0d0
-          beta  = 0.0d0
-          alpha = 0.0d0
-
-       else if (this % max_abm_order .eq. 2) then
-
-          if ( m .eq. 1)  then !this % max_abm_order == 1 set all to zero
-             ! use first order
-             m = m+1
-             gamma = 0.0d0
-             beta  = this % h * this % A(m,m)
-             alpha = this % h * this % A(m,m-1) * this % h * this % A(m,m)
-             !          stop"sd fsf"
-          else
-             ! use second order
-
-             gamma = 0.0d0
-             beta  = this % h * this % A(m,m)
-             alpha = this % h * this % A(m,m-1) * this % h * this % A(m,m)
-
-          end if
-
-       end if
-
-       rhs = rhs + beta/this % h  * this % psi(k+1,:)
-       rhs = rhs + alpha/this % h  * this % phi(k+1,:)
-
-       call this % addFuncResAdjPdt(rhs, alpha, beta, gamma, this % time(k+1), &
-            & this % u(k+1,:), this % udot(k+1,:), this % uddot(k+1,:), &
-            & this % mu(k+1,:))
-
-    end if
 
     ! Negate the RHS
     rhs = - rhs
 
   end subroutine assembleRHS
-
   
   !===================================================================!
   ! Write solution to file
@@ -476,5 +510,4 @@ contains
 
   end subroutine writeSolution
 
-  
 end module abm_integrator

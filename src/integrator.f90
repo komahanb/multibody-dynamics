@@ -540,7 +540,6 @@ contains
 
     ! Zero entries
     rhs = 0.0d0
-    psi = 0.0d0
 
     ! Assemble the residual of the function
     call this % assembleRHS(rhs)
