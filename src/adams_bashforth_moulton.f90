@@ -94,16 +94,16 @@ contains
     this % A = 0.0d0 
 
     ! Set the coefficients
-    if ( this % max_abm_order .eq. 1 ) this % A(1,1:1) = [1.0d0]
-    if ( this % max_abm_order .eq. 2 ) this % A(2,1:2) = [1.0d0, 1.0d0]/2.0d0
-    if ( this % max_abm_order .eq. 3 ) this % A(3,1:3) = [5.0d0, 8.0d0, -1.0d0]/12.0d0
-    if ( this % max_abm_order .eq. 4 ) this % A(4,1:4) = [9.0d0, 19.0d0, -5.0d0, 1.0d0]/24.0d0
-    if ( this % max_abm_order .eq. 5 ) this % A(5,1:5) = [251.0d0, 646.0d0, -264.0d0, 106.0d0, -19.0d0]/720.0d0
-    if ( this % max_abm_order .eq. 6 ) this % A(6,1:6) = [475.0d0, 1427.0d0, -798.0d0, 482.0d0, -173.0d0, 27.0d0]/1440.0d0
-    
+    if ( this % max_abm_order .ge. 1 ) this % A(1,1:1) = [1.0d0]
+    if ( this % max_abm_order .ge. 2 ) this % A(2,1:2) = [1.0d0, 1.0d0]/2.0d0
+    if ( this % max_abm_order .ge. 3 ) this % A(3,1:3) = [5.0d0, 8.0d0, -1.0d0]/12.0d0
+    if ( this % max_abm_order .ge. 4 ) this % A(4,1:4) = [9.0d0, 19.0d0, -5.0d0, 1.0d0]/24.0d0
+    if ( this % max_abm_order .ge. 5 ) this % A(5,1:5) = [251.0d0, 646.0d0, -264.0d0, 106.0d0, -19.0d0]/720.0d0
+    if ( this % max_abm_order .ge. 6 ) this % A(6,1:6) = [475.0d0, 1427.0d0, -798.0d0, 482.0d0, -173.0d0, 27.0d0]/1440.0d0
+
     ! Sanity check on ABM coeffs
     do j = 1, this % max_abm_order
-       if ( real_part(sum(this % A(j,1:j)) - 1.0d0) .gt. 0.00001 ) then
+       if ( sum(abs(real_part(this % A(j,1:j))) - 1.0d0) .gt. 0.00001 ) then
           stop "Error in ABM Coeff"
        end if
     end do
