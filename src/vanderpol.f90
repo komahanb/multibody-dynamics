@@ -15,13 +15,13 @@ Module vanderpol_class
 
   private
 
-  public :: vanderpol
+  public :: fvanderpol
 
   !-------------------------------------------------------------------!
   ! Type that implements vanderpol equations in first order form
   !-------------------------------------------------------------------!
   
-  type, extends(physics) :: vanderpol
+  type, extends(physics) :: fvanderpol
 
      ! Define constants and other parameters needed for residual and
      ! jacobian assembly here
@@ -35,7 +35,7 @@ Module vanderpol_class
      procedure :: getInitialStates
      procedure :: getResidualDVSens
 
-  end type vanderpol
+  end type fvanderpol
 
 contains
   
@@ -45,7 +45,7 @@ contains
   
   subroutine mapDesignVars(this)
 
-    class(vanderpol) :: this
+    class(fvanderpol) :: this
 
     this % m = this % x(1)
 
@@ -57,7 +57,7 @@ contains
 !!$  
 !!$  subroutine setDesignVars(this, x)
 !!$
-!!$    class(vanderpol)                   :: this
+!!$    class(fvanderpol)                   :: this
 !!$    real(8), intent(in), dimension(:)  :: x
 !!$
 !!$    ! Overwrite the values to supplied ones
@@ -80,7 +80,7 @@ contains
   
   subroutine assembleResidual( this, res, time, u, udot, uddot )
 
-    class(vanderpol) :: this
+    class(fvanderpol) :: this
     type(scalar), intent(inout), dimension(:) :: res
     real(dp), intent(in)                      :: time
     type(scalar), intent(in), dimension(:)    :: u, udot, uddot
@@ -109,7 +109,7 @@ contains
   subroutine assembleJacobian( this, jac, alpha, beta, gamma, &
        & time, u, udot, uddot )
 
-    class(vanderpol) :: this
+    class(fvanderpol) :: this
     type(scalar), intent(inout), dimension(:,:) :: jac
     type(scalar), intent(in)                    :: alpha, beta, gamma
     real(dp), intent(in)                        :: time
@@ -156,7 +156,7 @@ contains
 
   subroutine getInitialStates(this, time, u, udot)
 
-    class(vanderpol) :: this
+    class(fvanderpol) :: this
 
 
     real(dp), intent(in) :: time
@@ -173,7 +173,7 @@ contains
 !!$  
 !!$  function getNumStateVars(this)
 !!$
-!!$    class(vanderpol) :: this
+!!$    class(fvanderpol) :: this
 !!$    integer          :: getNumStateVars
 !!$
 !!$    getNumStateVars = this % num_state_vars
@@ -187,7 +187,7 @@ contains
   
   subroutine getResidualDVSens(this, jac, scale, time, x, u, udot, uddot)
 
-    class(vanderpol)                       :: this
+    class(fvanderpol)                       :: this
     type(scalar), intent(inout), dimension(:,:) :: jac
     real(dp), intent(in) :: time
     type(scalar), intent(in), dimension(:)      :: x, u, udot, uddot
