@@ -15,13 +15,13 @@ Module vanderpol_class
 
   private
 
-  public :: fvanderpol
+  public :: vanderpol
 
   !-------------------------------------------------------------------!
   ! Type that implements vanderpol equations in first order form
   !-------------------------------------------------------------------!
   
-  type, extends(physics) :: fvanderpol
+  type, extends(physics) :: vanderpol
 
      ! Define constants and other parameters needed for residual and
      ! jacobian assembly here
@@ -35,7 +35,7 @@ Module vanderpol_class
      procedure :: getInitialStates
      procedure :: getResidualDVSens
 
-  end type fvanderpol
+  end type vanderpol
 
 contains
   
@@ -45,7 +45,7 @@ contains
   
   subroutine mapDesignVars(this)
 
-    class(fvanderpol) :: this
+    class(vanderpol) :: this
 
     this % m = this % x(1)
 
@@ -57,7 +57,7 @@ contains
 !!$  
 !!$  subroutine setDesignVars(this, x)
 !!$
-!!$    class(fvanderpol)                   :: this
+!!$    class(vanderpol)                   :: this
 !!$    real(8), intent(in), dimension(:)  :: x
 !!$
 !!$    ! Overwrite the values to supplied ones
@@ -80,13 +80,17 @@ contains
   
   subroutine assembleResidual( this, res, time, u, udot, uddot )
 
-    class(fvanderpol) :: this
+    class(vanderpol) :: this
     type(scalar), intent(inout), dimension(:) :: res
     real(dp), intent(in)                      :: time
     type(scalar), intent(in), dimension(:)    :: u, udot, uddot
 
-    res(1) = udot(1) - u(2)
-    res(2) = udot(2) - this % m *( 1.0d0 - u(1)*u(1) )*u(2) + u(1)
+    if (size(u) .eq. 2) then
+       res(1) = udot(1) - u(2)
+       res(2) = udot(2) - this % m *( 1.0d0 - u(1)*u(1) )*u(2) + u(1)
+    else
+       res(1) = uddot(1) - this % m *( 1.0d0 - u(1)*u(1) )*udot(1) + u(1)
+    end if
 
   end subroutine assembleResidual
 
@@ -109,7 +113,7 @@ contains
   subroutine assembleJacobian( this, jac, alpha, beta, gamma, &
        & time, u, udot, uddot )
 
-    class(fvanderpol) :: this
+    class(vanderpol) :: this
     type(scalar), intent(inout), dimension(:,:) :: jac
     type(scalar), intent(in)                    :: alpha, beta, gamma
     real(dp), intent(in)                        :: time
@@ -118,33 +122,57 @@ contains
     ! Zero all entries first
     jac = 0.0d0
 
-    !-----------------------------------------------------------------!
-    ! Add dR/dQ
-    !-----------------------------------------------------------------!
+    if (size(u) .eq. 2) then
 
-    ! derivative of first equation
-    
-    jac(1,1) = jac(1,1) + alpha*0.0d0
-    jac(1,2) = jac(1,2) - alpha*1.0d0
+       !-----------------------------------------------------------------!
+       ! Add dR/dQ
+       !-----------------------------------------------------------------!
+       
+       ! derivative of first equation
 
-    ! derivative of second equation
-    
-    jac(2,1) = jac(2,1) + this % m*alpha*(1.0d0 + 2.0d0*u(1)*u(2))
-    jac(2,2) = jac(2,2) + this % m*alpha*(u(1)*u(1)-1.0d0)
-    
-    !-----------------------------------------------------------------!
-    ! Add dR/dQDOT
-    !-----------------------------------------------------------------!
-    
-    ! derivative of first equation
-    
-    jac(1,1) = jac(1,1) + beta*1.0d0
-    jac(1,2) = jac(1,2) + beta*0.0d0
+       jac(1,1) = jac(1,1) + alpha*0.0d0
+       jac(1,2) = jac(1,2) - alpha*1.0d0
 
-    ! derivative of second equation
+       ! derivative of second equation
 
-    jac(2,1) = jac(2,1) + this % m*beta*0.0d0
-    jac(2,2) = jac(2,2) + this % m*beta*1.0d0
+       jac(2,1) = jac(2,1) + this % m*alpha*(1.0d0 + 2.0d0*u(1)*u(2))
+       jac(2,2) = jac(2,2) + this % m*alpha*(u(1)*u(1)-1.0d0)
+
+       !-----------------------------------------------------------------!
+       ! Add dR/dQDOT
+       !-----------------------------------------------------------------!
+
+       ! derivative of first equation
+
+       jac(1,1) = jac(1,1) + beta*1.0d0
+       jac(1,2) = jac(1,2) + beta*0.0d0
+
+       ! derivative of second equation
+
+       jac(2,1) = jac(2,1) + this % m*beta*0.0d0
+       jac(2,2) = jac(2,2) + this % m*beta*1.0d0
+
+    else
+
+       !-----------------------------------------------------------------!
+       ! Add dR/dQ
+       !-----------------------------------------------------------------!
+
+       jac(1,1) = jac(1,1) + alpha*(1.0d0 + 2.0d0*this%m*u(1)*udot(1))
+
+       !-----------------------------------------------------------------!
+       ! Add dR/dQDOT
+       !-----------------------------------------------------------------!
+             
+       jac(1,1) = jac(1,1) - beta*(this%m*(1.0d0-u(1)*u(1)))
+
+       !-----------------------------------------------------------------!
+       ! Add dR/dQDDOT
+       !-----------------------------------------------------------------!
+
+       jac(1,1) = jac(1,1) + gamma
+
+    end if
 
   end subroutine assembleJacobian
 
@@ -156,14 +184,23 @@ contains
 
   subroutine getInitialStates(this, time, u, udot)
 
-    class(fvanderpol) :: this
+    class(vanderpol) :: this
 
 
     real(dp), intent(in) :: time
     type(scalar), intent(inout), dimension(:) :: u, udot
-    
-    u(1) = 2.0d0
-    u(2) = 0.0d0
+
+    if (size(u) .eq. 2) then
+
+       u(1) = 2.0d0
+       u(2) = 0.0d0
+
+    else
+
+       u(1) = 2.0d0
+       udot(1) = 0.0d0
+
+    end if
 
   end subroutine getInitialStates
 
@@ -173,7 +210,7 @@ contains
 !!$  
 !!$  function getNumStateVars(this)
 !!$
-!!$    class(fvanderpol) :: this
+!!$    class(vanderpol) :: this
 !!$    integer          :: getNumStateVars
 !!$
 !!$    getNumStateVars = this % num_state_vars
@@ -187,14 +224,18 @@ contains
   
   subroutine getResidualDVSens(this, jac, scale, time, x, u, udot, uddot)
 
-    class(fvanderpol)                       :: this
+    class(vanderpol)                       :: this
     type(scalar), intent(inout), dimension(:,:) :: jac
     real(dp), intent(in) :: time
     type(scalar), intent(in), dimension(:)      :: x, u, udot, uddot
     type(scalar)                                :: scale
 
-    stop"Not implemented"
+    jac = 0.0d0 
 
+    jac(1,1) = -scale*( 1.0d0-u(1)*u(1) )*udot(1)
+
+    if (size(u) .eq. 2) stop"not implemented"
+    
   end subroutine getResidualDVSens
 
 end module vanderpol_class
