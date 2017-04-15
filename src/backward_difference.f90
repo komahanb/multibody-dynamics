@@ -16,10 +16,6 @@ module bdf_integrator
   private
   public :: BDF
 
-  ! Useful constants
-  type(scalar), parameter :: ONE  = 1.0d0
-  type(scalar), parameter :: ZERO = 0.0d0
-
   !===================================================================!
   ! A derived type for the bdf coefficients
   !===================================================================!
@@ -58,6 +54,8 @@ module bdf_integrator
      integer            :: max_bdf_order = 3
      type(bdf_coeff)    :: coeff
 
+     type(scalar), dimension(:,:), allocatable :: rhsbin
+
    contains
 
      ! Destructor
@@ -70,6 +68,9 @@ module bdf_integrator
      ! Routines for adjoint gradient
 
      procedure, public  :: marchBackwards
+     procedure, private :: evaluate_adjoint
+     procedure, private :: distribute_contributions
+
      procedure, private :: assembleRHS
      procedure          :: computeTotalDerivative
 
@@ -276,7 +277,7 @@ contains
     do k = 2, this % num_steps
        call this % system % getResidualDVSens(dRdX, scale, this % time(k), &
             & this % system % x, this % u(k,:), this % udot(k,:), this % uddot(k,:))
-       dfdx = dfdx + matmul(this % psi(k,:), dRdX) ! check order
+       dfdx = dfdx + matmul(this % mu(k,:), dRdX) ! check order
     end do
 
 !!$    ! Add constraint contribution
@@ -327,11 +328,12 @@ contains
     !-----------------------------------------------------------------!
     ! Setup adjoint RHS
     !-----------------------------------------------------------------!
-    
-    this % num_rhs_bins = 2*this % max_bdf_order + 1
 
     allocate(this % rhs(this % nsvars))
     this % rhs = 0.0d0
+
+    allocate(this % rhsbin(this % num_steps, this % nsvars))
+    this % rhsbin = 0.0d0
     
   end function initialize
 
@@ -346,42 +348,39 @@ contains
     ! call the BDF coeff destructor
     call this % coeff % destruct()
     
-    if ( allocated(this % rhs) ) deallocate(this % rhs)
+    if (allocated(this % rhs)) deallocate(this % rhs)
+    if (allocated(this % rhsbin)) deallocate(this % rhsbin)
 
   end subroutine finalize
 
   !===================================================================!
-  ! Subroutine that marches backwards in time to compute the lagrange
+  ! Subroutine that marches backwards in time to compute the Lagrange
   ! multipliers (adjoint variables for the function)
-  ! ===================================================================!
+  !===================================================================!
   
   subroutine marchBackwards( this )
 
-    class(BDF)                :: this
-    integer                   :: k
-    type(scalar)              :: alpha, beta, gamma
-    
+    class(BDF)    :: this
+    type(integer) :: k
+
     time: do k = this % num_steps, 2, -1
-       
-       this % current_step = k 
-       
-       !--------------------------------------------------------------!
-       ! Determine the linearization coefficients for the Jacobian
-       !--------------------------------------------------------------!
-              
-       call this % getLinearCoeff(alpha, beta, gamma)
-    
+
+       this % current_step = k
+
        !--------------------------------------------------------------!
        ! Solve the adjoint equation at each step
        !--------------------------------------------------------------!
 
-       call this % adjointSolve(this % psi(k,:), alpha, beta, gamma, &
-            & this % time(k), this % u(k,:), this % udot(k,:), this % uddot(k,:))
-       
-       !print*, "k,psi=", k, this % psi(k,:)
+       call this % evaluate_adjoint(this % mu, this % psi, this % phi)
+
+       !--------------------------------------------------------------!
+       ! Drop the contributions from this step to corresponding bins
+       !--------------------------------------------------------------!
+
+       call this % distribute_contributions(this % rhsbin)
 
     end do time
-    
+
   end subroutine marchBackwards
   
   !===================================================================!
@@ -396,72 +395,111 @@ contains
     type(scalar), dimension(:,:), allocatable :: jac
     type(scalar)                              :: scale
     integer                                   :: k, i, m1, m2, idx
-    
-    allocate( jac(this % nSVars, this % nSVars) )
-    
-    k = this % current_step 
-    m1 = this % coeff % getOrder(k, 1)
-    m2 = this % coeff % getOrder( k, 2)
+    type(scalar)                              :: alpha, beta, gamma
 
-    if (m2 .eq. 0) m2 = 1
-
-    ! Zero the RHS first
-    rhs = 0.0d0
+    ! Retrieve the current time index
+    k = this % current_step
     
-    !-----------------------------------------------------------------!
-    ! Add function contribution (dfdu)
-    !-----------------------------------------------------------------!
+    ! Replace from rhsbin for this step (contains k+ terms)
+    rhs = this % rhsbin(k,:)
     
-    call this % system % func % addDFdU(rhs, ONE, this % time(k), &
-         & this % system % x, this % u(k,:), this % udot(k,:), this % uddot(k,:))
+    ! Coefficients
+    call this % getLinearCoeff(alpha, beta, gamma)
 
-    do i = 0, m1
-       idx = k + i
-       if ( idx .le. this % num_steps) then
-          scale = this % coeff % beta(m1, i+1)/this % h
-          call this % system % func % addDFdUDot(rhs, scale, this % time(idx), &
-               & this % system % x, this % u(idx,:), this % udot(idx,:), this % uddot(idx,:))
-       end if
-    end do
+    ! Add the state variable sensitivity from the previous step
+    call this % system % func % addFuncSVSens(rhs, &
+         & alpha, beta, gamma, &
+         & this % time(k), &
+         & this % system % X, &
+         & this % u(k,:), &
+         & this % udot(k,:), &
+         & this % uddot(k,:))
 
-    do i = 0, 2*m2
-       idx = k + i
-       if ( idx .le. this % num_steps) then
-          scale = this % coeff % gamma(m2, i+1)/this % h/this % h
-          call this % system % func % addDFdUDDot(rhs, scale, this % time(idx), &
-               & this % system % x, this % u(idx,:), this % udot(idx,:), this % uddot(idx,:))
-       end if
-    end do
-
-    !-----------------------------------------------------------------!
-    ! Add residual contribution
-    !-----------------------------------------------------------------!
-    
-    do i = 1, m1 
-       idx = k + i
-       if ( idx .le. this % num_steps) then
-          scale = this % coeff % beta(m1, i+1)/this % h
-          call this % system % assembleJacobian(jac, ZERO, ONE, ZERO, &
-               & this % time(idx), this % u(idx,:), this % udot(idx,:), this % uddot(idx,:))
-          rhs = rhs + scale*matmul( transpose(jac), this % psi(idx,:) )
-       end if
-    end do
-
-    do i = 1, 2*m2
-       idx = k + i
-       if ( idx .le. this % num_steps) then
-          scale = this % coeff % gamma(m2, i+1)/this % h/this % h
-          call this % system % assembleJacobian(jac, ZERO, ZERO, ONE, &
-               & this % time(idx), this % u(idx,:), this % udot(idx,:), this % uddot(idx,:))
-          rhs = rhs + scale*matmul( transpose(jac), this % psi(idx,:) )
-       end if
-    end do
-    
     ! Negate the RHS
     rhs = - rhs
-    
-    if(allocated(jac)) deallocate(jac)
-    
+
   end subroutine assembleRHS
+
+  !===================================================================!
+  ! Evaluates the adjoint variable values at the current step
+  !===================================================================!
+  
+  subroutine evaluate_adjoint(this, mu, psi, phi)
+
+    class(BDF)                   :: this
+    type(integer)                :: k
+    type(scalar)                 :: alpha, beta, gamma
+    type(scalar), dimension(:,:) :: mu, psi, phi
+
+    ! Retrive the current step number
+    k = this % current_step
+
+    ! Evaluate PHI (no linear solution necessary)
+    phi(k,:) = 0.0d0
+
+    ! Evaluate PSI (no linear solution necessary)
+    psi(k,:) = 0.0d0
+
+    ! Evaluate MU
+    call this % getLinearCoeff(alpha, beta, gamma)
+
+    call this % adjointSolve(mu(k,:), &
+         & alpha, beta, gamma, &
+         & this % time(k), &
+         & this % u(k,:), this % udot(k,:), this % uddot(k,:))
+
+  end subroutine evaluate_adjoint
+
+  !===================================================================!
+  ! Add contributions from kth step to k- steps
+  !===================================================================!
+
+  subroutine distribute_contributions(this, rhsbin)
+
+    class(BDF)                   :: this
+    type(integer)                :: k, p1, p2, i
+    type(scalar)                 :: alpha, beta, gamma
+    type(scalar), dimension(:,:) :: rhsbin
+
+    ! Retrive the current step number
+    k = this % current_step
+
+    ! Determine the order of approximation of differential states
+    p1 = this % coeff % getOrder(k, 1)
+    p2 = this % coeff % getOrder(k, 2)
+
+    !-----------------------------------------------------------------!
+    ! Add contributions from k to k- RHSBIN    
+    !-----------------------------------------------------------------!
+
+    do i = 2, p1+1
+
+       ! Coefficients
+       alpha = 0.0d0
+       beta  = this % coeff % beta(p1, i)/this % h
+       gamma = 0.0d0
+
+       call this % addFuncResAdjPdt(rhsbin(k-i+1,:), &
+            & alpha, beta, gamma, this % time(k), &
+            & this % u(k,:), this % udot(k,:), this % uddot(k,:), &
+            & this % mu(k,:))
+
+    end do
+    
+    do i = 2, 2*p2+1
+
+       ! Coefficients
+       alpha = 0.0d0
+       beta  = 0.0d0
+       gamma = this % coeff % gamma(p2, i)/this % h/this % h
+
+       call this % addFuncResAdjPdt(rhsbin(k-i+1,:), &
+            & alpha, beta, gamma, this % time(k), &
+            & this % u(k,:), this % udot(k,:), this % uddot(k,:), &
+            & this % mu(k,:))
+
+    end do
+
+  end subroutine distribute_contributions
 
 end module bdf_integrator

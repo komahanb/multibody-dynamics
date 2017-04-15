@@ -296,7 +296,7 @@ contains
     ! Evaluate MU
     call this % getLinearCoeff(alpha, beta, gamma)
 
-    call this % adjointSolve(this % mu(k,:), &
+    call this % adjointSolve(mu(k,:), &
          & alpha, beta, gamma, &
          & this % time(k), &
          & this % u(k,:), this % udot(k,:), this % uddot(k,:))
