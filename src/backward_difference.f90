@@ -247,15 +247,16 @@ contains
   
   subroutine computeTotalDerivative( this, dfdx )
     
-    class(BDF)                                         :: this
-    type(scalar) , dimension(:), intent(inout)             :: dfdx
-    type(scalar) , dimension(this % nSVars, this % nDVars) :: dRdX
-    type(scalar)                                           :: scale = 1.0d0
-    integer                                            :: k
+    class(BDF)                                 :: this
+    type(scalar) , dimension(:), intent(inout) :: dfdx
+    type(scalar) , allocatable, dimension(:,:) :: dRdX
+    type(scalar)                               :: scale = 1.0d0
+    integer                                    :: k
+
+    if (.not.allocated(dRdX)) allocate(dRdX(this % nSVars, this % nDVars))
     
-!    scale = this % h
-    
-    dfdx = 0.0d0
+    dRdX = 0.0d0
+    dfdx = 0.0d0   
     
     !-----------------------------------------------------------------!
     ! Compute dfdx
@@ -277,7 +278,7 @@ contains
     do k = 2, this % num_steps
        call this % system % getResidualDVSens(dRdX, scale, this % time(k), &
             & this % system % x, this % u(k,:), this % udot(k,:), this % uddot(k,:))
-       dfdx = dfdx + matmul(this % mu(k,:), dRdX) ! check order
+       dfdx = dfdx + matmul(transpose(dRdX),this % mu(k,:)) ! same as {mu}, [dRdX]
     end do
 
 !!$    ! Add constraint contribution
@@ -288,7 +289,7 @@ contains
     ! Finally multiply by the scalar
     dfdx = this % h * dfdx
 
-    print*, "Check scaling of dfdx, and transpose"
+    if (allocated(dRdX)) deallocate(dRdX)
 
   end subroutine computeTotalDerivative
 
