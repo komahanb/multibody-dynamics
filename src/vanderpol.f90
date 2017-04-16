@@ -197,7 +197,7 @@ contains
 
     else
 
-       u(1) = 2.0d0
+       u(1) = 1.0d0
        udot(1) = 0.0d0
 
     end if
