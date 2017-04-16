@@ -5,7 +5,7 @@
 #------------------------------
 CC = gcc
 CX = g++
-FC = gfortran
+FC = gfortran-6
 
 #------------------------------
 # Define any compile-time flags

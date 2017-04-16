@@ -246,6 +246,8 @@ contains
 
     class(DIRK) :: this
 
+    call this % destruct()
+
     ! Clear butcher's tableau
     if(allocated(this % A)) deallocate(this % A)
     if(allocated(this % B)) deallocate(this % B)

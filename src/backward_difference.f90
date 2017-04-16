@@ -346,6 +346,8 @@ contains
 
     class(BDF) :: this
 
+    call this % destruct()
+
     ! call the BDF coeff destructor
     call this % coeff % destruct()
     

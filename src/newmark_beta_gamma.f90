@@ -117,6 +117,8 @@ contains
 
     class(NBG) :: this
 
+    call this % destruct()
+
     ! Clear global states and time
     if(allocated(this % rho))   deallocate(this % rho)
     if(allocated(this % sigma)) deallocate(this % sigma)
