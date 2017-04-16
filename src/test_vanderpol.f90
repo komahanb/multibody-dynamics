@@ -134,6 +134,7 @@ program main
   ! Initialize the system
   call vpl % initialize("vanderpol", num_state_vars = 1, num_design_vars = size(x))
   dirkobj = DIRK(system = vpl, tfinal = 2.0d0, h=1.0d-3, num_stages=3, second_order=.true.) 
+  !call dirkobj % evalFuncGrad(num_func=1, func = KE,  num_dv = size(x), x = x, fvals = fval, dfdx= dfdx)
   call dirkobj % testAdjoint6 ( num_func = 1, func = KE, num_dv = size(x), x = x, dfdx= dfdx, dfdxtmp=dfdxtmp )
   call dirkobj % writeSolution("dirk.dat")
   call dirkobj % evalFDFuncGrad(num_func=1, func = KE, num_dv = size(x), x = x, fvals = fval, dfdx= dfdxtmp, dh=dh)

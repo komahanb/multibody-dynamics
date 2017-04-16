@@ -55,9 +55,6 @@ module runge_kutta_integrator
 
    contains
 
-     ! Destructor
-     procedure :: finalize
-
      ! Routines for integration
      
      procedure          :: integrate => integrate
@@ -79,9 +76,14 @@ module runge_kutta_integrator
 
   type, extends(RK) :: DIRK
 
+     type(scalar), dimension(:,:,:), allocatable :: rhsbin
+     type(scalar), dimension(:,:), allocatable :: psibin
+     type(scalar), dimension(:,:), allocatable :: phibin
+
    contains
 
-     private
+     ! Destructor
+     procedure :: finalize
 
      procedure :: setupButcherTableau => ButcherDIRK
 
@@ -93,6 +95,9 @@ module runge_kutta_integrator
      procedure, public :: computeTotalDerivative
      procedure, public :: evalFunc => evalFuncDIRK
 
+     procedure, private :: evaluate_adjoint
+     procedure, private :: distribute_contributions
+    
   end type DIRK
 
   !===================================================================!
@@ -194,6 +199,21 @@ contains
     allocate(this % rhs(this % nsvars))
     this % rhs = 0.0d0
     
+    !-----------------------------------------------------------------!
+    ! Setup adjoint RHS
+    !-----------------------------------------------------------------!   
+
+    this % num_rhs_bins = this % num_stages
+
+    allocate(this % rhsbin(this % num_steps, this % num_stages, this % nsvars))
+    this % rhsbin = 0.0d0
+
+    allocate(this % phibin(this % num_steps, this % nsvars))
+    this % phibin = 0.0d0
+
+    allocate(this % psibin(this % num_steps, this % nsvars))
+    this % psibin = 0.0d0
+
   end function initialize
 
   !===================================================================!
@@ -224,7 +244,7 @@ contains
   
   subroutine finalize(this)
 
-    class(RK) :: this
+    class(DIRK) :: this
 
     ! Clear butcher's tableau
     if(allocated(this % A)) deallocate(this % A)
@@ -239,6 +259,12 @@ contains
 
     ! Clear stage lagrange multipliers
     if(allocated(this % lam)) deallocate(this % lam)
+
+    ! Adjoint variables and RHS
+    if(allocated(this % rhs)) deallocate(this % rhs)
+    if(allocated(this % rhsbin)) deallocate(this % rhsbin)
+    if(allocated(this % psibin)) deallocate(this % psibin)
+    if(allocated(this % phibin)) deallocate(this % phibin)
 
   end subroutine finalize
   
@@ -308,66 +334,131 @@ contains
 
   end subroutine Integrate
 
+
   !===================================================================!
   ! Time backwards in stage and backwards in time to solve for the
   ! adjoint variables
   !===================================================================!
   
-  subroutine marchBackwards(this)
+  subroutine marchBackwards( this )
 
-    class(DIRK) :: this
-    integer     :: k, i
-    type(scalar)    :: alpha, beta, gamma
-
+    class(DIRK)    :: this
+    type(integer) :: k,i
+    
     time: do k = this % num_steps, 2, -1
-       
+
        this % current_step = k
        
        stage: do i = this % num_stages, 1, -1
-
+          
           this % current_stage = i
-          
-          !--------------------------------------------------------------!
-          ! Determine the linearization coefficients for the Jacobian
-          !--------------------------------------------------------------!
-          
-          if (this % second_order) then
-             gamma = this % B(i) * 1.0d0
-             beta  = this % B(i) * this % h * this % A(i,i)
-             alpha = this % B(i) * this % h * this % h * this % A(i,i) * this % A(i,i) 
-          else
-             stop "Reformualte first order"
-             gamma = 0
-             beta  = this % B(i) / this % h
-             alpha = this % B(i) * this % A(i,i)
-          end if
-          
+
           !--------------------------------------------------------------!
           ! Solve the adjoint equation at each step
           !--------------------------------------------------------------!
 
-          call this % adjointSolve(this % lam(k,i,:), alpha, beta, gamma, &
-               & this % T(i), this % Q(k,i,:), this % QDOT(k,i,:), this % QDDOT(k,i,:))
-          
-          ! Find the adjoint variable for each time step          
-          this % psi(k,:) = this % psi(k,:) + this % B(i) * this % lam (k,i,:)
-          
+          ! print *, k, i, this % lam(k,i,:), this % psi(k,:), this % phi(k,:)
+          call this % evaluate_adjoint(this % lam(k,i,:), this % psi(k,:), this % phi(k,:))
+          !print *,  k, i, this % lam(k,i,:), this % psi(k,:), this % phi(k,:)
+
+          !--------------------------------------------------------------!
+          ! Drop the contributions from this step to corresponding bins
+          !--------------------------------------------------------------!
+
+          call this % distribute_contributions(this % rhsbin, this % psibin, this % phibin)
+
        end do stage
        
-       if ( k .lt. this % num_steps) then
-
-!          this % psi(k,:) = this % psi(k,:) + this % h * this % psi (k+1,:) 
-
-       end if
-
     end do time
     
   end subroutine marchBackwards
 
   !===================================================================!
+  ! Evaluates the adjoint variable values at the current step
+  !===================================================================!
+  
+  subroutine evaluate_adjoint(this, mu, psi, phi)
+
+    class(DIRK)                  :: this
+    type(integer)                :: k, i
+    type(scalar)                 :: alpha, beta, gamma
+    type(scalar), dimension(:) :: mu, psi, phi
+
+    ! Retrive the current step number
+    k = this % current_step
+    i = this % current_stage
+
+    ! Evaluate PHI (no linear solution necessary)
+    phi = this % phibin(k,:)
+
+    ! Evaluate PSI (no linear solution necessary)
+    psi = this % psibin(k,:)
+
+    ! Evaluate MU
+    call this % getLinearCoeff(alpha, beta, gamma)
+
+    call this % adjointSolve(mu, &
+         & alpha, beta, gamma, &
+         & this % T(i), &
+         & this % q(k,i,:), this % qdot(k,i,:), this % qddot(k,i,:))
+
+  end subroutine evaluate_adjoint
+  
+  !===================================================================!
+  ! Add contributions from kth step to k- steps
+  !===================================================================!
+  
+  subroutine distribute_contributions(this, rhsbin, psibin, phibin)
+
+    class(DIRK)                  :: this
+    type(integer)                :: k, s, i, j, p
+    type(scalar)                 :: alpha, beta, gamma
+    type(scalar), dimension(:,:,:) :: rhsbin
+    type(scalar), dimension(:,:) :: phibin, psibin
+
+    ! Retrive the current step number
+    k = this % current_step
+    i = this % current_stage
+    s = this % num_stages
+
+    !-----------------------------------------------------------------!
+    ! Add contributions from k to k- PHIBIN
+    !-----------------------------------------------------------------!
+
+    phibin(k-1,:) = phibin(k-1,:) + this % phi(k,:)
+
+    gamma = 0.0d0
+    beta  = 0.0d0
+    alpha = this%h*this%B(i)
+
+    call this % addFuncResAdjPdt(phibin(k-1,:), &
+         & alpha, beta, gamma, this % T(i), &
+         & this % Q(k,i,:), this % Qdot(k,i,:), this % Qddot(k,i,:), &
+         & this % lam(k,i,:))
+
+    !-----------------------------------------------------------------!
+    ! Add contributions from k to k- PSIBIN    
+    !-----------------------------------------------------------------!
+
+    psibin(k-1,:) = psibin(k-1,:) + this % psi(k,:)
+
+    gamma = 0.0d0
+    beta  = this % h * this % B(i)
+    alpha = this % h * this % B(i) * this % h * sum(this % A(i,1:i))
+    
+    call this % addFuncResAdjPdt(psibin(k-1,:), &
+         & alpha, beta, gamma, this % T(i), &
+         & this % Q(k,i,:), this % Qdot(k,i,:), this % Qddot(k,i,:), &
+         & this % lam(k,i,:))
+
+    psibin(k-1,:) = psibin(k-1,:) + beta*this%phi(k,:)
+
+  end subroutine distribute_contributions
+
+  !===================================================================!
   ! Update the states based on RK Formulae
   !===================================================================!
-
+  
   subroutine timeMarch(this, q, qdot, qddot)
 
     implicit none
@@ -454,7 +545,7 @@ contains
 
        this % B(1)      = half
        this % B(2)      = half
-
+       
        this % C(1)      = half + tmp
        this % C(2)      = half - tmp
 
@@ -581,124 +672,75 @@ contains
 
   subroutine assembleRHS(this, rhs)
  
-    class(DIRK)                           :: this
+    class(DIRK)                                :: this
     type(scalar), dimension(:), intent(inout) :: rhs
-    type(scalar)                              :: scale1=0.0d0, scale2=0.0d0
-    type(scalar), dimension(:,:), allocatable :: jac1, jac2
-    integer :: k, j, i, p, s
+    type(scalar)                              :: scale
+    integer                                   :: k, j, i, m, s, p
+    type(scalar)                              :: alpha, beta, gamma
 
     k = this % current_step
     i = this % current_stage
     s = this % num_stages
 
-    allocate( jac1(this % nSVars, this % nSVars)  )
-    allocate( jac2(this % nSVars, this % nSVars) )
+    ! Replace from rhsbin for this step (contains k+ terms)
+    ! rhs = this % rhsbin(k,i,:)
+    !print *, k , i, rhs
 
-    rhs = 0.0d0
+    ! Calculate and add terms from k-th step
+    call this % getLinearCoeff(alpha, beta, gamma)
+
+    alpha = alpha* this % B(i)
+    beta  = beta* this % B(i)
+    gamma = gamma* this % B(i)
+
+    ! Add the state variable sensitivity from the previous step
+    call this % system % func % addFuncSVSens(rhs, &
+         & alpha, beta, gamma, &
+         & this % T(i), &
+         & this % system % X, &
+         & this % Q(k,i,:), &
+         & this % Qdot(k,i,:), &
+         & this % Qddot(k,i,:))
+
+    ! Add contributions from psi
+    rhs = rhs + this% B(i)*this % psi(k,:)
+
+    ! Add contributions from PHI
+    scale = 0.0d0
+    do j = i, s
+       scale = scale + this % h * this % B(j) * this % A(j,i)
+    end do
+    rhs = rhs + scale * this % phi(k,:)
+
+    !-----------------------------------------------------------------!
+    ! Add contributions from k to k- RHSBIN    
+    !-----------------------------------------------------------------!
     
-    !-----------------------------------------------------------------!
-    ! Add all the residual contributions first
-    !-----------------------------------------------------------------!
+    do j = i+1, s
+!!$       gamma = 0.0d0
+!!$       beta  = this % B(j) * this % h * this % A(j,i)
+!!$       alpha = 0.0d0
+!!$       do p = i, j
+!!$          alpha = alpha + this % A(j,p) * this % A(p,i)
+!!$       end do
+!!$       alpha = alpha * this % h**2 * this % (j)
 
-    current_r: do j = i + 1, s
-
-       scale1 = this % A(j,i) * this % h
-       call this % system % assembleJacobian(jac1, ZERO, scale1, ZERO, &
-            & this % T(j), this % Q(k,j,:), this % QDOT(k,j,:), this % QDDOT(k,j,:))
-
-       scale2 = 0.0d0
+       gamma = 0.0d0
+       beta  = this % B(j) * this % h * this % A(j,i)
        do p = i, j
-          scale2 = scale2 +  this % A(p,i) * this % h
+          alpha = this % B(j) * this % h * this % h * this % A(j,p) * this % A(p,i)
        end do
-       call this % system % assembleJacobian(jac2,  scale1*scale2, ZERO, ZERO, &
-            & this % T(j), this % Q(k,j,:), this % QDOT(k,j,:), this % QDDOT(k,j,:))
-
-       rhs = rhs + matmul(transpose(jac1+jac2), this % lam(k,j,:))
        
-    end do current_r
+       !! Need to fix this
+       call this % addFuncResAdjPdt(rhs, &
+            & alpha, beta, gamma, this % T(j), &
+            & this % Q(k,j,:), this % Qdot(k,j,:), this % qddot(k,j,:), &
+            & this % lam(k,j,:))
 
-    
-    if ( k+1 .le. this % num_steps ) then 
+    end do
 
-!!$       future_r: do j = i , s
-!!$
-!!$          scale1 = this % B(j) * this % B(i) / this % h
-!!$
-!!$          call this % system % assembleJacobian(jac1, ZERO, scale1, ZERO, &
-!!$               & this % T(j), this % Q(k+1,j,:), this % QDOT(k+1,j,:), this % QDDOT(k+1,j,:))
-!!$
-!!$          scale2 = 0.0d0
-!!$          do p = i , s
-!!$             scale2 = scale2 + this % A(p,i) * this % B(p)
-!!$          end do
-!!$          do p = 1 , j
-!!$             scale2 = scale2 + this % B(i) * this % A(j,p)
-!!$          end do
-!!$
-!!$          scale2 = scale2 * this % B(j) 
-!!$
-!!$          call this % system % assembleJacobian(jac2, scale2, ZERO, ZERO, &
-!!$               & this % T(j), this % Q(k+1,j,:), this % QDOT(k+1,j,:), this % QDDOT(k+1,j,:))
-!!$
-!!$          rhs = rhs + matmul( transpose(jac1+jac2), this % lam(k+1,j,:) )
-!!$
-!!$       end do future_r
-
-    end if
-
-    !-----------------------------------------------------------------!
-    ! Now add function contributions
-    !-----------------------------------------------------------------!
-    
-    ! Add contribution from second derivative of state
-    
-    scale1 = 1.0d0
-    call this % system % func % addDFdUDDot(rhs, scale1, this % T(i), &
-         & this % system % x, this % Q(k,i,:), this % qdot(k,i,:), this % qddot(k,i,:))
-    
-    current_f: do j = i, s
-
-       scale1 = this % A(j,i) * this % h
-       call this % system % func % addDFdUDot(rhs, scale1, this % T(j), &
-            & this % system % x, this % Q(k,j,:), this % qdot(k,j,:), this % qddot(k,j,:))
-       
-       scale2 = 0.0d0
-       do p = i, j
-          scale2 = scale2 + this % A(p,i) * this % h
-       end do
-       call this % system % func % addDFdU(rhs, scale1*scale2, this % T(j), &
-            & this % system % x, this % Q(k,j,:), this % Qdot(k,j,:), this % Qddot(k,j,:))
-       
-    end do current_f
-    
-    if ( k+1 .le. this % num_steps ) then 
-!!$
-!!$       future_f: do j = i , s
-!!$
-!!$          scale1 = this % B(j) * this % B(i) / this % h
-!!$          call this % system % func % addDFdUDot(rhs, scale1, this % T(j), &
-!!$               & this % system % x, this % Q(k+1,j,:), this % qdot(k+1,j,:), this % qddot(k+1,j,:))
-!!$          
-!!$          scale2 = 0.0d0
-!!$          do p = i , s
-!!$             scale2 = scale2 + this % A(p,i) * this % B(p)
-!!$          end do
-!!$          do p = 1 , j
-!!$             scale2 = scale2 + this % B(i) * this % A(j,p)
-!!$          end do
-!!$
-!!$          scale2 = scale2 * this % B(j)
-!!$          call this % system % func % addDFdU(rhs, scale2, this % T(j), &
-!!$               & this % system % x, this % Q(k+1,j,:), this % Qdot(k+1,j,:), this % Qddot(k+1,j,:))
-!!$
-!!$       end do future_f
-
-    end if    
-
+    ! Negate the RHS
     rhs = -rhs
-
-    if(allocated(jac1)) deallocate(jac1)
-    if(allocated(jac2)) deallocate(jac2)
 
   end subroutine assembleRHS
 
