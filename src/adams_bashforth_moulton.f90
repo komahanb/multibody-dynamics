@@ -136,6 +136,8 @@ contains
 
     class(ABM) :: this
 
+    call this % destruct()
+
     ! Deallocate ABM coefficient
     if(allocated(this % A)) deallocate(this % A)
     
