@@ -10,7 +10,7 @@ module runge_kutta_integrator
 
   use integrator_class, only : integrator
   use physics_class,    only : physics
-
+  use linear_algebra,   only : solve
   implicit none
 
   private
@@ -743,8 +743,8 @@ contains
           call this % system % getResidualDVSens(dRdX, this % h * this % B(j), this % T(j), &
                & this % system % x, this % Q(k,j,:), this % QDOT(k,j,:), this % QDDOT(k,j,:))
 
-          dfdx = dfdx + matmul(transpose(dRdX),this % lam(k,j,:)) ! check order
-
+          dfdx = dfdx + matmul(this % lam(k,j,:), drdx) ! check order
+          
        end do
     end do
 
@@ -773,13 +773,18 @@ contains
     class(abstract_function)                   :: func
     type(scalar), dimension(:), intent(inout)  :: x
     integer, intent(in)                        :: num_func, num_dv
-    type(scalar)                               :: mat(1,1) = 0.0d0, tmpmat(1,1) = 0.0d0
-    type(scalar)                               :: rhs(1) = 0.0d0
-    type(scalar)                               :: alpha, beta, gamma, dfdx(3), dfdxTmp(3)
-    integer                                    :: size = 2 ,info, ipiv
+    type(scalar), allocatable                  :: mat(:,:), tmpmat(:,:)
+    type(scalar), allocatable                  :: rhs(:)
+    type(scalar)                               :: alpha, beta, gamma
+    type(scalar), allocatable                  :: dfdx(:), dfdxTmp(:)
+    integer                                    :: size, info, ipiv
     type(scalar) , dimension(:,:), allocatable :: dRdX
     type(scalar)                               :: fvals, fvalstmp
     integer                                    :: k, ii, j, p
+
+    allocate(rhs(this%nsvars))
+    allocate(mat(this%nsvars, this%nsvars))
+    allocate(tmpmat(this%nsvars, this%nsvars))
 
     !-----------------------------------------------------------------!
     ! Set the objective function into the system
@@ -816,10 +821,10 @@ contains
              beta     = 0.0d0
              gamma    = 0.0d0
 
-             call this % system % assembleJacobian(mat(1:1,1:1), alpha, beta, gamma, &
+             call this % system % assembleJacobian(mat, alpha, beta, gamma, &
                   & this % T(ii), this % Q(k+1,ii,:), this % qdot(k+1,ii,:), this % qddot(k+1,ii,:))
              
-             rhs = rhs + mat(1,1)*this % lam(k+1,ii,:)
+             rhs = rhs + matmul(transpose(mat),this % lam(k+1,ii,:))
 
              ! Add function contributions too
              call this % system % func % addFuncSVSens(rhs(1:1), alpha, beta, gamma, &
@@ -844,10 +849,10 @@ contains
              beta  = this % h * this % B(ii)
              gamma = 0.0d0
 
-             call this % system % assembleJacobian(mat(1:1,1:1), alpha, beta, gamma, &
+             call this % system % assembleJacobian(mat, alpha, beta, gamma, &
                   & this % T(ii), this % Q(k+1,ii,:), this % qdot(k+1,ii,:), this % qddot(k+1,ii,:))
 
-             rhs = rhs + mat(1,1) * this % lam(k+1,ii,:)
+             rhs = rhs + matmul(transpose(mat), this % lam(k+1,ii,:))
 
              ! Add function contributions too
              call this % system % func % addFuncSVSens(rhs(1:1), alpha, beta, gamma, &
@@ -885,13 +890,13 @@ contains
           beta     = this % B(ii) * this % h * this % A(ii,ii)
           gamma    = this % B(ii) * 1.0d0
 
-          call this % system % assembleJacobian(mat(1:1,1:1), alpha, beta, gamma, &
+          call this % system % assembleJacobian(mat, alpha, beta, gamma, &
                & this % T(ii), this % Q(k,ii,:), this % QDOT(k,ii,:), this % QDDOT(k,ii,:))
           
           ! Assemble RHS
           rhs = 0.0d0
 
-          call this % system % func % addFuncSVSens(rhs(1:1), alpha, beta, gamma,  &
+          call this % system % func % addFuncSVSens(rhs, alpha, beta, gamma,  &
                & this % T(ii), this % system % X, &
                & this % Q(k,ii,:), this % QDOT(k,ii,:), this % QDDOT(k,ii,:))
           
@@ -905,13 +910,13 @@ contains
              end do
              alpha = alpha * this % h**2 * this % b(j)
              
-             call this % system % assembleJacobian(tmpmat(1:1,1:1), alpha, beta, gamma, &
+             call this % system % assembleJacobian(tmpmat, alpha, beta, gamma, &
                   & this % T(j), this % Q(k,j,:), this % qdot(k,j,:), this % qddot(k,j,:))
 
-             rhs = rhs + this % lam(k,j,:)*tmpmat(1,1)
+             rhs(:) = rhs(:) + matmul(transpose(tmpmat(:,:)),this % lam(k,j,:))
 
              ! Add function contribution from next stage
-             call this % system % func % addFuncSVSens(rhs(1:1), alpha, beta, gamma,  &
+             call this % system % func % addFuncSVSens(rhs, alpha, beta, gamma,  &
                   & this % T(j), this % system % x, &
                   & this % Q(k,j,:), this % qdot(k,j,:), this % qddot(k,j,:))
 
@@ -924,7 +929,7 @@ contains
           end do
 
           ! Solve for mu22
-          this % lam(k,ii,:) = - rhs(1)/mat(1,1)
+          this % lam(k,ii,:) = solve(mat, -rhs)
           
        end do
 
@@ -933,6 +938,8 @@ contains
     ! Compute the adjoint total derivative
     call this % computeTotalDerivative(dfdx)
 
+    deallocate(mat, tmpmat, rhs)
+    
   end subroutine testAdjoint6
 
   subroutine evalFuncDIRK(this, x, fval)
