@@ -40,7 +40,7 @@ module nbg_integrator
 !!$     ! Central Difference (second order & conditionally stable wh=2)
 !!$     type(scalar) :: BETA   = 1.0d0/2.0d0
 !!$     type(scalar) :: GAMMA  = 0.50d0
-!!$
+
 !!$     ! Purely Explicit
 !!$     type(scalar) :: BETA   = 0.0d0
 !!$     type(scalar) :: GAMMA  = 0.0d0
@@ -105,7 +105,6 @@ contains
 
     allocate(this % rhs(this % nsvars))
     this % rhs = 0.0d0
-
 
   end function initialize
 

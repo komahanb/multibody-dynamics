@@ -71,13 +71,22 @@ program main
         !===================================================================!
 
         ! Initialize the system
+!!$        call vpl % initialize("vanderpol", num_state_vars = 1, num_design_vars = size(x))
+!!$        dirkobj = DIRK(system = vpl, tfinal = real_part(tend), h=1.0d-3, num_stages=p-1, second_order=.true.) 
+!!$        !call dirkobj % evalFuncGrad(num_func=1, func = KE,  num_dv = size(x), x = x, fvals = fval, dfdx= dfdx)
+!!$        call dirkobj % testAdjoint6 ( num_func = 1, func = KE, num_dv = size(x), x = x, dfdx= dfdx, dfdxtmp=dfdxtmp )
+!!$        !call dirkobj % writeSolution("dirk.dat")
+!!$        call dirkobj % evalFDFuncGrad(num_func=1, func = KE, num_dv = size(x), x = x, fvals = fval, dfdx= dfdxtmp, dh=dh)
+!!$        call dirkobj % finalize()  
+!!$        call vpl % finalize()
+
+        ! Initialize the system
         call vpl % initialize("vanderpol", num_state_vars = 1, num_design_vars = size(x))
-        dirkobj = DIRK(system = vpl, tfinal = real_part(tend), h=1.0d-3, num_stages=p-1, second_order=.true.) 
-        !call dirkobj % evalFuncGrad(num_func=1, func = KE,  num_dv = size(x), x = x, fvals = fval, dfdx= dfdx)
-        call dirkobj % testAdjoint6 ( num_func = 1, func = KE, num_dv = size(x), x = x, dfdx= dfdx, dfdxtmp=dfdxtmp )
-        !call dirkobj % writeSolution("dirk.dat")
-        call dirkobj % evalFDFuncGrad(num_func=1, func = KE, num_dv = size(x), x = x, fvals = fval, dfdx= dfdxtmp, dh=dh)
-        call dirkobj % finalize()  
+        nbgobj = NBG(system = vpl, tfinal = real_part(tend), h=1.0d-3, second_order=.true.)
+        call nbgobj % evalFuncGrad(num_func=1, func = KE,  num_dv = size(x), x = x, fvals = fval, dfdx= dfdx)
+!!$        call nbgobj % writeSolution("nbg.dat")
+        call nbgobj % evalFDFuncGrad(num_func=1, func = KE,  num_dv = size(x), x = x, fvals = fval, dfdx= dfdxtmp, dh=dh)
+        call nbgobj % finalize()
         call vpl % finalize()
 
 !!$ 
@@ -104,7 +113,7 @@ program main
      end do step
 
      ! Write output data
-     open(unit=91, file="dirk"//trim(str(p))//"_error_accumulation.dat")
+     open(unit=91, file="nbg2c"//trim(str(p))//"_error_accumulation.dat")
      do i = 1, size(num_steps)
         write(*,*) num_steps(i), abserror(i,1), relerror(i,1)
         write(91,*) num_steps(i), abserror(i,1), relerror(i,1)
