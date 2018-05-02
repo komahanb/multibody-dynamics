@@ -1,4 +1,5 @@
 #include "scalar.fpp"
+
 !=====================================================================!
 ! Module that contains functions related to spring mass damper system
 !
@@ -21,7 +22,8 @@ module pendulum_functions_class
   type, extends(abstract_function) :: time_period
 
      type(scalar) :: m = 1.0d0
-     type(scalar) :: g = 9.81d0
+     type(scalar) :: g = 10.0d0
+
      type(scalar) :: pi = 3.1415926535897932384626433832d0
      
    contains  

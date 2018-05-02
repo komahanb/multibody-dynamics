@@ -28,7 +28,7 @@ Module pendulum_class
      
      type(scalar) :: m = 1.0d0
      type(scalar) :: a = 1.0d0
-     type(scalar) :: g = 9.81d0
+     type(scalar) :: g = 10.0d0
      type(scalar) :: pi = 3.1415926535897932384626433832d0
      
    contains
@@ -180,10 +180,9 @@ contains
     type(scalar), intent(in), dimension(:)      :: x, u, udot, uddot
     type(scalar) :: scale
 
-    jac = 0.0d0 
+    jac = 0.0d0
+    jac(1,1) = -scale*(this%g*sin(u(1))/(this%a*this%a))
 
-    jac(1,1) = -scale*(this % g * sin(u(1)) / (this%a*this%a))
-    
   end subroutine getResidualDVSens
 
 end module pendulum_class
