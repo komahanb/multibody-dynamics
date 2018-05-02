@@ -47,11 +47,95 @@ program main
   type(real(8)) :: relerror(maxk+1,1)
 
   allocate(X(1), dfdx(1), dfdxtmp(1))
+  
+  adjoint: block
+
+    !===================================================================!
+    !                          TEST BDF                                 !
+    !===================================================================!
+
+    fval    = 0.0d0
+    X       = 0.0d0
+    dfdx    = 0.0d0
+    dfdxtmp = 0.0d0
+    x(1)    = 1.0d0 
+
+    ! Initialize the system
+    call vpl % initialize("vanderpol", num_state_vars = 1, num_design_vars = size(x))
+    bdfobj = BDF(system = vpl, tfinal = 2.0d0, h=1.0d-3, max_bdf_order = 2,second_order=.true.)
+    call bdfobj % evalFuncGrad(num_func=1, func = KE,  num_dv = size(x), x = x, fvals = fval, dfdx= dfdx)
+    call dirkobj % writeSolution("bdf.dat")
+    call bdfobj % evalFDFuncGrad(num_func=1, func = KE,  num_dv = size(x), x = x, fvals = fval, dfdx= dfdxtmp, dh=dh)
+    call bdfobj % finalize()
+    call vpl % finalize()
+
+    print *, "fval         =", real_part(fval)
+    print *, "Adjoint dfdx =", real_part(dfdx)
+    print *, "FD      dfdx =", real_part(dfdxtmp)
+    print *, "Error        =", abs(dfdxtmp-dfdx)
+    print *, "Rel. Error   =", abs(real_part(dfdxtmp)-real_part(dfdx))/real_part(dfdxtmp)
+
+    !===================================================================!
+    !                       TEST NBG                                    !
+    !===================================================================!
+
+    fval    = 0.0d0
+    X       = 0.0d0
+    dfdx    = 0.0d0
+    dfdxtmp = 0.0d0
+    x(1)    = 1.0d0 
+
+    ! Initialize the system
+    call vpl % initialize("vanderpol", num_state_vars = 1, num_design_vars = size(x))
+    nbgobj = NBG(system = vpl, tfinal = 2.0d0, h=1.0d-3, second_order=.true.)
+    call nbgobj % evalFuncGrad(num_func=1, func = KE,  num_dv = size(x), x = x, fvals = fval, dfdx= dfdx)
+    call nbgobj % writeSolution("nbg.dat")
+    call nbgobj % evalFDFuncGrad(num_func=1, func = KE,  num_dv = size(x), x = x, fvals = fval, dfdx= dfdxtmp, dh=dh)
+    call nbgobj % finalize()
+    call vpl % finalize()
+
+    print *, "fval         =", real_part(fval)
+    print *, "Adjoint dfdx =", real_part(dfdx)
+    print *, "FD      dfdx =", real_part(dfdxtmp)
+    print *, "Error        =", abs(dfdxtmp-dfdx)
+    print *, "Rel. Error   =", abs(real_part(dfdxtmp)-real_part(dfdx))/real_part(dfdxtmp)
+
+    !===================================================================!
+    !                          TEST DIRK                                !
+    !===================================================================!
+
+    fval    = 0.0d0
+    X       = 0.0d0
+    dfdx    = 0.0d0
+    dfdxtmp = 0.0d0
+    x(1)    = 1.0d0 
+
+    ! Initialize the system
+    call vpl % initialize("vanderpol", num_state_vars = 1, num_design_vars = size(x))
+    dirkobj = DIRK(system = vpl, tfinal = 2.0d0, h=1.0d-3, num_stages=3, second_order=.true.) 
+    !call dirkobj % evalFuncGrad(num_func=1, func = KE,  num_dv = size(x), x = x, fvals = fval, dfdx= dfdx)
+    call dirkobj % testAdjoint6 ( num_func = 1, func = KE, num_dv = size(x), x = x, dfdx= dfdx, dfdxtmp=dfdxtmp )
+    call dirkobj % writeSolution("dirk.dat")
+    call dirkobj % evalFDFuncGrad(num_func=1, func = KE, num_dv = size(x), x = x, fvals = fval, dfdx= dfdxtmp, dh=dh)
+    call dirkobj % finalize()  
+    call vpl % finalize()
+
+    print *, "fval         =", real_part(fval)
+    print *, "Adjoint dfdx =", real_part(dfdx)
+    print *, "FD      dfdx =", real_part(dfdxtmp)
+    print *, "Error        =", abs(dfdxtmp-dfdx)
+    print *, "Rel. Error   =", abs(real_part(dfdxtmp)-real_part(dfdx))/real_part(dfdxtmp)
+
+  end block adjoint
+
+  stop
 
   !===================================================================!
   !                       TEST ABM                                    !
   !===================================================================!
-
+  
+  convergence: block
+    
   order: do p = 4, 4
 
     step: do k = 0, maxk ! 10^k steps using a constant step-size of h
@@ -122,85 +206,9 @@ program main
 
   end do order
 
-stop"sdsfs"
-!!$  
-!!$  !===================================================================!
-!!$  !                       TEST NBG                                    !
-!!$  !===================================================================!
-!!$
-!!$  fval    = 0.0d0
-!!$  X       = 0.0d0
-!!$  dfdx    = 0.0d0
-!!$  dfdxtmp = 0.0d0
-!!$  x(1)    = 1.0d0 
-!!$
-!!$  ! Initialize the system
-!!$  call vpl % initialize("vanderpol", num_state_vars = 1, num_design_vars = size(x))
-!!$  nbgobj = NBG(system = vpl, tfinal = 2.0d0, h=1.0d-3, second_order=.true.)
-!!$  call nbgobj % evalFuncGrad(num_func=1, func = KE,  num_dv = size(x), x = x, fvals = fval, dfdx= dfdx)
-!!$  call nbgobj % writeSolution("nbg.dat")
-!!$  call nbgobj % evalFDFuncGrad(num_func=1, func = KE,  num_dv = size(x), x = x, fvals = fval, dfdx= dfdxtmp, dh=dh)
-!!$  call nbgobj % finalize()
-!!$  call vpl % finalize()
-!!$
-!!$  print *, "fval         =", real_part(fval)
-!!$  print *, "Adjoint dfdx =", real_part(dfdx)
-!!$  print *, "FD      dfdx =", real_part(dfdxtmp)
-!!$  print *, "Error        =", abs(dfdxtmp-dfdx)
-!!$  print *, "Rel. Error   =", abs(real_part(dfdxtmp)-real_part(dfdx))/real_part(dfdxtmp)
-!!$
-!!$  !===================================================================!
-!!$  !                          TEST BDF                                 !
-!!$  !===================================================================!
-!!$
-!!$  fval    = 0.0d0
-!!$  X       = 0.0d0
-!!$  dfdx    = 0.0d0
-!!$  dfdxtmp = 0.0d0
-!!$  x(1)    = 1.0d0 
-!!$
-!!$  ! Initialize the system
-!!$  call vpl % initialize("vanderpol", num_state_vars = 1, num_design_vars = size(x))
-!!$  bdfobj = BDF(system = vpl, tfinal = 2.0d0, h=1.0d-3, max_bdf_order = 1,second_order=.true.)
-!!$  call bdfobj % evalFuncGrad(num_func=1, func = KE,  num_dv = size(x), x = x, fvals = fval, dfdx= dfdx)
-!!$  call dirkobj % writeSolution("bdf.dat")
-!!$  call bdfobj % evalFDFuncGrad(num_func=1, func = KE,  num_dv = size(x), x = x, fvals = fval, dfdx= dfdxtmp, dh=dh)
-!!$  call bdfobj % finalize()
-!!$  call vpl % finalize()
-!!$
-!!$  print *, "fval         =", real_part(fval)
-!!$  print *, "Adjoint dfdx =", real_part(dfdx)
-!!$  print *, "FD      dfdx =", real_part(dfdxtmp)
-!!$  print *, "Error        =", abs(dfdxtmp-dfdx)
-!!$  print *, "Rel. Error   =", abs(real_part(dfdxtmp)-real_part(dfdx))/real_part(dfdxtmp)
-!!$
-!!$  !===================================================================!
-!!$  !                          TEST DIRK                                !
-!!$  !===================================================================!
-!!$
-!!$  fval    = 0.0d0
-!!$  X       = 0.0d0
-!!$  dfdx    = 0.0d0
-!!$  dfdxtmp = 0.0d0
-!!$  x(1)    = 1.0d0 
-!!$
-!!$  ! Initialize the system
-!!$  call vpl % initialize("vanderpol", num_state_vars = 1, num_design_vars = size(x))
-!!$  dirkobj = DIRK(system = vpl, tfinal = 2.0d0, h=1.0d-3, num_stages=3, second_order=.true.) 
-!!$  !call dirkobj % evalFuncGrad(num_func=1, func = KE,  num_dv = size(x), x = x, fvals = fval, dfdx= dfdx)
-!!$  call dirkobj % testAdjoint6 ( num_func = 1, func = KE, num_dv = size(x), x = x, dfdx= dfdx, dfdxtmp=dfdxtmp )
-!!$  call dirkobj % writeSolution("dirk.dat")
-!!$  call dirkobj % evalFDFuncGrad(num_func=1, func = KE, num_dv = size(x), x = x, fvals = fval, dfdx= dfdxtmp, dh=dh)
-!!$  call dirkobj % finalize()  
-!!$  call vpl % finalize()
-!!$
-!!$  print *, "fval         =", real_part(fval)
-!!$  print *, "Adjoint dfdx =", real_part(dfdx)
-!!$  print *, "FD      dfdx =", real_part(dfdxtmp)
-!!$  print *, "Error        =", abs(dfdxtmp-dfdx)
-!!$  print *, "Rel. Error   =", abs(real_part(dfdxtmp)-real_part(dfdx))/real_part(dfdxtmp)
+end block convergence
 
-  deallocate(X, dfdx, dfdxtmp)
+deallocate(X, dfdx, dfdxtmp)
 
 contains
 
