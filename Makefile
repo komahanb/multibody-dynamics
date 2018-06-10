@@ -56,7 +56,7 @@ SRC  :=	 src/utils.f90 src/lapack.f90 src/linear_algebra.f90 \
          src/adams_bashforth_moulton.f90 \
          src/newmark_beta_gamma.f90 \
          src/runge_kutta.f90 src/backward_difference.f90 \
-         src/smd.f90 src/pendulum_functions.f90 \
+         src/smd.f90 src/smd_functions.f90 src/pendulum_functions.f90 \
          src/aero_elastic_oscillator.f90 src/oscillator_functions.f90 \
 	 src/pendulum.f90 \
          src/test_pendulum.f90

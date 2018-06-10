@@ -26,7 +26,6 @@ Module pendulum_class
      ! Define constants and other parameters needed for residual and
      ! jacobian assembly here
      
-     type(scalar) :: m = 1.0d0
      type(scalar) :: a = 1.0d0
      type(scalar) :: g = 10.0d0
      type(scalar) :: pi = 3.1415926535897932384626433832d0
@@ -51,7 +50,7 @@ contains
 
     class(pendulum) :: this
 
-    this % m = this % x(1)
+    this % a = this % x(1)
 
   end subroutine mapDesignVars
 
@@ -125,13 +124,13 @@ contains
     ! Add dR/dQ
     !-----------------------------------------------------------------!
 
-    jac(1,1) = alpha*(this % g * cos(u(1)) / this % a)
+    jac(1,1) = jac(1,1) + alpha*(this % g * cos(u(1)) / this % a)
 
     !-----------------------------------------------------------------!
     ! Add dR/dQDDOT
     !-----------------------------------------------------------------!
 
-    jac(1,1) = gamma
+    jac(1,1) = jac(1,1) + gamma
 
   end subroutine assembleJacobian
 
@@ -149,7 +148,7 @@ contains
     real(dp), intent(in) :: time
     type(scalar), intent(inout), dimension(:) :: u, udot
     
-    u(1) = this%pi/2.0d0
+    u(1) = this%pi/6.0d0
     udot(1) = 0.0d0
 
   end subroutine getInitialStates

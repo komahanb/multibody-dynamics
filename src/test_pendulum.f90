@@ -15,7 +15,8 @@ program main
   ! Residual and functions
   use pendulum_class, only : pendulum
   use pendulum_functions_class, only : time_period
-
+  use smd_functions_class    , only : kinetic_energy
+  
   implicit none
 
   ! Declare integrators
@@ -25,7 +26,8 @@ program main
   ! Physics and function
   type(pendulum), target :: pend
   type(time_period), target :: time
-
+  type(kinetic_energy) , target :: KE
+  
   ! Design variable array
   type(scalar), allocatable :: x(:), dfdx(:), dfdxtmp(:)
   type(scalar) :: fval, ftmp
@@ -50,15 +52,43 @@ program main
     X       = 0.0d0
     dfdx    = 0.0d0
     dfdxtmp = 0.0d0
-    x(1)    = 1.0d0
+    x(1)    = 0.25d0
 
     ! Initialize the system
     call pend % initialize("pendulum", num_state_vars = 1, num_design_vars = size(x))
-    bdfobj = BDF(system = pend, tfinal = 3.14d0, h=1.0d-3, max_bdf_order = 2, second_order = .true.)
-
+    bdfobj = BDF(system = pend, tfinal = 1.0d0, h=1.0d-3, max_bdf_order = 2, second_order = .true.)
     call bdfobj % evalFuncGrad(num_func=1, func = time,  num_dv = size(x), x = x, fvals = fval, dfdx = dfdx)
-    call bdfobj % writeSolution("bdf.dat")
+    call bdfobj % writeSolution("period.dat.25")
+    call bdfobj % writeAdjointSolution("period-adjoint.dat.25", bdfobj % time,  bdfobj% mu, bdfobj % psi, bdfobj % phi)
     call bdfobj % evalFDFuncGrad(num_func=1, func = time,  num_dv = size(x), x = x, fvals = fval, dfdx= dfdxtmp, dh=dh)
+    call bdfobj % finalize()
+    call pend % finalize()
+
+    print *, "fval         = ", real_part(fval)
+    print *, "Adjoint dfdx = ", real_part(dfdx)
+    print *, "FD      dfdx = ", real_part(dfdxtmp)
+    print *, "Error        = ", abs(dfdxtmp-dfdx)
+    print *, "Rel. Error   = ", abs(real_part(dfdxtmp)-real_part(dfdx))/real_part(dfdxtmp)
+
+  end block adjoint
+
+  ! Test kinetic energy
+  adjoint_ke: block
+
+    fval    = 0.0d0
+    X       = 0.0d0
+    dfdx    = 0.0d0
+    dfdxtmp = 0.0d0
+    x(1)    = 0.25d0
+
+    ! Initialize the system
+    call pend % initialize("pendulum", num_state_vars = 1, num_design_vars = size(x))
+    bdfobj = BDF(system = pend, tfinal = 1.0d0, h=1.0d-3, max_bdf_order = 2, second_order = .true.)
+
+    call bdfobj % evalFuncGrad(num_func=1, func = KE,  num_dv = size(x), x = x, fvals = fval, dfdx = dfdx)
+    call bdfobj % writeSolution("ke.dat.25")
+    call bdfobj % writeAdjointSolution("ke-adjoint.dat.25", bdfobj % time,  bdfobj% mu, bdfobj % psi, bdfobj % phi)
+    call bdfobj % evalFDFuncGrad(num_func=1, func = KE,  num_dv = size(x), x = x, fvals = fval, dfdx= dfdxtmp, dh=dh)
     call bdfobj % finalize()
 
     call pend % finalize()
@@ -69,7 +99,7 @@ program main
     print *, "Error        = ", abs(dfdxtmp-dfdx)
     print *, "Rel. Error   = ", abs(real_part(dfdxtmp)-real_part(dfdx))/real_part(dfdxtmp)
 
-  end block adjoint
+  end block adjoint_ke
 
   deallocate(X,dfdx,dfdxtmp)
 

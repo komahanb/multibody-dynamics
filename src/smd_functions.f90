@@ -50,7 +50,8 @@ contains
     else if (size(x) .eq. 2) then
        f = 0.0d0
     else if (size(x) .eq. 1) then
-       f = uddot(1)**2 + udot(1)**2 + u(1)**2 + x(1)**2 ! Optimal control problem
+       !f = uddot(1)**2 + udot(1)**2 + u(1)**2 + x(1)**2 ! Optimal control problem
+       f = 0.5d0*udot(1)*udot(1) 
     end if
     !f = 0.5d0*x(3)*u(1)**2
     
@@ -73,7 +74,7 @@ contains
        res(2) = res(2) + scale*0.5d0*udot(1)**2 ! wrt to c
        res(3) = res(3) + scale*0.5d0*u(1)**2 ! wrt to k
     else if (size(x) .eq. 1) then
-       res(1) = res(1) + scale*2.0d0*x(1)
+!       res(1) = res(1) + scale*2.0d0*x(1)
     end if
 
   end subroutine addFuncDVSens
@@ -94,7 +95,7 @@ contains
     if (size(x) .eq. 3) then
        res(1) = res(1) + alpha*x(3)*u(1) + beta*x(2)*udot(1) + gamma*x(1)*uddot(1)
     else if (size(x) .eq. 1) then
-       res(1) = res(1) + alpha*2.0d0*u(1) + beta*2.0d0*udot(1) + gamma*2.0d0*uddot(1)
+       res(1) = res(1) +  beta*udot(1)
     end  if
     
   end subroutine addFuncSVSens
