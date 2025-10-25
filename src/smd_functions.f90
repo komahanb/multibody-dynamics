@@ -45,6 +45,8 @@ contains
     type(scalar), intent(in), dimension(:) :: x, u, udot, uddot
     real(dp), intent(in)                   :: time
 
+    
+!!$ <<<<<<< HEAD
     f = 0.5d0*x(1)*u(1)**2
 
 !!$    if (size(x) .eq. 3) then
@@ -55,6 +57,16 @@ contains
 !!$       f = 0.5d0*x(1)*u(1)**2
 !!$       !f = uddot(1)**2 + udot(1)**2 + u(1)**2 + x(1)**2 ! Optimal control problem
 !!$    end if
+!!$ =======
+    if (size(x) .eq. 3) then
+       f = 0.5d0*x(1)*uddot(1)**2 + 0.5d0*x(2)*udot(1)**2 + 0.5d0*x(3)*u(1)**2
+    else if (size(x) .eq. 2) then
+       f = 0.0d0
+    else if (size(x) .eq. 1) then
+       !f = uddot(1)**2 + udot(1)**2 + u(1)**2 + x(1)**2 ! Optimal control problem
+       f = 0.5d0*udot(1)*udot(1) 
+    end if
+!!$ >>>>>>> 15b758910d70bf09c18e78ae65a686c0db0a9fa2
     !f = 0.5d0*x(3)*u(1)**2
     
   end subroutine getFunctionValue
@@ -71,6 +83,7 @@ contains
     real(dp), intent(in)                      :: time
     type(scalar)                              :: scale
 
+!!$ <<<<<<< HEAD
 !!$    if (size(x).eq.3) then
 !!$       res(1) = res(1) + scale*0.5d0*uddot(1)**2 ! wrt to m
 !!$       res(2) = res(2) + scale*0.5d0*udot(1)**2 ! wrt to c
@@ -78,6 +91,15 @@ contains
 !!$    else if (size(x) .eq. 1) then
     res(1) = res(1) + scale* 0.5d0*u(1)**2
 !!$    end if
+!!$ =======
+    if (size(x).eq.3) then
+       res(1) = res(1) + scale*0.5d0*uddot(1)**2 ! wrt to m
+       res(2) = res(2) + scale*0.5d0*udot(1)**2 ! wrt to c
+       res(3) = res(3) + scale*0.5d0*u(1)**2 ! wrt to k
+    else if (size(x) .eq. 1) then
+!       res(1) = res(1) + scale*2.0d0*x(1)
+    end if
+!!$ >>>>>>> 15b758910d70bf09c18e78ae65a686c0db0a9fa2
 
   end subroutine addFuncDVSens
   
@@ -94,6 +116,7 @@ contains
     type(scalar), intent(in), dimension(:)    :: x, u, udot, uddot
     type(scalar), intent(in)                  :: alpha, beta, gamma
 
+!!$ <<<<<<< HEAD
     res(1) = res(1) + alpha*x(1)*u(1)
 !!$
 !!$    if (size(x) .eq. 3) then
@@ -102,6 +125,13 @@ contains
 !!$       !res(1) = res(1) + alpha*2.0d0*u(1) + beta*2.0d0*udot(1) + gamma*2.0d0*uddot(1)
 !!$       res(1) = res(1) +  alpha*x(1)*u(1) 
 !!$    end  if
+!!$ =======
+    if (size(x) .eq. 3) then
+       res(1) = res(1) + alpha*x(3)*u(1) + beta*x(2)*udot(1) + gamma*x(1)*uddot(1)
+    else if (size(x) .eq. 1) then
+       res(1) = res(1) +  beta*udot(1)
+    end  if
+!!$ >>>>>>> 15b758910d70bf09c18e78ae65a686c0db0a9fa2
     
   end subroutine addFuncSVSens
 

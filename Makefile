@@ -55,7 +55,11 @@ SRC  :=	 src/utils.f90 src/lapack.f90 src/linear_algebra.f90 \
 	 src/function.f90 src/physics.f90 src/nonlinear.f90 src/integrator.f90 \
          src/adams_bashforth_moulton.f90 src/newmark_beta_gamma.f90 \
          src/runge_kutta.f90 src/backward_difference.f90 \
+<<<<<<< HEAD
          src/smd.f90 src/smd_functions.f90 \
+=======
+         src/smd.f90 src/smd_functions.f90 src/pendulum_functions.f90 \
+>>>>>>> 15b758910d70bf09c18e78ae65a686c0db0a9fa2
          src/aero_elastic_oscillator.f90 src/oscillator_functions.f90 \
 	 src/vanderpol.f90 \
          src/test_adjoint.f90

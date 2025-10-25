@@ -51,7 +51,7 @@ contains
     type(scalar), intent(in), dimension(:) :: x, u, udot, uddot
     real(dp), intent(in) :: time
 
-    f = sqrt(this%g/x(1))/(2.0d0*this %pi)
+    f = (2.0d0*this %pi) * sqrt(x(1)/this%g)
     
   end subroutine getFunctionValue
 
@@ -67,7 +67,8 @@ contains
     real(dp), intent(in) :: time
     type(scalar) :: scale
 
-    res(1) = res(1) - scale*sqrt(this%g/(x(1)*x(1)*x(1)))/(4.0d0*this%pi)
+    !res(1) = res(1) - scale*sqrt(this%g/(x(1)*x(1)*x(1)))/(4.0d0*this%pi)
+    res(1) = res(1) + scale*this%pi/sqrt(this%g*x(1))
 
   end subroutine addFuncDVSens
   
