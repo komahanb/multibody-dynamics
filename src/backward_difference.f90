@@ -365,6 +365,9 @@ contains
 
     class(BDF)    :: this
     type(integer) :: k
+    integer, parameter :: unit = 88
+
+    open(unit=88, file=trim("bdf_adjoint.dat"))
 
     time: do k = this % num_steps, 2, -1
 
@@ -373,7 +376,7 @@ contains
        !--------------------------------------------------------------!
        ! Solve the adjoint equation at each step
        !--------------------------------------------------------------!
-
+       
        call this % evaluate_adjoint(this % mu, this % psi, this % phi)
 
        !--------------------------------------------------------------!
@@ -382,7 +385,22 @@ contains
 
        call this % distribute_contributions(this % rhsbin)
 
+
+       write_output: block
+
+         type(integer) :: j
+
+         ! Write the solution as output
+         write(unit, *)  this % time(k), &
+              & (dble(this % mu(k,j)), j=1,this%nsvars ), &
+              & (dble(this % psi(k,j)), j=1,this%nsvars ), &
+              & (dble(this % phi(k,j)), j=1,this%nsvars )
+
+       end block write_output
+
     end do time
+
+    close(88)
 
   end subroutine marchBackwards
   

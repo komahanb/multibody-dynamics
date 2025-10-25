@@ -5,7 +5,7 @@
 #------------------------------
 CC = gcc
 CX = g++
-FC = gfortran
+FC = gfortran-7
 
 #------------------------------
 # Define any compile-time flags
@@ -14,7 +14,7 @@ CC_FLAGS =  #-g #-Wall
 CX_FLAGS =  #-g #-Wall
 FC_FLAGS =  -g -cpp -fbounds-check #-fbounds-check -ffree-form -Wall -cpp -dM -Wno-unused
 
-TARGET = $(BIN_DIR)/test_pendulum
+TARGET = $(BIN_DIR)/test_adjoint
 
 default: $(OBJ)
 	$(FC) $(FC_FLAGS) $(INCLUDES) -o $(TARGET) $(OBJ) $(LIB_FLAGS) $(LIBS)
@@ -53,13 +53,12 @@ LIBS = -lm -llapack
 #---------------------------------------------------------------------#
 SRC  :=	 src/utils.f90 src/lapack.f90 src/linear_algebra.f90 \
 	 src/function.f90 src/physics.f90 src/nonlinear.f90 src/integrator.f90 \
-         src/adams_bashforth_moulton.f90 \
-         src/newmark_beta_gamma.f90 \
+         src/adams_bashforth_moulton.f90 src/newmark_beta_gamma.f90 \
          src/runge_kutta.f90 src/backward_difference.f90 \
-         src/smd.f90 src/pendulum_functions.f90 \
+         src/smd.f90 src/smd_functions.f90 \
          src/aero_elastic_oscillator.f90 src/oscillator_functions.f90 \
-	 src/pendulum.f90 \
-         src/test_pendulum.f90
+	 src/vanderpol.f90 \
+         src/test_adjoint.f90
 #	 src/dae.f90 \
 #         src/main.f90
 #	 src/utils.f90 src/rotation.f90 src/dynamics.f90 \

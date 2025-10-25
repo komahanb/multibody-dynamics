@@ -24,7 +24,7 @@ module spring_mass_damper_class
      ! Define constants and other parameters needed for residual and
      ! jacobian assembly here
 
-     type(scalar) :: m = 1.0d0
+     type(scalar) :: m = 2.5d0
      type(scalar) :: c = 0.2d0
      type(scalar) :: k = 5.0d0
 
@@ -67,9 +67,9 @@ contains
 
     class(smd1) :: this
         
-    this % M = this % x(1)
-    this % C = this % x(2)
-    this % K = this % x(3)
+    !this % M = this % x(1)
+    !this % C = this % x(2)
+    this % K = this % x(1)
 
   end subroutine mapDesignVars
 
@@ -204,9 +204,9 @@ contains
 
     jac = 0.0d0 
 
-    jac(1,1) = scale*uddot(1)
-    jac(1,2) = scale*udot(1)
-    jac(1,3) = scale*u(1)
+    !jac(1,1) = scale*uddot(1)
+    !jac(1,2) = scale*udot(1)
+    jac(1,1) = scale*u(1)
 
   end subroutine getResidualDVSens
 
@@ -326,7 +326,7 @@ contains
     type(scalar), intent(in), dimension(:)      :: x, u, udot, uddot
     type(scalar)                                :: scale
     
-    stop"Not implemented"
+    stop
 
   end subroutine getResidualDVSens2
 

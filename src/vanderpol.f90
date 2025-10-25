@@ -234,7 +234,7 @@ contains
 
     jac(1,1) = -scale*( 1.0d0-u(1)*u(1) )*udot(1)
 
-    if (size(u) .eq. 2) stop"not implemented"
+    !if (size(u) .eq. 2) stop"not implemented"
     
   end subroutine getResidualDVSens
 

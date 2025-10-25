@@ -83,7 +83,7 @@ contains
     type(scalar), intent(in), dimension(:)    :: x, u, udot, uddot
     type(scalar), intent(in)                  :: alpha, beta, gamma
 
-    stop"unimplemented"
+    stop
     
   end subroutine addFuncSVSens
 

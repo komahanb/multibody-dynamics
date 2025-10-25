@@ -188,7 +188,7 @@ contains
        beta  = this % GAMMA/ this % h
        alpha = this % BETA
     else
-       stop"Error: Newmark-Beta-Gamma method works for second order systems in current form..."
+       !stop"Error: Newmark-Beta-Gamma method works for second order systems in current form..."
     end if
 
 !!$    gamma = 1.0d0
